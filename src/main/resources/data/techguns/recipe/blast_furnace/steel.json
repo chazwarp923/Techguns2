@@ -1,0 +1,16 @@
+{
+  "type": "techguns:blast_furnace",
+  "input1": {
+    "item": "minecraft:iron_ingot",
+    "count": 4
+  },
+  "input2": {
+    "tag": "minecraft:coals"
+  },
+  "result": {
+    "id": "techguns:ingotsteel",
+    "count": 4
+  },
+  "power_per_tick": 10,
+  "time": 800
+}

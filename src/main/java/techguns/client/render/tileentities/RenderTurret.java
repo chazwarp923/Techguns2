@@ -1,110 +1,79 @@
 package techguns.client.render.tileentities;
 
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.ResourceLocation;
-import techguns.Techguns;
+import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
+import techguns.client.models.machines.ModelTurretBase;
+import techguns.client.render.gl.TGRenderState;
+import techguns.entities.npcs.NPCTurret;
 import techguns.tileentities.TurretTileEnt;
 
-public class RenderTurret extends TileEntitySpecialRenderer<TurretTileEnt> {
+/** Turret base block (1.12 RenderTurret), textured by the turret armor tier. */
+public class RenderTurret implements BlockEntityRenderer<TurretTileEnt> {
 
-	protected static final ResourceLocation defaultTexture = new ResourceLocation(Techguns.MODID,"textures/blocks/turret_base.png");
-	protected ModelBase model;
-
-	public RenderTurret(ModelBase model) {
-		super();
-		this.model = model;
-	}
+	protected static final ModelTurretBase MODEL = new ModelTurretBase();
 
 	@Override
-	public void render(TurretTileEnt te, double x, double y, double z, float partialTicks, int destroyStage, float alpha) {
-		//super.render(te, x, y, z, partialTicks, destroyStage, alpha);
-
-        if (destroyStage >= 0)
-        {
-            this.bindTexture(DESTROY_STAGES[destroyStage]);
-            GlStateManager.matrixMode(5890);
-            GlStateManager.pushMatrix();
-            GlStateManager.scale(4.0F, 4.0F, 1.0F);
-            GlStateManager.translate(0.0625F, 0.0625F, 0.0625F);
-            GlStateManager.matrixMode(5888);
-        } else {
-        	if(te!=null) {
-        		Minecraft.getMinecraft().renderEngine.bindTexture(te.getTurretBaseTexture());
-        	} else {
-        		Minecraft.getMinecraft().renderEngine.bindTexture(defaultTexture);
-        	}
-        }
-      
-		//default up for TESR itemstac
-        EnumFacing facing = EnumFacing.UP;
-        if(te!=null) {
-        	facing = te.getFacing();
-        }
-        
-        switch(facing) {
-			case DOWN:
-				GlStateManager.pushMatrix();
-				GlStateManager.translate( x + 0.5d, y - 0.5d, z + 0.5d);
-				
-				GlStateManager.pushMatrix();
-				//GlStateManager.rotate(180F, 0.0F, 0.0F, 1.0F);
-			    GlStateManager.rotate(180F, 0.0F, 1.0F, 0.0F);
-				break;
-			case EAST:
-				GlStateManager.pushMatrix();
-				GlStateManager.translate( x + 1.5d, y + 0.5d, z + 0.5d);
-				
-				GlStateManager.pushMatrix();
-				GlStateManager.rotate(90F, 0.0F, 0.0F, 1.0F);
-				break;
-			case NORTH:
-				GlStateManager.pushMatrix();
-				GlStateManager.translate( x + 0.5d, y + 0.5d, z - 0.5d);
-				
-				GlStateManager.pushMatrix();
-				GlStateManager.rotate(90F, 1.0F, 0.0F, 0.0F);
-				break;
-			case SOUTH:
-				GlStateManager.pushMatrix();
-				GlStateManager.translate( x + 0.5d, y + 0.5d, z + 1.5d);
-				
-				GlStateManager.pushMatrix();
-				GlStateManager.rotate(-90F, 1.0F, 0.0F, 0.0F);
-				break;
-			case WEST:
-				GlStateManager.pushMatrix();
-				GlStateManager.translate( x - 0.5d, y + 0.5d, z + 0.5d);
-				
-				GlStateManager.pushMatrix();
-				GlStateManager.rotate(-90F, 0.0F, 0.0F, 1.0F);
-				break;
-			case UP:
-			default:
-				GlStateManager.pushMatrix();
-				GlStateManager.translate( x + 0.5d, y + 1.5d, z + 0.5d);
-				
-				GlStateManager.pushMatrix();
-				GlStateManager.rotate(180F, 0.0F, 0.0F, 1.0F);
-			    GlStateManager.rotate(180F, 0.0F, 1.0F, 0.0F);
-				break;
-        
-        }
-        
-		this.model.render(null, 0, 0, 0, 0, 0, 0.0625f);
-		
-		GlStateManager.popMatrix();
-		GlStateManager.popMatrix();
-		
-		 if (destroyStage >= 0)
-         {
-             GlStateManager.matrixMode(5890);
-             GlStateManager.popMatrix();
-             GlStateManager.matrixMode(5888);
-         }
+	public void render(TurretTileEnt te, float partialTicks, PoseStack ps, MultiBufferSource buffers, int light, int overlay) {
+		renderModel(ps, buffers, light, overlay, te.getFacing(), NPCTurret.getTexture(te.getTurretTier()));
 	}
-	
+
+	public static void renderModel(PoseStack ps, MultiBufferSource buffers, int light, int overlay, Direction facing, ResourceLocation tex) {
+		ps.pushPose();
+		switch (facing) {
+			case DOWN -> {
+				ps.translate(0.5d, -0.5d, 0.5d);
+				ps.mulPose(Axis.YP.rotationDegrees(180f));
+			}
+			case EAST -> {
+				ps.translate(1.5d, 0.5d, 0.5d);
+				ps.mulPose(Axis.ZP.rotationDegrees(90f));
+			}
+			case NORTH -> {
+				ps.translate(0.5d, 0.5d, -0.5d);
+				ps.mulPose(Axis.XP.rotationDegrees(90f));
+			}
+			case SOUTH -> {
+				ps.translate(0.5d, 0.5d, 1.5d);
+				ps.mulPose(Axis.XP.rotationDegrees(-90f));
+			}
+			case WEST -> {
+				ps.translate(-0.5d, 0.5d, 0.5d);
+				ps.mulPose(Axis.ZP.rotationDegrees(-90f));
+			}
+			default -> {
+				ps.translate(0.5d, 1.5d, 0.5d);
+				ps.mulPose(Axis.ZP.rotationDegrees(180f));
+				ps.mulPose(Axis.YP.rotationDegrees(180f));
+			}
+		}
+		TGRenderState.begin(ps, buffers, light, overlay);
+		try {
+			TGRenderState.bindTexture(tex);
+			MODEL.render(null, 0f, 0f, 0f, 0f, 0f, 0.0625f);
+		} finally {
+			TGRenderState.end();
+		}
+		ps.popPose();
+	}
+
+	/** item form, uses the builtin/entity display transforms of models/item/basicmachine.json */
+	public static class ItemRenderer extends BlockEntityWithoutLevelRenderer {
+		public ItemRenderer() {
+			super(Minecraft.getInstance().getBlockEntityRenderDispatcher(), Minecraft.getInstance().getEntityModels());
+		}
+
+		@Override
+		public void renderByItem(ItemStack stack, ItemDisplayContext ctx, PoseStack ps, MultiBufferSource buffers, int light, int overlay) {
+			renderModel(ps, buffers, light, overlay, Direction.UP, NPCTurret.getTexture(0));
+		}
+	}
 }

@@ -1,15 +1,16 @@
 package techguns.client.models.guns;
 
-import org.lwjgl.opengl.GL11;
-
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
-import net.minecraft.entity.Entity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.ItemDisplayContext;
 import techguns.client.models.ModelMultipart;
-import techguns.client.render.TGRenderHelper;
+import techguns.client.models.ModelRenderer;
 import techguns.client.render.TGRenderHelper.RenderType;
+import techguns.client.render.TGRenderHelper;
+import techguns.client.render.gl.GlStateManager;
 import techguns.util.MathUtil;
+
+
+
 
 public class ModelNDR extends ModelMultipart {
     public ModelRenderer shape14;
@@ -346,7 +347,7 @@ public class ModelNDR extends ModelMultipart {
 
 	@Override
 	public void render(Entity entityIn, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch, float scale, int ammoLeft,
-			float reloadProgress, TransformType transformType, int part, float fireProgress, float chargeProgress) {
+			float reloadProgress, ItemDisplayContext transformType, int part, float fireProgress, float chargeProgress) {
 		
 		    this.shape14_1.render(scale);
 	        this.shape1_8.render(scale);
@@ -405,9 +406,9 @@ public class ModelNDR extends ModelMultipart {
 		  //      TGRenderHelper.enableAlphaBlend();
 		        //this.glowA1.offsetY = (float) (-6.0f + Math.sin(fireProgress*2.0*Math.PI));
 	
-		        GL11.glPushMatrix();
+		        GlStateManager.pushMatrix();
 		        double s = 0.90 + Math.sin(fireProgress*2.0*Math.PI)*0.1;
-		        GL11.glScaled(s, s, s);
+		        GlStateManager.scale(s, s, s);
 		        
 		        this.glowA1.render(scale);
 		        this.glowA1.rotateAngleX = 63.0f*((float)MathUtil.D2R);
@@ -426,7 +427,7 @@ public class ModelNDR extends ModelMultipart {
 		        this.glowA1.render(scale);
 		        this.glowA1.rotateAngleX = 25.0f*((float)MathUtil.D2R);
 		        
-		        GL11.glPopMatrix();
+		        GlStateManager.popMatrix();
 		        
 		 //       TGRenderHelper.disableAlphaBlend();
 		        

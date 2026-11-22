@@ -2,332 +2,173 @@ package techguns.tileentities.operation;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraftforge.common.util.Constants;
-import net.minecraftforge.fluids.FluidStack;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.fluids.FluidStack;
 
+/**
+ * A running machine job (1.12 MachineOperation): the consumed inputs (per multiplier step), the outputs and the
+ * stack multiplier from machine upgrades.
+ */
 public class MachineOperation {
 
-	protected ArrayList<ItemStack> inputs=null;
-	protected ArrayList<ItemStack> outputs=null;
-	protected ArrayList<FluidStack> fluid_inputs=null;
-	protected ArrayList<FluidStack> fluid_outputs=null;
-	protected int stackMultiplier=1;
-	
-	protected int time=100;
+	protected List<ItemStack> inputs = new ArrayList<>();
+	protected List<ItemStack> outputs = new ArrayList<>();
+	protected List<FluidStack> fluidInputs = new ArrayList<>();
+	protected List<FluidStack> fluidOutputs = new ArrayList<>();
+	protected int stackMultiplier = 1;
 	protected int powerPerTick = 0;
-	
+
+	public MachineOperation() {
+	}
+
 	public MachineOperation(ItemStack output, ItemStack... inputs) {
-		this.outputs=new ArrayList<>();
-		outputs.add(output);
-		this.inputs = new ArrayList<>();
-		Arrays.stream(inputs).forEach(i -> this.inputs.add(i));
+		this.outputs.add(output);
+		this.inputs.addAll(Arrays.asList(inputs));
 	}
-	
-	public MachineOperation(ItemStack output, FluidStack fluidOut, ItemStack... inputs) {
-		this.outputs=new ArrayList<>();
-		outputs.add(output);
-		this.inputs = new ArrayList<>();
-		Arrays.stream(inputs).forEach(i -> this.inputs.add(i));
-		this.fluid_outputs=new ArrayList<>();
-		this.fluid_outputs.add(fluidOut);
-	}
-	
-	public MachineOperation(FluidStack fluidOut, ItemStack... inputs) {
-		this.inputs = new ArrayList<>();
-		Arrays.stream(inputs).forEach(i -> this.inputs.add(i));
-		this.fluid_outputs=new ArrayList<>();
-		this.fluid_outputs.add(fluidOut);
-	}
-	
-	public MachineOperation(ArrayList<ItemStack> inputs, ArrayList<ItemStack> outputs, ArrayList<FluidStack> fluid_inputs, ArrayList<FluidStack> fluid_outputs, int stackMultiplier) {
-		super();
-		this.inputs = inputs;
-		this.outputs = outputs;
-		this.fluid_outputs = fluid_outputs;
-		this.fluid_inputs = fluid_inputs;
-		this.stackMultiplier = stackMultiplier;
+
+	public MachineOperation(List<ItemStack> outputs, List<ItemStack> inputs) {
+		this.outputs.addAll(outputs);
+		this.inputs.addAll(inputs);
 	}
 
 	public MachineOperation setStackMultiplier(int mult) {
-		this.stackMultiplier=mult;
+		this.stackMultiplier = mult;
 		return this;
 	}
-	
+
 	public int getStackMultiplier() {
 		return stackMultiplier;
 	}
-	
+
 	public int getPowerPerTick() {
 		return powerPerTick * this.stackMultiplier;
 	}
 
-	public void setPowerPerTick(int powerPerTick) {
+	public MachineOperation setPowerPerTick(int powerPerTick) {
 		this.powerPerTick = powerPerTick;
+		return this;
 	}
 
-	public void writeToNBT(NBTTagCompound compound) {
-		NBTTagCompound tags = new NBTTagCompound();
-		
-		tags.setByte("stackMultiplier", (byte) stackMultiplier);
-		tags.setInteger("powerPerTick", this.powerPerTick);
-		
-		if(inputs!=null && inputs.size()>0) {
-			
-			NBTTagList nbtTagList = new NBTTagList();
-	        for (int i = 0; i < inputs.size(); i++)
-	        {
-	            if (!inputs.get(i).isEmpty())
-	            {
-	                NBTTagCompound itemTag = new NBTTagCompound();
-	               // itemTag.setInteger("Slot", i);
-	                inputs.get(i).writeToNBT(itemTag);
-	                nbtTagList.appendTag(itemTag);
-	            }
-	        }
-	        tags.setTag("InputItems", nbtTagList);
-	        tags.setByte("InputSize", (byte) inputs.size());
-			
-		}
-		if(outputs!=null && outputs.size()>0) {
-			
-			NBTTagList nbtTagList = new NBTTagList();
-	        for (int i = 0; i < outputs.size(); i++)
-	        {
-	            if (!outputs.get(i).isEmpty())
-	            {
-	                NBTTagCompound itemTag = new NBTTagCompound();
-	                //itemTag.setInteger("Slot", i);
-	                outputs.get(i).writeToNBT(itemTag);
-	                nbtTagList.appendTag(itemTag);
-	            }
-	        }
-	        tags.setTag("OutputItems", nbtTagList);
-	        tags.setByte("OutputSize", (byte) outputs.size());
-			
-		}
-		
-		if(fluid_inputs!=null && fluid_inputs.size()>0) {
-			NBTTagList nbtTagList = new NBTTagList();
-	        for (int i = 0; i < fluid_inputs.size(); i++)
-	        {
-	            if (fluid_inputs.get(i)!=null)
-	            {
-	                NBTTagCompound fluidTag = new NBTTagCompound();
-	               // fluidTag.setInteger("Slot", i);
-	                fluid_inputs.get(i).writeToNBT(fluidTag);
-	                nbtTagList.appendTag(fluidTag);
-	            }
-	        }
-	        tags.setTag("FluidsIn", nbtTagList);
-	        tags.setByte("FluidSizeIn", (byte) fluid_inputs.size());
-		}
-		
-		if(fluid_outputs!=null && fluid_outputs.size()>0) {
-			NBTTagList nbtTagList = new NBTTagList();
-	        for (int i = 0; i < fluid_outputs.size(); i++)
-	        {
-	            if (fluid_outputs.get(i)!=null)
-	            {
-	                NBTTagCompound fluidTag = new NBTTagCompound();
-	               // fluidTag.setInteger("Slot", i);
-	                fluid_outputs.get(i).writeToNBT(fluidTag);
-	                nbtTagList.appendTag(fluidTag);
-	            }
-	        }
-	        tags.setTag("Fluids", nbtTagList);
-	        tags.setByte("FluidSize", (byte) fluid_outputs.size());
-		}
-		
-		this.writeSubclassDataToNBT(tags);
-		compound.setTag("operation", tags);
-	}
-	
-	protected void writeSubclassDataToNBT(NBTTagCompound tags) {
-		
-	}
-	
-	
-	public void readFromNBT(NBTTagCompound compound) {
-		NBTTagCompound tags = compound.getCompoundTag("operation");
-		
-		this.stackMultiplier = tags.getByte("stackMultiplier");
-		this.powerPerTick= tags.getInteger("powerPerTick");
-		
-		if(tags.hasKey("InputSize")) {
-			if (this.inputs!=null) {
-				this.inputs.clear();
-			} else {
-				this.inputs= new ArrayList<>();
-			}
-			int size = tags.getByte("InputSize");
-			
-			NBTTagList tagList = tags.getTagList("InputItems", Constants.NBT.TAG_COMPOUND);
-			for (int i=0;i<size;i++) {
-				NBTTagCompound itemTags = tagList.getCompoundTagAt(i);
-	            this.inputs.add(new ItemStack(itemTags));
-			}
-			
-		}
-		if(tags.hasKey("OutputSize")) {
-			if (this.outputs!=null) {
-				this.outputs.clear();
-			} else {
-				this.outputs= new ArrayList<>();
-			}
-			int size = tags.getByte("OutputSize");
-			
-			NBTTagList tagList = tags.getTagList("OutputItems", Constants.NBT.TAG_COMPOUND);
-			for (int i=0;i<size;i++) {
-				NBTTagCompound itemTags = tagList.getCompoundTagAt(i);
-	            this.outputs.add(new ItemStack(itemTags));
-			}
-			
-		}
-		
-		if(tags.hasKey("FluidSizeIn")) {
-			if (this.fluid_inputs!=null) {
-				this.fluid_inputs.clear();
-			} else {
-				this.fluid_inputs= new ArrayList<>();
-			}
-			int size = tags.getByte("FluidSizeIn");
-			
-			NBTTagList tagList = tags.getTagList("FluidsIn", Constants.NBT.TAG_COMPOUND);
-			for (int i=0;i<size;i++) {
-				NBTTagCompound fluidTags = tagList.getCompoundTagAt(i);
-	            this.fluid_inputs.add(FluidStack.loadFluidStackFromNBT(fluidTags));
-			}
-			
-		}
-		
-		if(tags.hasKey("FluidSize")) {
-			if (this.fluid_outputs!=null) {
-				this.fluid_outputs.clear();
-			} else {
-				this.fluid_outputs= new ArrayList<>();
-			}
-			int size = tags.getByte("FluidSize");
-			
-			NBTTagList tagList = tags.getTagList("Fluids", Constants.NBT.TAG_COMPOUND);
-			for (int i=0;i<size;i++) {
-				NBTTagCompound fluidTags = tagList.getCompoundTagAt(i);
-	            this.fluid_outputs.add(FluidStack.loadFluidStackFromNBT(fluidTags));
-			}
-			
-		}
-		this.readSubClassDataFromNBT(tags);
-	}
-	
-	protected void readSubClassDataFromNBT(NBTTagCompound tags) {
-		
-	}
-	
-	/**
-	 * get the item input i (without stack multiplier)
-	 * @return
-	 */
-	public ItemStack getItemInputI(int i) {
-		if (this.inputs!=null && !this.inputs.isEmpty() && this.inputs.size()>i) {
-			ItemStack in = this.inputs.get(i).copy();
-			return in;
-		} else {
-			return ItemStack.EMPTY;
-		}
-	}
-	
-	/**
-	 * get the output item i, without stack multiplier
-	 * @return
-	 */
-	public ItemStack getItemOutputI(int i) {
-		if (this.outputs!=null && !this.outputs.isEmpty() && this.outputs.size()>i) {
-			ItemStack out = this.outputs.get(i).copy();
-			return out;
-		} else {
-			return ItemStack.EMPTY;
-		}
-	}
-	
-	/**
-	 * get the first item output
-	 * @return
-	 */
-	public ItemStack getItemOutput0() {
-		if (this.outputs!=null && !this.outputs.isEmpty()) {
-			ItemStack out = this.outputs.get(0).copy();
-			out.setCount(this.outputs.get(0).getCount()*this.stackMultiplier);
-			return out;
-		} else {
-			return ItemStack.EMPTY;
-		}
-	}
-
-	public FluidStack getFluidOutput0() {
-		if (this.fluid_outputs!=null && !this.fluid_outputs.isEmpty()) {
-			FluidStack output = this.fluid_outputs.get(0);
-			if(output!=null) {
-				FluidStack out = output.copy();
-				out.amount = out.amount * this.stackMultiplier;
-				return out;
-			}
-		}
-		return null;
-	}
-
-	
-	public ArrayList<ItemStack> getInputs() {
+	public List<ItemStack> getInputs() {
 		return inputs;
 	}
 
-	public ArrayList<ItemStack> getOutputs() {
-		return outputs;
-	}
-	
-	public ArrayList<ItemStack> getOutputsWithMult() {
-		ArrayList<ItemStack> outputs = new ArrayList<>();
-		this.outputs.forEach(o -> {
-			ItemStack it = o.copy();
-			it.setCount(o.getCount()*this.stackMultiplier);
-			outputs.add(it);
-		});
+	public List<ItemStack> getOutputs() {
 		return outputs;
 	}
 
-	public ArrayList<FluidStack> getFluid_inputs() {
-		return fluid_inputs;
+	public List<FluidStack> getFluidInputs() {
+		return fluidInputs;
 	}
 
-	public ArrayList<FluidStack> getFluid_outputs() {
-		return fluid_outputs;
+	public List<FluidStack> getFluidOutputs() {
+		return fluidOutputs;
+	}
+
+	public ItemStack getItemInputI(int i) {
+		return i < inputs.size() ? inputs.get(i).copy() : ItemStack.EMPTY;
+	}
+
+	public ItemStack getItemOutputI(int i) {
+		return i < outputs.size() ? outputs.get(i).copy() : ItemStack.EMPTY;
+	}
+
+	/** first output, multiplied */
+	public ItemStack getItemOutput0() {
+		if (outputs.isEmpty()) {
+			return ItemStack.EMPTY;
+		}
+		return outputs.get(0).copyWithCount(outputs.get(0).getCount() * stackMultiplier);
+	}
+
+	public List<ItemStack> getOutputsWithMult() {
+		List<ItemStack> ret = new ArrayList<>();
+		outputs.forEach(o -> ret.add(o.copyWithCount(o.getCount() * stackMultiplier)));
+		return ret;
+	}
+
+	public FluidStack getFluidOutput0() {
+		if (fluidOutputs.isEmpty() || fluidOutputs.get(0).isEmpty()) {
+			return FluidStack.EMPTY;
+		}
+		FluidStack f = fluidOutputs.get(0);
+		return f.copyWithAmount(f.getAmount() * stackMultiplier);
 	}
 
 	public int getNeededAmountItem(int index) {
-		if (this.inputs.size()<=index) {
-			return 0;
-		}
-		ItemStack stack = this.inputs.get(index);
-		return stack.getCount()*this.stackMultiplier;
+		return index < inputs.size() ? inputs.get(index).getCount() * stackMultiplier : 0;
 	}
-	
+
 	public int getNeededAmountFluid(int index) {
-		if (this.fluid_inputs.size()<=index) {
-			return 0;
+		return index < fluidInputs.size() ? fluidInputs.get(index).getAmount() * stackMultiplier : 0;
+	}
+
+	/* ---- nbt ---- */
+
+	private static ListTag writeItems(List<ItemStack> list, HolderLookup.Provider reg) {
+		ListTag l = new ListTag();
+		for (ItemStack s : list) {
+			l.add(s.isEmpty() ? new CompoundTag() : s.save(reg));
 		}
-		FluidStack fluid = this.getFluid_inputs().get(index);
-		return fluid.amount*this.stackMultiplier;
+		return l;
 	}
 
-	public int getTime() {
-		return time;
+	private static List<ItemStack> readItems(ListTag l, HolderLookup.Provider reg) {
+		List<ItemStack> ret = new ArrayList<>();
+		for (int i = 0; i < l.size(); i++) {
+			ret.add(ItemStack.parseOptional(reg, l.getCompound(i)));
+		}
+		return ret;
 	}
 
-	public MachineOperation setTime(int time) {
-		this.time = time;
-		return this;
+	private static ListTag writeFluids(List<FluidStack> list, HolderLookup.Provider reg) {
+		ListTag l = new ListTag();
+		for (FluidStack s : list) {
+			l.add(s.isEmpty() ? new CompoundTag() : s.save(reg));
+		}
+		return l;
 	}
-	
+
+	private static List<FluidStack> readFluids(ListTag l, HolderLookup.Provider reg) {
+		List<FluidStack> ret = new ArrayList<>();
+		for (int i = 0; i < l.size(); i++) {
+			ret.add(FluidStack.parseOptional(reg, l.getCompound(i)));
+		}
+		return ret;
+	}
+
+	public void writeToNBT(CompoundTag compound, HolderLookup.Provider reg) {
+		CompoundTag tags = new CompoundTag();
+		tags.putByte("stackMultiplier", (byte) stackMultiplier);
+		tags.putInt("powerPerTick", powerPerTick);
+		tags.put("InputItems", writeItems(inputs, reg));
+		tags.put("OutputItems", writeItems(outputs, reg));
+		tags.put("FluidsIn", writeFluids(fluidInputs, reg));
+		tags.put("Fluids", writeFluids(fluidOutputs, reg));
+		this.writeSubclassData(tags, reg);
+		compound.put("operation", tags);
+	}
+
+	protected void writeSubclassData(CompoundTag tags, HolderLookup.Provider reg) {
+	}
+
+	public void readFromNBT(CompoundTag compound, HolderLookup.Provider reg) {
+		CompoundTag tags = compound.getCompound("operation");
+		this.stackMultiplier = Math.max(1, tags.getByte("stackMultiplier"));
+		this.powerPerTick = tags.getInt("powerPerTick");
+		this.inputs = readItems(tags.getList("InputItems", Tag.TAG_COMPOUND), reg);
+		this.outputs = readItems(tags.getList("OutputItems", Tag.TAG_COMPOUND), reg);
+		this.fluidInputs = readFluids(tags.getList("FluidsIn", Tag.TAG_COMPOUND), reg);
+		this.fluidOutputs = readFluids(tags.getList("Fluids", Tag.TAG_COMPOUND), reg);
+		this.readSubclassData(tags, reg);
+	}
+
+	protected void readSubclassData(CompoundTag tags, HolderLookup.Provider reg) {
+	}
 }

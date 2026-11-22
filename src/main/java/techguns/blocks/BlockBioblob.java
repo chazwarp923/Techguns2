@@ -1,183 +1,158 @@
 package techguns.blocks;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.SoundType;
-import net.minecraft.block.material.Material;
-import net.minecraft.block.properties.PropertyInteger;
-import net.minecraft.block.state.BlockStateContainer;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-import net.minecraftforge.client.model.ModelLoader;
-import net.minecraftforge.event.RegistryEvent.Register;
-import net.minecraftforge.fml.common.registry.GameRegistry;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
-import techguns.Techguns;
-import techguns.tileentities.BioBlobTileEnt;
-import techguns.util.BlockUtils;
+import java.util.EnumMap;
+import java.util.Map;
 
-public class BlockBioblob extends GenericBlock {
+import javax.annotation.Nullable;
 
-	public static final int SIZE_2_W = 1;
-	public static final int SIZE_2_H = 5;
-	
-	public static final int SIZE_1_W = 3;
-	public static final int SIZE_1_H = 4;
-	
-	public static final int SIZE_0_W = 5;
-	public static final int SIZE_0_H = 3;
-	
-	public static final float FSIZE = 0.0625f;
-	
-	public static final PropertyInteger SIZE = PropertyInteger.create("size", 0, 2);
-	protected ItemBlock itemblock;
-	
-	public BlockBioblob(String name) {
-		super(name, Material.CLAY);
-		this.setSoundType(SoundType.SLIME);
-		this.setDefaultState(this.blockState.getBaseState().withProperty(FACING_ALL, EnumFacing.DOWN).withProperty(SIZE, 0));
-	}
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import net.neoforged.neoforge.common.util.BlockSnapshot;
+import net.neoforged.neoforge.event.EventHooks;
+import techguns.TGBlocks;
+import techguns.TGSounds;
+import techguns.damagesystem.TGDamageSource;
+import techguns.damagesystem.TGExplosion;
+import techguns.deatheffects.DeathType;
+import techguns.packets.PacketSpawnParticle;
+import techguns.packets.TGPackets;
 
-	
-	protected AxisAlignedBB getBB(IBlockState state, IBlockAccess w, BlockPos pos) {
-		int size=2;
-		TileEntity tile = w.getTileEntity(pos);
-		if(tile!=null && tile instanceof BioBlobTileEnt) {
-			size = ((BioBlobTileEnt)tile).getBlobSize();
+/**
+ * 1.12 BlockBioblob + BioBlobTileEnt: goo left by bio gun shots. Shrinks every 3 seconds and vanishes; hitting it with
+ * more bio shots grows it until it bursts in a poison explosion. FACING is the side it sticks to.
+ */
+public class BlockBioblob extends Block {
+
+	public static final DirectionProperty FACING = BlockStateProperties.FACING;
+	public static final IntegerProperty SIZE = IntegerProperty.create("size", 0, 2);
+	public static final int SHRINK_TICKS = 60;
+
+	/** 1.12 sizes: inset W and height H in pixels per size */
+	private static final int[] W = { 5, 3, 1 };
+	private static final int[] H = { 3, 4, 5 };
+	private static final Map<Direction, VoxelShape[]> SHAPES = new EnumMap<>(Direction.class);
+
+	static {
+		for (Direction d : Direction.values()) {
+			VoxelShape[] arr = new VoxelShape[3];
+			for (int s = 0; s < 3; s++) {
+				int w = W[s], h = H[s];
+				arr[s] = switch (d) {
+					case DOWN -> box(w, 0, w, 16 - w, h, 16 - w);
+					case UP -> box(w, 16 - h, w, 16 - w, 16, 16 - w);
+					case NORTH -> box(w, w, 0, 16 - w, 16 - w, h);
+					case SOUTH -> box(w, w, 16 - h, 16 - w, 16 - w, 16);
+					case WEST -> box(0, w, w, h, 16 - w, 16 - w);
+					case EAST -> box(16 - h, w, w, 16, 16 - w, 16 - w);
+				};
+			}
+			SHAPES.put(d, arr);
 		}
-		switch(size) {
-		case 0:
-			return getBBForRota(SIZE_0_W,SIZE_0_H,state.getValue(BlockBioblob.FACING_ALL));
-		case 1:
-			return getBBForRota(SIZE_1_W,SIZE_1_H,state.getValue(BlockBioblob.FACING_ALL));
-		default:
-			return getBBForRota(SIZE_2_W,SIZE_2_H,state.getValue(BlockBioblob.FACING_ALL));
+	}
+
+	public BlockBioblob(Properties props) {
+		super(props);
+		this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.DOWN).setValue(SIZE, 0));
+	}
+
+	@Override
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+		builder.add(FACING, SIZE);
+	}
+
+	@Override
+	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext ctx) {
+		return SHAPES.get(state.getValue(FACING))[state.getValue(SIZE)];
+	}
+
+	@Override
+	protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState old, boolean moving) {
+		if (!old.is(this)) {
+			level.scheduleTick(pos, this, SHRINK_TICKS);
 		}
 	}
-	
-	
-	
-	@Override
-	public int getLightValue(IBlockState state) {
-		return 7;
-	}
 
-	protected AxisAlignedBB getBBForRota(int W, int H, EnumFacing facing) {
-		
-		switch(facing) {
-		case DOWN:
-			return new AxisAlignedBB(FSIZE*W, 0, FSIZE*W, FSIZE*(16-W), FSIZE*H, FSIZE*(16-W));
-		case WEST:
-			return new AxisAlignedBB( 0,FSIZE*W, FSIZE*W, FSIZE*H, FSIZE*(16-W), FSIZE*(16-W));
-		case NORTH:
-			return new AxisAlignedBB(FSIZE*W, FSIZE*W, 0, FSIZE*(16-W), FSIZE*(16-W), FSIZE*H);
-		case SOUTH:
-			return new AxisAlignedBB(FSIZE*W, FSIZE*W, FSIZE*(16-H), FSIZE*(16-W), FSIZE*(16-W), 1);
-		case UP:
-			return new AxisAlignedBB(FSIZE*W, FSIZE*(16-H), FSIZE*W, FSIZE*(16-W), 1, FSIZE*(16-W));
-		case EAST:
-			return new AxisAlignedBB(FSIZE*(16-H),FSIZE*W, FSIZE*W, 1, FSIZE*(16-W), FSIZE*(16-W));
+	@Override
+	protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+		int size = state.getValue(SIZE);
+		if (size > 0) {
+			level.setBlock(pos, state.setValue(SIZE, size - 1), 3);
+			level.scheduleTick(pos, this, SHRINK_TICKS);
+		} else {
+			level.removeBlock(pos, false);
 		}
-		return new AxisAlignedBB(FSIZE*W, 0, FSIZE*W, FSIZE*(16-W), FSIZE*H, FSIZE*(16-W));
 	}
 
-	@Deprecated
-	@Override
-	public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos) {
-		return getBB(state,source,pos);
-	}
-
-	@Deprecated
-	@Override
-	public AxisAlignedBB getCollisionBoundingBox(IBlockState blockState, IBlockAccess worldIn, BlockPos pos) {
-		return getBB(blockState,worldIn,pos);
-	}
-
-	@Override
-	public boolean isFullBlock(IBlockState state) {
-		return false;
-	}
-
-	@Override
-	public boolean isNormalCube(IBlockState state, IBlockAccess world, BlockPos pos) {
-		return false;
-	}
-
-	@Deprecated
-	@Override
-	public boolean isFullCube(IBlockState state){
-		return false;
-	}
-
-	@Deprecated
-	@Override
-	public boolean isOpaqueCube(IBlockState state) {
-		return false;
-	}
-
-	@Override
-	public void registerBlock(Register<Block> event) {
-		super.registerBlock(event);
-		GameRegistry.registerTileEntity(BioBlobTileEnt.class, new ResourceLocation(Techguns.MODID, "bioblob"));
-	}
-
-	@Override
-	protected BlockStateContainer createBlockState() {
-		return new BlockStateContainer(this, FACING_ALL, SIZE);
-	}
-
-	@Override
-	public IBlockState getStateFromMeta(int meta) {
-		return this.getDefaultState().withProperty(FACING_ALL, EnumFacing.VALUES[meta]);
-	}
-
-	@Override
-	public int getMetaFromState(IBlockState state) {
-		return state.getValue(FACING_ALL).getIndex();
-	}
-
-	@Override
-	public IBlockState getActualState(IBlockState state, IBlockAccess worldIn, BlockPos pos) {
-		TileEntity tile = worldIn.getTileEntity(pos);
-		int size=0;
-		if(tile!=null && tile instanceof BioBlobTileEnt) {
-			size = ((BioBlobTileEnt)tile).getBlobSize();
+	/** grows the blob by power, bursts above max size (1.12 hitBlob) */
+	public static void hitBlob(Level level, BlockPos pos, int power, @Nullable LivingEntity attacker) {
+		BlockState state = level.getBlockState(pos);
+		if (level.isClientSide || !(state.getBlock() instanceof BlockBioblob)) {
+			return;
 		}
-		return state.withProperty(SIZE, size);		
+		int size = state.getValue(SIZE) + power;
+		if (size > 2) {
+			float radius = 3.0f;
+			TGDamageSource dmgSrc = TGDamageSource.causePoisonDamage(null, attacker, DeathType.BIO);
+			dmgSrc.goreChance = 1.0f;
+			dmgSrc.armorPenetration = 0.35f;
+			double x = pos.getX() + 0.5, y = pos.getY() + 0.5, z = pos.getZ() + 0.5;
+			TGExplosion explosion = new TGExplosion(level, attacker, null, x, y, z, 30, 15, radius, radius * 1.5f, 0.0f);
+			explosion.setDmgSrc(dmgSrc);
+			level.removeBlock(pos, false);
+			explosion.doExplosion(false);
+			level.playSound(null, pos, TGSounds.DEATH_BIO.get(), SoundSource.BLOCKS, 4.0F, 1.0F);
+			TGPackets.sendToAllAround(new PacketSpawnParticle("bioblobExplosion", x, y, z), level, x, y, z, 50.0);
+		} else {
+			level.setBlock(pos, state.setValue(SIZE, size), 3);
+		}
 	}
 
-	
-	@Override
-	public ItemBlock createItemBlock() {
-		GenericItemBlockMeta itemblock =  new GenericItemBlockMeta(this);
-		this.itemblock=itemblock;
-		return itemblock;
+	/**
+	 * bio gun impact: grows a blob that was hit, or sticks a new one onto the hit face (only for shots with block damage,
+	 * and only if a player shooter is allowed to place blocks there)
+	 */
+	public static void onBioShotHit(Level level, BlockPos hitPos, Direction side, int chargeLevel, boolean blockdamage, @Nullable LivingEntity shooter) {
+		if (level.isClientSide) {
+			return;
+		}
+		if (level.getBlockState(hitPos).getBlock() instanceof BlockBioblob) {
+			hitBlob(level, hitPos, chargeLevel, shooter);
+			return;
+		}
+		BlockPos blobPos = hitPos.relative(side);
+		BlockState there = level.getBlockState(blobPos);
+		if (there.getBlock() instanceof BlockBioblob) {
+			hitBlob(level, blobPos, chargeLevel, shooter);
+			return;
+		}
+		if (!blockdamage || !there.isAir()) {
+			return;
+		}
+		int size = Math.max(0, Math.min(2, chargeLevel - 1));
+		BlockState blob = TGBlocks.BIOBLOB.get().defaultBlockState().setValue(FACING, side.getOpposite()).setValue(SIZE, size);
+		if (shooter instanceof Entity e) {
+			BlockSnapshot snap = BlockSnapshot.create(level.dimension(), level, blobPos);
+			level.setBlock(blobPos, blob, 3);
+			if (EventHooks.onBlockPlace(e, snap, side)) {
+				snap.restore(snap.getFlags());
+			}
+		} else {
+			level.setBlock(blobPos, blob, 3);
+		}
 	}
-
-	@SideOnly(Side.CLIENT)
-	@Override
-	public void registerItemBlockModels() {
-		IBlockState state = getDefaultState();
-		ModelLoader.setCustomModelResourceLocation(this.itemblock, this.getMetaFromState(state), new ModelResourceLocation(getRegistryName(),BlockUtils.getBlockStateVariantString(state)));
-	}
-
-	@Override
-	public boolean hasTileEntity(IBlockState state) {
-		return true;
-	}
-
-	@Override
-	public TileEntity createTileEntity(World world, IBlockState state) {
-		return new BioBlobTileEnt();
-	}
-
-	
 }

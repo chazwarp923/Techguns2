@@ -1,0 +1,30 @@
+{
+  "structures": [
+    {
+      "structure": "techguns:overworld_medium",
+      "weight": 35
+    },
+    {
+      "structure": "techguns:alien_bug_nest",
+      "weight": 20
+    },
+    {
+      "structure": "techguns:desert_oil_cluster",
+      "weight": 15
+    },
+    {
+      "structure": "techguns:military_base",
+      "weight": 8
+    },
+    {
+      "structure": "techguns:castle",
+      "weight": 8
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 32,
+    "separation": 12,
+    "salt": 180432
+  }
+}

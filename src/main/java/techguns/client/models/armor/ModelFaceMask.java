@@ -1,7 +1,7 @@
 package techguns.client.models.armor;
 
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.entity.Entity;
+import techguns.client.models.ModelRenderer;
+import net.minecraft.world.entity.Entity;
 
 public class ModelFaceMask extends ModelAdditionalSlotBase {
 	// fields

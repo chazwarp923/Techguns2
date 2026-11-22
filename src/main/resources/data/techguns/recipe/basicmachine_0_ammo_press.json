@@ -1,0 +1,35 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:ammo_press"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ili",
+    "cec",
+    "iri"
+  ],
+  "key": {
+    "r": {
+      "tag": "c:dusts/redstone"
+    },
+    "c": {
+      "tag": "c:ingots/copper"
+    },
+    "e": {
+      "item": "techguns:electricengine"
+    },
+    "i": {
+      "tag": "c:ingots/iron"
+    },
+    "l": {
+      "tag": "c:ingots/lead"
+    }
+  },
+  "result": {
+    "id": "techguns:ammo_press"
+  }
+}

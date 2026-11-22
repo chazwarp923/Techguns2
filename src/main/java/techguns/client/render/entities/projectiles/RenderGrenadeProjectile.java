@@ -1,62 +1,56 @@
 package techguns.client.render.entities.projectiles;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.util.ResourceLocation;
-import techguns.Techguns;
-import techguns.client.models.guns.ModelStielgranate;
+import com.mojang.blaze3d.vertex.PoseStack;
+
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemDisplayContext;
+import techguns.client.models.ModelMultipart;
+import techguns.client.render.gl.GlStateManager;
+import techguns.client.render.gl.TGRenderState;
 import techguns.client.render.item.RenderItemBase;
 import techguns.entities.projectiles.GrenadeProjectile;
 
-public class RenderGrenadeProjectile extends Render<GrenadeProjectile> {
+/** Spinning thrown hand grenade (1.12 RenderGrenadeProjectile / RenderFragGrenadeProjectile). */
+public class RenderGrenadeProjectile<T extends GrenadeProjectile> extends EntityRenderer<T> {
 
-	private ResourceLocation textureLoc = new ResourceLocation(Techguns.MODID,"textures/guns/stielgranate.png");
-	private ModelBase model = new ModelStielgranate();
-	
-	public RenderGrenadeProjectile(RenderManager renderManager) {
-		super(renderManager);
+	private final ModelMultipart model;
+	private final ResourceLocation texture;
+
+	public RenderGrenadeProjectile(EntityRendererProvider.Context ctx, ModelMultipart model, ResourceLocation texture) {
+		super(ctx);
+		this.model = model;
+		this.texture = texture;
 	}
 
 	@Override
-	protected ResourceLocation getEntityTexture(GrenadeProjectile entity) {
-		return textureLoc;
+	public void render(T entity, float entityYaw, float ptt, PoseStack ps, MultiBufferSource buffers, int packedLight) {
+		ps.pushPose();
+		TGRenderState.begin(ps, buffers, packedLight, OverlayTexture.NO_OVERLAY);
+		try {
+			GlStateManager.rotate(Mth.lerp(ptt, entity.yRotO, entity.getYRot()) - 90.0f, 0f, 1f, 0f);
+			GlStateManager.rotate(Mth.lerp(ptt, entity.xRotO, entity.getXRot()), 0f, 0f, 1f);
+			float f = ((entity.tickCount % 20) + ptt) / 20.0f;
+			GlStateManager.rotate(-360.0f * f, 0f, 0f, 1f);
+			GlStateManager.scale(0.8f, 0.8f, 0.8f);
+			GlStateManager.rotate(-180.0f, 1.0f, 0, 0);
+			GlStateManager.rotate(180.0f, 0f, 1.0f, 0);
+			GlStateManager.translate(-RenderItemBase.SCALE * 0.5f, 0.83f, -RenderItemBase.SCALE);
+			TGRenderState.bindTexture(texture);
+			model.render(entity, 0, 0, 0, 0, 0, RenderItemBase.SCALE, 0, 0, ItemDisplayContext.NONE, 0, 0, 0);
+		} finally {
+			TGRenderState.end();
+		}
+		ps.popPose();
+		super.render(entity, entityYaw, ptt, ps, buffers, packedLight);
 	}
 
-	
-	
 	@Override
-	public void doRender(GrenadeProjectile entity, double x, double y, double z, float entityYaw, float partialTicks) {
-	
-
-		GlStateManager.pushMatrix();
-		
-		
-		GlStateManager.translate(x,y,z);
-
-       	GlStateManager.rotate(entity.prevRotationYaw + (entity.rotationYaw - entity.prevRotationYaw) * partialTicks - 90.0F, 0.0F, 1.0F, 0.0F);
-       	GlStateManager.rotate(entity.prevRotationPitch + (entity.rotationPitch - entity.prevRotationPitch) * partialTicks, 0.0F, 0.0F, 1.0F);
-		
-       	
-        int rotate = entity.ticksExisted % 20;
-        float f = (rotate+partialTicks)/20.0f;
-       	
-       	GlStateManager.rotate(-360.0f*f, 0f, 0f, 1f);
-       	
-		GlStateManager.scale(0.8f, 0.8f, 0.8f);
-		
-		GlStateManager.rotate(-180.0f, 1.0f, 0, 0);
-		GlStateManager.rotate(180.0f, 0f, 1.0f, 0);
-		
-		GlStateManager.translate(-RenderItemBase.SCALE*0.5f, 0.83f, -RenderItemBase.SCALE);
-		
-		this.bindEntityTexture(entity);
-		
-		model.render(entity, 0, 0, 0, 0, 0, 0.0625F);
-
-		GlStateManager.popMatrix();
+	public ResourceLocation getTextureLocation(T entity) {
+		return texture;
 	}
-	
-	
 }

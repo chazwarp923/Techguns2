@@ -1,0 +1,18 @@
+{
+  "structures": [
+    {
+      "structure": "techguns:nether_small",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 16,
+    "separation": 6,
+    "salt": 180434,
+    "exclusion_zone": {
+      "other_set": "techguns:nether_medium",
+      "chunk_count": 3
+    }
+  }
+}

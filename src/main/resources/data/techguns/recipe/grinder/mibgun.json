@@ -1,0 +1,19 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:mibgun"
+  },
+  "results": [
+    {
+      "id": "minecraft:gold_ingot",
+      "count": 3
+    },
+    {
+      "id": "techguns:ingottitanium"
+    },
+    {
+      "id": "minecraft:redstone",
+      "count": 20
+    }
+  ]
+}

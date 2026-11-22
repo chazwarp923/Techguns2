@@ -1,0 +1,236 @@
+# Port changelog (unattended session)
+
+Running log of changes made while working unattended, for review. Nothing here is committed.
+Newest entries at the bottom. Every entry was compile-checked (`gradlew compileJava processResources`); none were tested in game unless stated.
+
+## Already done earlier this session (with you)
+
+- Structure worldgen for the 1.12 scanned structures: `src/main/java/techguns/world/gen/` (LegacyBlocks, MBlock, PlaceContext,
+  ScannedStructure, TGStructureDefs, TGStructures) and `data/techguns/worldgen/structure{,_set}/`.
+- 1.12 chest loot tables converted to `data/techguns/loot_table/chests/`.
+- Fixes: recursive cache crash, /locate support, vanilla random_spread placement, double chests, connecting-block shapes, door halves.
+- Removed config options `worldgen.StructureSpawnWeight{Small,Medium,Big}` (TGConfig).
+- C2ME added as a dev-client-only runtime mod (build.gradle, gradle.properties `c2me_version`).
+
+## Unattended work
+
+### 1. Code-built structures: alien bug nest and military base (compiles; not tested in game)
+
+New framework for structures that 1.12 built with code instead of from a block list:
+- `world/gen/GenWorld.java`: in-memory block buffer with the 1.12 World-style calls the generators used. A structure is
+  generated once from its seed, then every chunk copies its own part. Reads of positions the generator did not write
+  come from a fixed rule (solid below the ground, air above), never from the live world, so chunks always agree.
+- `world/gen/TerrainView.java`: ground heights from the chunk generator (same answer at any time).
+- `world/gen/ProcGenerator.java`, `world/gen/ProcStructures.java`: generator interface, registry by name, a cache of
+  generated structures (12 entries), and ground levelling for camps.
+- `world/gen/TGStructures.java`: `techguns:legacy` structures can now also list procedural names; new piece type
+  `techguns:procedural` (`ProcPiece`), which also feeds NeoForge's `PieceBeardifierModifier` so vanilla terrain
+  adaptation can blend the ground around it.
+- `MBlock.Spawner.heightOffset()` (helicopter spawner height).
+
+Ported generators (`world/gen/procedural/`):
+- `AlienBugNestGen` (1.12 AlienBugNest/AlienBugNestStructure): sand chambers, tunnels, egg piles, alien bug spawners,
+  slimy ladder shaft. Deserts, badlands and wastelands only (`data/techguns/tags/worldgen/biome/has_structure/alien_bug_nest.json`).
+- `MilitaryCampGen` + `CampParts` (1.12 MilitaryBaseStructure/MilitaryCamp and Tent, Containers, CampProps, Bunker,
+  Barracks, Helipad, Tanks, WatchTowerSmall, EmptyPlane). Fence, roads, helicopter spawner in the centre, soldier spawners
+  on the roads, bunker/barracks chests with the `militarybase_*` loot tables.
+
+Data: new structures `alien_bug_nest` and `military_base`. Both are in the `overworld_medium` structure set:
+weights medium 35 / bug nest 20 / base 8, matching 1.12's medium weights and roughly its big-structure frequency.
+`overworld_small` now stays 6 chunks (was 3) away from medium placements so small houses don't land inside a camp.
+
+Deliberate differences from 1.12, worth checking:
+- Camp ground is levelled completely to one height (1.12 allowed up to 4 blocks of difference and smoothed it).
+  Terrain around it is blended by vanilla `beard_thin`. The camp is placed in the `top_layer_modification` step, after
+  trees, so the levelling removes trees in the camp; trees from neighbouring chunks can still overhang a little.
+- Tents use the biome's camo net colour (1.12 computed the colour but always placed the woodland net).
+- 1.12's slimy-ladder shaft code had a bug that made it fill every free wall-adjacent spot in the shaft's box; kept as is
+  since that is what the nest looked like.
+- The castle was not ported in this step; see entry 2.
+
+### 2. Dungeon templates and the castle (compiles; not tested in game)
+
+- `tools/dungeon_converter/`: a small stand-alone Java program, with a README, that reads the 1.12 Java-serialized
+  dungeon templates (`assets/techguns/dungeons/*.ser`). It uses stub classes with the 1.12 names and serialVersionUIDs,
+  and writes `assets/techguns/dungeons/*.json`. All 12 templates were converted; the JSON files are new resources. The
+  `.ser` files are left in place and are no longer read, so they can be deleted once you're happy with the JSON.
+- `world/gen/dungeon/` (new):
+  - `DungeonTemplate`: loads a JSON template, converts the palette with `LegacyBlocks`, and gives chests the preset's
+    loot table. `chisel:netherbrick` becomes nether bricks, following the 1.12 replacement table.
+  - `SegmentType`: 1.12 TemplateSegment patterns and rotations.
+  - `MazeDungeonPath`: a line-by-line port of the 1.12 maze generator (corridors, ramps, rooms, foundations, pillars,
+    roof, NPC spawners).
+  - `Dungeon`: picks the best of 5 paths.
+  - `DungeonPreset` / `PresetCastle`.
+- `world/gen/procedural/CastleGen.java`: 1.12 CastleStructure.
+  - Size: 32-47 x 24-39 x 32-47.
+  - Placement: needs land with up to 10 blocks of height difference. The lowest level is sunk into the ground.
+  - Spawners: zombie and skeleton soldiers.
+  - Registered as procedural name `castle`; new structure `data/techguns/worldgen/structure/castle.json` (no terrain
+    adaptation, like 1.12).
+  - Added to the `overworld_medium` set with weight 8, the same as the military base (both had weight 1 among 1.12's
+    big structures).
+- `LegacyBlocks`: `techguns:debugblock` (1.12 template scanner markers) maps to air.
+
+Not ported:
+- Nether dungeon: it was commented out in 1.12's spawn list, so it never generated there.
+- Tech fortress: no preset spawned it in 1.12. Its templates also use the 1.12 `door3x3`, which isn't mapped in
+  LegacyBlocks.
+
+Differences from 1.12:
+- 1.12 picked a random template per level from a list; every list had one entry, so this changes nothing.
+- 1.12 did not bounds-check the cell after an upward ramp, which could crash at the grid edge. Out of range is now
+  treated as blocked.
+- `GenWorld.mergeLegacyPairs()` (new; run after a dungeon is built) applies the two fixes the scanned structures already
+  get:
+  - Door halves take their missing properties from each other. The castle templates have spruce doors.
+  - Side-by-side single chests with the same facing become double chests. The castle's lower corner room and mid ramp
+    have chest pairs.
+
+  `MBlock.Chest.withState()` was added for this.
+
+### 3. Desert oil cluster (compiles; not tested in game)
+
+1.12 only spawned this when a mod added an oil fluid (config `FluidListOilWorldspawn`), and so does the port.
+- New `world/gen/WorldspawnOil.java` reads the existing `fluid_recipes.FluidListOilWorldspawn` config (default `oil`,
+  `crude_oil`).
+  - A full id such as `immersivepetroleum:crude_oil` is used as is.
+  - A bare name matches that fluid name in any mod, as in 1.12, choosing the alphabetically first id when several match.
+  - It uses the first fluid that has a source block.
+- `TGStructureDefs` defines `desert_oil_cluster` only when such a fluid exists. Its palette matches 1.12: sandstone,
+  sandbags, a soldier spawner (army soldiers and commandos), oil and sand, and oil ore cluster blocks. It uses
+  `clean(6).yOffset(-4)`.
+- New structure `data/techguns/worldgen/structure/desert_oil_cluster.json`:
+  - biomes come from the new tag `#techguns:has_structure/desert_oil_cluster` (`#c:is_desert`);
+  - it is in the `overworld_medium` set with weight 15, as in 1.12;
+  - when no oil mod is installed it never generates, and the set falls through to its other structures.
+- It counts as an ore-cluster structure for the `spawnOreClusterStructures` config, as in 1.12.
+
+### 4. Headless worldgen smoke tests
+
+- New `src/main/java/techguns/gametest/WorldgenTests.java` contains three game tests:
+  - all 12 dungeon templates load with 16 segments each;
+  - castle, military base and bug nest build for 8 seeds, and one of each is placed into the test world;
+  - every scanned structure is placed in all 4 rotations.
+
+  After each placement, every door's lower half is checked for a matching upper half (same facing, hinge and open
+  state), as a regression check for the door bug you reported.
+
+  They only check that nothing throws; they don't check how the result looks. They're registered under the `techguns`
+  namespace, which only the dev runs enable.
+- `src/main/resources/data/techguns/structure/empty.nbt` is a 1x1x1 empty template the tests need.
+- `build.gradle`: the `gameTestServer` run now uses its own game directory, `run-gametest/`, so it doesn't touch
+  `run/`. `.gitignore`: added `run-gametest`.
+- Run them with `./gradlew runGameTestServer`.
+
+The first test run found two bugs, both now fixed. After the fixes all 3 tests pass. The only warning left is the
+unmapped `door3x3` in the tech fortress templates, which never spawn.
+- Castle chests had the loot table id `techguns:techguns:chests/castle`, so generating a castle would have crashed.
+  `PresetCastle` now passes `chests/castle`, because `MBlock.Chest` adds the namespace itself.
+- `LegacyBlocks.vanilla("skull", meta)` failed: vanilla's flattening table has no entry for skulls because 1.12 kept the
+  skull type in the block entity. Skulls now become skeleton skulls (meta 1 on the floor, 2-5 on a wall facing N/S/W/E).
+  The castle templates have 2 skulls.
+
+### 5. Gameplay gaps against the 1.12 event handlers and TODOs (compiles; game tests pass; not tested in game)
+
+All remaining `TODO` markers in `src/main/java` are resolved, and the 1.12 `TGEventHandler`/`TGTickHandler` handlers were
+compared one by one against the port.
+
+- **Sounds (1.12 TGSound / PacketPlaySound).** The port played every Techguns sound as a fixed vanilla sound, so it
+  stayed where it started. Now:
+  - New `client/audio/TGSound` (tickable sound instance): moving sounds follow the entity and stop when it is gone;
+    gun-position sounds sit one block beside the head; an `EntityCondition` stops a sound early.
+  - New `packets/PacketPlaySound`: the server sends Techguns sounds to players within 100 blocks, as 1.12 did. The
+    acting player skips them unless `playOnOwnPlayer`, because their client already played the sound itself.
+  - `util/SoundUtil` rewritten around this. The client player is installed in `TGClientSetup`, so this stays safe on
+    a dedicated server.
+  - Charge guns: the charge-up sound now stops when charging ends (`EntityCondition.CHARGING_WEAPON`).
+- **Shishkebap flames.** An earlier comment in `RenderGunBase` said the item-attached particles were only for a debug gun.
+  That was wrong: they are the Shishkebap's burning blade (`ScreenTestFX`).
+  - `RenderItemBase.renderItemParticles` draws them in hand space, as 1.12 did.
+  - New `client/particle/AmbientItemFX` starts and stops the effect. 1.12 did this with server packets on equipment
+    change and when the fuel ran out; the client knows both the held items and their ammo, so it now checks every
+    client tick.
+  - `TGParticleBuffers.posed` now takes any `MultiBufferSource`. `TGItemRenderer.getRenderer` was added.
+- **Lock-on guns.** Pressing or releasing right mouse with a lock-on charge gun resets the lock (`ClientGunInput`).
+- **Weapon swap (1.12 PacketSwapWeapon).** When the gun stacks change hands (swap-hands key), the server swaps their
+  fire delays. The new `PacketSwapWeapon` makes clients nearby swap the attack times (recoil and reload animations) too.
+  This is in `TGTickHandler.detectWeaponSwap`. `TGExtendedPlayer.swapAttackTimes` already existed but was never called.
+- **Unsafe mode permission (1.12 TGPermissions).** The config `general.RestrictUnsafeModeToOP` existed but nothing used
+  it.
+  - New `TGPermissions` registers the permission node `techguns.allowunsafemode` (granted to everyone by default) and
+    checks it.
+  - The config, when on, overrides the node: only ops may leave safe mode.
+  - It is enforced when toggling safe mode and on login (`ArmorEvents.onLogin`).
+- **Ammo change crafting.** Crafting a gun with a different ammo type now gives back the ammo that was loaded, or the
+  ammo and empty magazine (new `events/GunInteractEvents.onCraft`, as in 1.12 `onCraftEvent`). The port's comment said
+  1.12 lost it; it didn't.
+- **Two-handed guns.** While a two-handed gun is in either hand, off-hand right-click actions on items, blocks and
+  entities are blocked, as 1.12 did. Sneaking with a gun in the off hand and some other item in the main hand still
+  uses the block. This is in `GunInteractEvents`.
+- **Area mining highlight.** Mining tools with a mining radius now outline every block the swing would also break, using
+  the same checks as the mining itself (new `client/MiningHighlight`, 1.12 `onBlockHighlight`).
+- **Jetpack flames on other players.** A player who starts tracking someone already boosting now gets the boost state
+  (`ArmorEvents.onStartTracking`). Before, it was only sent when it changed.
+- Removed an obsolete TODO in `TGTickHandler` (syncing the face/back/hand slots); Curios syncs those itself.
+
+Checked and left as they are:
+- 1.12 `onRenderHand` used reflection to stop charge guns and grenades from bobbing while in use. The port's
+  `GenericGun.shouldCauseReequipAnimation` already covers this in 1.21. Worth a look in game.
+- Military crate drops already work through loot tables; Curios drops the extra slots on death.
+- Not ported:
+  - CraftTweaker scripts for gun, armor and death-effect stats would need a new CraftTweaker dependency, so that's
+    left for you to decide.
+  - Machine recipes are already datapack JSON recipes, so packs can change them without CraftTweaker.
+
+### 6. Game tests for the gameplay code and the mod's data (all 20 tests pass)
+
+Run with `./gradlew runGameTestServer` (about a minute, headless, in `run-gametest/`).
+
+- New `gametest/GameplayTests.java` (14 tests). The players are NeoForge fake players, which drop packets, so the
+  tests call the handlers directly. They cover:
+  - the unsafe mode permission node and `RestrictUnsafeModeToOP` (op and non-op);
+  - the safe-mode key and the forced safe mode on login;
+  - weapon swap detection: fire delays swap only when the same stacks change hands;
+  - `swapAttackTimes`;
+  - the ammo change crafting refund, including no refund when the grid holds something else;
+  - off-hand blocking with two-handed guns, for items and entities;
+  - the sneak-to-use-block rule;
+  - area mining block selection. A 3x3 plane of stone, obsidian, chest, air, planks, bedrock, dirt and deepslate must
+    select exactly stone, obsidian, dirt and deepslate. An empty drill and a chainsaw select nothing;
+  - the Shishkebap's ambient effect needing fuel, and no other gun having one;
+  - every Techguns sound having a registry id, sound category ids, and the server-side `SoundUtil` calls;
+  - `PacketPlaySound`/`PacketSwapWeapon` codec round trips;
+  - `EntityCondition`;
+  - the start-tracking jetpack sync.
+- New `gametest/DataTests.java` (3 tests):
+  - every machine recipe type has recipes, and every Techguns recipe has a result;
+  - every Techguns loot table loads, and the chest tables used by structures exist;
+  - every Techguns item and block has an `en_us` name.
+- Refactors so the tests can reach the logic (no behaviour change):
+  - `PacketTGKeybindPress.handleOnServer` was split out of `handle`;
+  - `GenericGunMeleeCharge.getAreaMiningBlocks` is now shared by `mineArea` and the client `MiningHighlight`, so the
+    outline and the actual mining can't disagree;
+  - `GenericGun.isAmbientEffectActive` is used by `AmbientItemFX`.
+- I checked that the tests catch failures. With the safe-mode permission check removed and the off-hand rule disabled,
+  `safemodeToggleRespectsPermission` and `twoHandedGunBlocksOffhand` failed. Both changes were then reverted.
+- Not covered: client-only code. This is the `TGSound` playback, the Shishkebap flame rendering, the mining outline
+  drawing and the lock-on reset. NeoForge 1.21.1 has no client game tests, so those still need an in-game look.
+
+## Where things stand
+
+- Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,
+  the castle and the desert oil cluster.
+- Not ported:
+  - the nether dungeon and the tech fortress, which 1.12 never spawned;
+  - the dev-only dungeon scanner/generator blocks, debug markers, and the building scan / worldgen test tools.
+- JEI: every machine already has a category, so nothing new was needed.
+- Entry 5 needs an in-game look:
+  - Shishkebap flames, first and third person;
+  - reload and charge sounds following the player;
+  - the charge sound stopping when you let go;
+  - swapping two guns between hands;
+  - the mining outlines.
+- Nothing from this session has been checked in game. The game tests only prove the code runs without errors. In game,
+  check `/locate structure techguns:castle` and `techguns:military_base`, and `techguns:desert_oil_cluster` with an
+  oil mod installed.

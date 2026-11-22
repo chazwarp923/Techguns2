@@ -1,0 +1,13 @@
+{
+  "type": "techguns:legacy",
+  "biomes": "#minecraft:is_overworld",
+  "step": "top_layer_modification",
+  "spawn_overrides": {},
+  "terrain_adaptation": "beard_thin",
+  "structures": [
+    {
+      "name": "military_base",
+      "weight": 1
+    }
+  ]
+}

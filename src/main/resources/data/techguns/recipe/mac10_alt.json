@@ -1,0 +1,32 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " pi",
+    "bri",
+    " m "
+  ],
+  "key": {
+    "p": {
+      "tag": "c:plates/plastic"
+    },
+    "r": {
+      "item": "techguns:steelreceiver"
+    },
+    "b": {
+      "item": "techguns:obsidiansteelbarrel"
+    },
+    "i": {
+      "tag": "c:nuggets/iron"
+    },
+    "m": {
+      "item": "techguns:smgmagazineempty"
+    }
+  },
+  "result": {
+    "id": "techguns:mac10",
+    "components": {
+      "techguns:ammo": 0
+    }
+  }
+}

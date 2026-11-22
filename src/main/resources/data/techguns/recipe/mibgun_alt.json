@@ -1,0 +1,32 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "bsp",
+    " fp",
+    "  m"
+  ],
+  "key": {
+    "p": {
+      "tag": "c:plates/titanium"
+    },
+    "b": {
+      "item": "techguns:laserbarrel"
+    },
+    "s": {
+      "item": "techguns:sonicemitter"
+    },
+    "f": {
+      "item": "techguns:mechanicalpartscarbon"
+    },
+    "m": {
+      "item": "techguns:energycellempty"
+    }
+  },
+  "result": {
+    "id": "techguns:mibgun",
+    "components": {
+      "techguns:ammo": 0
+    }
+  }
+}

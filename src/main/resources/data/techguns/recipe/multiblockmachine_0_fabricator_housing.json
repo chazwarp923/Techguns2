@@ -1,0 +1,36 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:fabricator_housing"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "sms",
+    "pep",
+    "scs"
+  ],
+  "key": {
+    "p": {
+      "item": "techguns:cyberneticparts"
+    },
+    "s": {
+      "tag": "c:plates/steel"
+    },
+    "c": {
+      "tag": "c:circuits/elite"
+    },
+    "e": {
+      "item": "techguns:electricengine"
+    },
+    "m": {
+      "item": "techguns:mechanicalpartscarbon"
+    }
+  },
+  "result": {
+    "id": "techguns:fabricator_housing",
+    "count": 4
+  }
+}

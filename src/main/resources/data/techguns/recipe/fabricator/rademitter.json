@@ -1,0 +1,21 @@
+{
+  "type": "techguns:fabricator",
+  "input": {
+    "tag": "c:ingots/enriched_uranium"
+  },
+  "wires": {
+    "tag": "c:circuits/elite",
+    "count": 2
+  },
+  "powder": {
+    "item": "techguns:mechanicalpartscarbon",
+    "count": 2
+  },
+  "plate": {
+    "tag": "c:plates/lead",
+    "count": 2
+  },
+  "result": {
+    "id": "techguns:rademitter"
+  }
+}

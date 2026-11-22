@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ppp",
+    " p ",
+    " p "
+  ],
+  "key": {
+    "p": {
+      "tag": "c:plates/iron"
+    }
+  },
+  "result": {
+    "id": "techguns:turretarmoriron"
+  }
+}

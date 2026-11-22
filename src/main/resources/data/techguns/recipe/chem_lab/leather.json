@@ -1,0 +1,14 @@
+{
+  "type": "techguns:chem_lab",
+  "input1": {
+    "item": "minecraft:rotten_flesh"
+  },
+  "fluid_input": {
+    "tag": "minecraft:water",
+    "amount": 500
+  },
+  "result": {
+    "id": "minecraft:leather"
+  },
+  "power_per_tick": 15
+}

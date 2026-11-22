@@ -1,0 +1,32 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ngo",
+    "cpc",
+    "pep"
+  ],
+  "key": {
+    "p": {
+      "tag": "c:plates/plastic"
+    },
+    "c": {
+      "tag": "c:circuits/basic"
+    },
+    "e": {
+      "item": "techguns:energycell"
+    },
+    "g": {
+      "item": "techguns:gasmask"
+    },
+    "n": {
+      "item": "techguns:nightvisiongoggles"
+    },
+    "o": {
+      "item": "techguns:oxygenmask"
+    }
+  },
+  "result": {
+    "id": "techguns:tacticalmask"
+  }
+}

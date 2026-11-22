@@ -1,0 +1,14 @@
+{
+  "type": "techguns:chem_lab",
+  "bottle": {
+    "item": "techguns:fueltankempty"
+  },
+  "fluid_input": {
+    "tag": "minecraft:lava",
+    "amount": 500
+  },
+  "result": {
+    "id": "techguns:fueltank"
+  },
+  "power_per_tick": 1
+}

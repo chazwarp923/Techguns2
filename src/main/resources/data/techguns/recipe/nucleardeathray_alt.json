@@ -1,0 +1,35 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ltl",
+    "ers",
+    " m "
+  ],
+  "key": {
+    "r": {
+      "item": "techguns:carbonreceiver"
+    },
+    "s": {
+      "item": "techguns:carbonstock"
+    },
+    "t": {
+      "tag": "c:plates/titanium"
+    },
+    "e": {
+      "item": "techguns:rademitter"
+    },
+    "l": {
+      "tag": "c:plates/lead"
+    },
+    "m": {
+      "item": "techguns:nuclearpowercelldepleted"
+    }
+  },
+  "result": {
+    "id": "techguns:nucleardeathray",
+    "components": {
+      "techguns:ammo": 0
+    }
+  }
+}

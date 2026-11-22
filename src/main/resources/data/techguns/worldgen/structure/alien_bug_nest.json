@@ -1,0 +1,13 @@
+{
+  "type": "techguns:legacy",
+  "biomes": "#techguns:has_structure/alien_bug_nest",
+  "step": "surface_structures",
+  "spawn_overrides": {},
+  "terrain_adaptation": "none",
+  "structures": [
+    {
+      "name": "alien_bug_nest",
+      "weight": 1
+    }
+  ]
+}

@@ -1,56 +1,31 @@
 package techguns.packets;
 
-import io.netty.buffer.ByteBuf;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
-import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
-import techguns.TGPackets;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import techguns.Techguns;
 import techguns.capabilities.TGExtendedPlayer;
 
-public class PacketSwapWeapon implements IMessage {
-	
-	int plyId;
-	
-	public PacketSwapWeapon() {
-		super();
-	}
-	
-	public PacketSwapWeapon(EntityPlayer ply) {
-		super();
-		this.plyId=ply.getEntityId();
-	}
+/** Server -> client: a player swapped the guns in their hands, swap their attack times / fire delays (1.12 PacketSwapWeapon). */
+public record PacketSwapWeapon(int playerId) implements CustomPacketPayload {
+
+	public static final Type<PacketSwapWeapon> TYPE = new Type<>(Techguns.rl("swap_weapon"));
+
+	public static final StreamCodec<FriendlyByteBuf, PacketSwapWeapon> CODEC = StreamCodec.of((buf, m) -> buf.writeVarInt(m.playerId),
+			buf -> new PacketSwapWeapon(buf.readVarInt()));
 
 	@Override
-	public void fromBytes(ByteBuf buf) {
-		this.plyId = buf.readInt();
+	public Type<? extends CustomPacketPayload> type() {
+		return TYPE;
 	}
 
-	@Override
-	public void toBytes(ByteBuf buf) {
-		buf.writeInt(plyId);
-	}
-	
-	public static class Handler implements IMessageHandler<PacketSwapWeapon, IMessage> {
-		@Override
-		public IMessage onMessage(PacketSwapWeapon message, MessageContext ctx) {
-			FMLCommonHandler.instance().getWorldThread(ctx.netHandler).addScheduledTask(() -> handle(message, ctx));
-			return null;
-		}
-
-		private void handle(PacketSwapWeapon m, MessageContext ctx) {
-			World w = TGPackets.getPlayerFromContext(ctx).world;
-			
-			Entity ent = w.getEntityByID(m.plyId);
-			if (ent!=null && ent instanceof EntityPlayer) {
-				TGExtendedPlayer caps = TGExtendedPlayer.get((EntityPlayer) ent);
-				caps.swapAttackTimes();
-			}
-			
+	public static void handle(PacketSwapWeapon m, IPayloadContext ctx) {
+		Entity ent = ctx.player().level().getEntity(m.playerId);
+		if (ent instanceof Player ply) {
+			TGExtendedPlayer.get(ply).swapAttackTimes();
 		}
 	}
-	
 }

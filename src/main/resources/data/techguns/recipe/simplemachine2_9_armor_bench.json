@@ -1,0 +1,32 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:armor_bench"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " c ",
+    "oeo",
+    "sos"
+  ],
+  "key": {
+    "s": {
+      "tag": "c:obsidians"
+    },
+    "c": {
+      "tag": "c:player_workstations/crafting_tables"
+    },
+    "e": {
+      "tag": "c:gems/emerald"
+    },
+    "o": {
+      "tag": "c:plates/obsidian_steel"
+    }
+  },
+  "result": {
+    "id": "techguns:armor_bench"
+  }
+}

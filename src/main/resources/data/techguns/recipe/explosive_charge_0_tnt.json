@@ -1,0 +1,30 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:tnt_charge"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "rtr",
+    "tct",
+    "rtr"
+  ],
+  "key": {
+    "r": {
+      "tag": "c:rubbers"
+    },
+    "c": {
+      "tag": "c:circuits/basic"
+    },
+    "t": {
+      "item": "minecraft:tnt"
+    }
+  },
+  "result": {
+    "id": "techguns:tnt_charge",
+    "count": 8
+  }
+}

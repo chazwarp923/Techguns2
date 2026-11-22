@@ -1,0 +1,13 @@
+{
+  "type": "techguns:legacy",
+  "biomes": "#minecraft:is_overworld",
+  "step": "surface_structures",
+  "spawn_overrides": {},
+  "terrain_adaptation": "none",
+  "structures": [
+    {
+      "name": "castle",
+      "weight": 1
+    }
+  ]
+}

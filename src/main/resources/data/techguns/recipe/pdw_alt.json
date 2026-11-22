@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "brs",
+    " m "
+  ],
+  "key": {
+    "b": {
+      "item": "techguns:carbonbarrel"
+    },
+    "r": {
+      "item": "techguns:carbonreceiver"
+    },
+    "s": {
+      "item": "techguns:carbonstock"
+    },
+    "m": {
+      "item": "techguns:advancedmagazineempty"
+    }
+  },
+  "result": {
+    "id": "techguns:pdw",
+    "components": {
+      "techguns:ammo": 0
+    }
+  }
+}

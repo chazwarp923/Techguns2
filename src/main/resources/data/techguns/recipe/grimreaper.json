@@ -1,0 +1,19 @@
+{
+  "type": "techguns:ammo_sum_recipe",
+  "category": "misc",
+  "pattern": [
+    "rr ",
+    "rrc"
+  ],
+  "key": {
+    "r": {
+      "item": "techguns:guidedmissilelauncher"
+    },
+    "c": {
+      "item": "techguns:carbonreceiver"
+    }
+  },
+  "result": {
+    "id": "techguns:grimreaper"
+  }
+}

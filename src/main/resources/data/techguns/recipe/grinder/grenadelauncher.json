@@ -1,0 +1,20 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:grenadelauncher"
+  },
+  "results": [
+    {
+      "id": "techguns:ingotobsidiansteel",
+      "count": 3
+    },
+    {
+      "id": "techguns:ingotsteel",
+      "count": 2
+    },
+    {
+      "id": "techguns:plasticsheet",
+      "count": 2
+    }
+  ]
+}

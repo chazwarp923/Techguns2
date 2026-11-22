@@ -1,0 +1,22 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:door3x3_hangar"
+    },
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:door3x3_hangar_down"
+    }
+  ],
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "techguns:door3x3_hangar"
+    }
+  ],
+  "result": {
+    "id": "techguns:door3x3_hangar_down"
+  }
+}

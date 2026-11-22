@@ -1,13 +1,9 @@
 package techguns.items.guns.ammo;
 
-import net.minecraft.item.ItemStack;
-import net.minecraftforge.fml.common.event.FMLInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraft.world.level.ItemLike;
 import techguns.TGItems;
-import techguns.init.ITGInitializer;
 
-public class AmmoTypes implements ITGInitializer{
+public class AmmoTypes {
 
 	public static AmmoType STONE_BULLETS;
 	public static AmmoType PISTOL_ROUNDS;
@@ -30,17 +26,21 @@ public class AmmoTypes implements ITGInitializer{
 	public static AmmoType GRENADES_40MM;
 	public static AmmoType NUCLEAR_POWER_CELL;
 	public static AmmoType REDSTONE_BATTERY;
-	
 	public static AmmoType AMMO_GAUSS_RIFLE;
-	
+
 	public static final String TYPE_INCENDIARY = "incendiary";
 	public static final String TYPE_DEFAULT = "default";
 	public static final String TYPE_NUKE = "nuke";
 	public static final String TYPE_EXPLOSIVE = "explosive";
 	public static final String TYPE_HV = "high_velocity";
-	
-	@Override
-	public void preInit(FMLPreInitializationEvent event) {
+
+	private static boolean initialized = false;
+
+	/** Builds all ammo types. Safe to call during item registration (only item references are captured). */
+	public static void init() {
+		if (initialized) return;
+		initialized = true;
+
 		STONE_BULLETS = new AmmoType(TGItems.STONE_BULLETS);
 		PISTOL_ROUNDS = new AmmoType(TGItems.PISTOL_ROUNDS);
 		PISTOL_ROUNDS.addVariant(TYPE_INCENDIARY, TGItems.PISTOL_ROUNDS_INCENDIARY);
@@ -63,11 +63,11 @@ public class AmmoTypes implements ITGInitializer{
 		LMG_MAGAZINE = new AmmoType(TGItems.LMG_MAGAZINE, TGItems.LMG_MAGAZINE_EMPTY, TGItems.RIFLE_ROUNDS,8);
 		LMG_MAGAZINE.addVariant(TYPE_INCENDIARY, TGItems.LMG_MAGAZINE_INCENDIARY, TGItems.RIFLE_ROUNDS_INCENDIARY);
 		
-		BIO_TANK = new AmmoType(TGItems.BIO_TANK, TGItems.BIO_TANK_EMPTY, ItemStack.EMPTY, 0);
-		FUEL_TANK = new AmmoType(TGItems.FUEL_TANK, TGItems.FUEL_TANK_EMPTY, ItemStack.EMPTY, 0);
-		COMPRESSED_AIR_TANK = new AmmoType(TGItems.COMPRESSED_AIR_TANK, TGItems.COMPRESSED_AIR_TANK_EMPTY, ItemStack.EMPTY, 0);
-		ENERGY_CELL = new AmmoType(TGItems.ENERGY_CELL, TGItems.ENERGY_CELL_EMPTY, ItemStack.EMPTY, 0);
-		REDSTONE_BATTERY = new AmmoType(TGItems.REDSTONE_BATTERY, TGItems.REDSTONE_BATTERY_EMPTY, ItemStack.EMPTY, 0);
+		BIO_TANK = new AmmoType(TGItems.BIO_TANK, TGItems.BIO_TANK_EMPTY, null, 0);
+		FUEL_TANK = new AmmoType(TGItems.FUEL_TANK, TGItems.FUEL_TANK_EMPTY, null, 0);
+		COMPRESSED_AIR_TANK = new AmmoType(TGItems.COMPRESSED_AIR_TANK, TGItems.COMPRESSED_AIR_TANK_EMPTY, null, 0);
+		ENERGY_CELL = new AmmoType(TGItems.ENERGY_CELL, TGItems.ENERGY_CELL_EMPTY, null, 0);
+		REDSTONE_BATTERY = new AmmoType(TGItems.REDSTONE_BATTERY, TGItems.REDSTONE_BATTERY_EMPTY, null, 0);
 		MINIGUN_AMMO_DRUM = new AmmoType(TGItems.MINIGUN_DRUM, TGItems.MINIGUN_DRUM_EMPTY, TGItems.RIFLE_ROUNDS,16);
 		MINIGUN_AMMO_DRUM.addVariant(TYPE_INCENDIARY, TGItems.MINIGUN_DRUM_INCENDIARY, TGItems.RIFLE_ROUNDS_INCENDIARY);
 		
@@ -85,18 +85,8 @@ public class AmmoTypes implements ITGInitializer{
 		
 		NETHER_CHARGE = new AmmoType(TGItems.NETHER_CHARGE);
 		GRENADES_40MM = new AmmoType(TGItems.GRENADE_40MM);
-		NUCLEAR_POWER_CELL = new AmmoType(TGItems.NUCLEAR_POWERCELL, TGItems.NUCLEAR_POWERCELL_EMPTY, ItemStack.EMPTY,0);
+		NUCLEAR_POWER_CELL = new AmmoType(TGItems.NUCLEAR_POWERCELL, TGItems.NUCLEAR_POWERCELL_EMPTY, null,0);
 		
-		AMMO_GAUSS_RIFLE = new AmmoType(new ItemStack[] {TGItems.GAUSSRIFLE_SLUGS, TGItems.ENERGY_CELL}, new ItemStack[] {ItemStack.EMPTY, TGItems.ENERGY_CELL_EMPTY}, new ItemStack[] {TGItems.GAUSSRIFLE_SLUGS, ItemStack.EMPTY},  1);
+		AMMO_GAUSS_RIFLE = new AmmoType(new ItemLike[] {TGItems.GAUSSRIFLE_SLUGS, TGItems.ENERGY_CELL}, new ItemLike[] {null, TGItems.ENERGY_CELL_EMPTY}, new ItemLike[] {TGItems.GAUSSRIFLE_SLUGS, null},  1);
 	}
-
-	@Override
-	public void init(FMLInitializationEvent event) {
-		
-	}
-
-	@Override
-	public void postInit(FMLPostInitializationEvent event) {
-
-	}	
 }

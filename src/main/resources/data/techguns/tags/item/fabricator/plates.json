@@ -1,0 +1,8 @@
+{
+  "values": [
+    "#c:plates/plastic",
+    "#c:plates/carbon",
+    "#c:plates/titanium",
+    "#c:plates/lead"
+  ]
+}

@@ -1,9 +1,11 @@
 package techguns.client.models.guns;
 
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
-import net.minecraft.entity.Entity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.ItemDisplayContext;
 import techguns.client.models.ModelMultipart;
+import techguns.client.models.ModelRenderer;
+
+
 
 public class ModelM4Infiltrator extends ModelMultipart {
 
@@ -335,7 +337,7 @@ public class ModelM4Infiltrator extends ModelMultipart {
 	  
 	  @Override
 	public void render(Entity entityIn, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch, float scale, int ammoLeft,
-			float reloadProgress, TransformType transformType, int part, float fireProgress, float chargeProgress) {
+			float reloadProgress, ItemDisplayContext transformType, int part, float fireProgress, float chargeProgress) {
 
 	    Grip1.render(scale);
 	    Receiver02.render(scale);
@@ -380,7 +382,7 @@ public class ModelM4Infiltrator extends ModelMultipart {
 	    Scope01.render(scale);
 	    Scope03.render(scale);
 	    Scope02.render(scale);
-	    if ( ! (transformType==TransformType.GUI)){
+	    if ( ! (transformType==ItemDisplayContext.GUI)){
 		    LaserBeam.render(scale);
 		    LaserBeam01.render(scale);
 	    }

@@ -1,0 +1,14 @@
+{
+  "type": "techguns:chem_lab",
+  "input1": {
+    "item": "techguns:rawrubber"
+  },
+  "fluid_input": {
+    "tag": "techguns:oil",
+    "amount": 500
+  },
+  "result": {
+    "id": "techguns:rawplastic"
+  },
+  "power_per_tick": 25
+}

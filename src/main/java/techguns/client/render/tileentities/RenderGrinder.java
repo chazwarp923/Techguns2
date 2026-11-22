@@ -1,169 +1,97 @@
 package techguns.client.render.tileentities;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 
-import net.minecraft.block.BlockHorizontal;
-import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.BufferBuilder;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
-import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
-import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.ResourceLocation;
-import techguns.TGBlocks;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
 import techguns.Techguns;
-import techguns.api.render.IItemTGRenderer;
-import techguns.client.render.ItemRenderHack;
-import techguns.debug.Keybinds;
 import techguns.items.guns.GenericGun;
 import techguns.tileentities.GrinderTileEnt;
 
-public class RenderGrinder extends TileEntitySpecialRenderer<GrinderTileEnt>{
+/** The two spinning rolls and the item being ground (1.12 RenderGrinder). */
+public class RenderGrinder implements BlockEntityRenderer<GrinderTileEnt> {
 
-	protected ResourceLocation texture = new ResourceLocation(Techguns.MODID, "textures/blocks/grinder_roll.png");
-	protected static final double UNIT = 0.0625;
-	
-	protected static final float TEX_X = (float) (2*UNIT);
-	protected static final float TEX_Z = (float) (2*UNIT);
-	protected static double len = 12*UNIT;
-	
+	private static final ResourceLocation TEXTURE = Techguns.rl("textures/blocks/grinder_roll.png");
+	private static final float UNIT = 1f / 16f;
+	private static final float TEX_X = 2 * UNIT;
+	private static final float TEX_Z = 2 * UNIT;
+	private static final float LEN = 12 * UNIT;
+
 	@Override
-	public void render(GrinderTileEnt te, double x, double y, double z, float partialTicks, int destroyStage,
-			float alpha) {
-		
-		//Rotate y
-		IBlockState bs = te.getWorld().getBlockState(te.getPos());
-		
-		if (bs.getBlock() == TGBlocks.SIMPLE_MACHINE2) {
-		
-			EnumFacing f = bs.getValue(BlockHorizontal.FACING);
-			
-			float rot = 45f;
-			GlStateManager.pushMatrix();
-	
-			//translate to position
-			GlStateManager.translate( x , y , z);
-			
-			if(te.isWorking()) {
-				rot =  ((45+(1080 * te.getProgress())) % 360);
-			}
-			
-			GlStateManager.pushMatrix();
-			
-			GlStateManager.rotate(f.getHorizontalAngle(), 0, 1, 0);
-			switch(f) {
-			case NORTH:
-				GlStateManager.translate(-1, 0, -1);
-				break;
-			case EAST:
-				GlStateManager.translate(0, 0,-1);
-				break;
-			case WEST:
-				GlStateManager.translate(-1, 0, 0);
-				break;
-			default:
-				break;
-			
-			}
-			
-			Minecraft.getMinecraft().renderEngine.bindTexture(texture);
-	        
-			//draw grinder
-			BufferBuilder buf = Tessellator.getInstance().getBuffer();
-			GlStateManager.pushMatrix();
-			GlStateManager.translate(0, 7.5*UNIT, 6.5*UNIT);
-			buf.begin(GL11.GL_QUADS, DefaultVertexFormats.POSITION_TEX_NORMAL);
-			
-			GlStateManager.rotate(rot, 1, 0, 0);
-	
-			drawGrinderRoll(buf, 1.5f,2);
-			
-			Tessellator.getInstance().draw();
-			GlStateManager.popMatrix();
-			
-			GlStateManager.pushMatrix();
-			GlStateManager.translate(0, 7.5*UNIT, 9.5*UNIT);
-			buf.begin(GL11.GL_QUADS, DefaultVertexFormats.POSITION_TEX_NORMAL);
-			
-			GlStateManager.rotate(-rot, 1, 0, 0);
-			drawGrinderRoll(buf, 1.5f,2);	
-			
-			Tessellator.getInstance().draw();
-			GlStateManager.popMatrix();
-			
-			
-			//RENDER ITEM
-			ItemStack item = ItemStack.EMPTY;
-			if(te.isWorking()) {
-				item = te.currentOperation.getItemInputI(0);
-			
-				if(!item.isEmpty()) {
-					
-					boolean is3d=false;
-					boolean rot90=false;
-					if(item.getItem() instanceof IItemTGRenderer) {
-						is3d = ((IItemTGRenderer)item.getItem()).shouldUseRenderHack(item);
-						if(item.getItem() instanceof GenericGun) {
-							rot90=true;
-						}
-					}
-					
-					double px = 0.5d;
-					double py = 0.6d - te.getProgress()*0.4d + (is3d?0.15d:0);
-					double pz = 0.5d;
-					
-					GlStateManager.pushMatrix();
-					GlStateManager.translate( px,py,pz);
-					
-					if(is3d){
-						GlStateManager.scale(0.5, 0.5, 0.5);
-					}
-					if(rot90) {
-						GlStateManager.rotate(90f, 0, 1, 0);
-					}
-		
-					Minecraft.getMinecraft().getRenderItem().renderItem(item, TransformType.GROUND);
-					
-					GlStateManager.popMatrix();
+	public void render(GrinderTileEnt te, float partialTick, PoseStack ps, MultiBufferSource buffers, int light, int overlay) {
+		float progress = te.isWorking() && te.totaltime > 0 ? Math.min(1f, (te.progress + partialTick) / te.totaltime) : 0f;
+		float rot = te.isWorking() ? (45f + 1080f * progress) % 360f : 45f;
+
+		ps.pushPose();
+		ps.translate(0.5f, 0f, 0.5f);
+		ps.mulPose(Axis.YP.rotationDegrees(te.getFacing().toYRot()));
+		ps.translate(-0.5f, 0f, -0.5f);
+
+		VertexConsumer vc = buffers.getBuffer(RenderType.entityCutoutNoCull(TEXTURE));
+		ps.pushPose();
+		ps.translate(0, 7.5f * UNIT, 6.5f * UNIT);
+		ps.mulPose(Axis.XP.rotationDegrees(rot));
+		drawRoll(vc, ps.last(), 1.5f, 2f, light);
+		ps.popPose();
+
+		ps.pushPose();
+		ps.translate(0, 7.5f * UNIT, 9.5f * UNIT);
+		ps.mulPose(Axis.XP.rotationDegrees(-rot));
+		drawRoll(vc, ps.last(), 1.5f, 2f, light);
+		ps.popPose();
+
+		if (te.isWorking() && te.currentOperation != null) {
+			ItemStack item = te.currentOperation.getItemInputI(0);
+			if (!item.isEmpty()) {
+				boolean gun = item.getItem() instanceof GenericGun;
+				ps.pushPose();
+				ps.translate(0.5d, 0.6d - progress * 0.4d + (gun ? 0.15d : 0), 0.5d);
+				if (gun) {
+					ps.scale(0.5f, 0.5f, 0.5f);
+					ps.mulPose(Axis.YP.rotationDegrees(90f));
 				}
+				Minecraft.getInstance().getItemRenderer().renderStatic(item, ItemDisplayContext.GROUND, light, overlay, ps, buffers, te.getLevel(), 0);
+				ps.popPose();
 			}
-			
-			
-			GlStateManager.popMatrix();
-			GlStateManager.popMatrix();
 		}
+		ps.popPose();
 	}
 
-	protected void drawGrinderRoll(BufferBuilder buf, float r, float dx) {
-		double d = 2*r;
-		r=(float) (UNIT*r);
-		
-		//draw top face
-		buf.pos(dx*UNIT, r, -r).tex(TEX_X, TEX_Z).normal(0, 1, 0).endVertex();
-		buf.pos(dx*UNIT, r, r).tex(TEX_X, TEX_Z+d*UNIT).normal(0, 1, 0).endVertex();
-		buf.pos(dx*UNIT+len, r, r).tex(TEX_X+len, TEX_Z+d*UNIT).normal(0, 1, 0).endVertex();
-		buf.pos(dx*UNIT+len, r,-r).tex(TEX_X+len, TEX_Z).normal(0, 1, 0).endVertex();
-		
-		//draw side face
-		buf.pos(dx*UNIT, r, r).tex(TEX_X, TEX_Z).normal(-1, 0, 0).endVertex();
-		buf.pos(dx*UNIT, -r, r).tex(TEX_X, TEX_Z+d*UNIT).normal(-1, 0, 0).endVertex();
-		buf.pos(dx*UNIT+len, -r, r).tex(TEX_X+len, TEX_Z+d*UNIT).normal(-1, 0, 0).endVertex();
-		buf.pos(dx*UNIT+len, r, r).tex(TEX_X+len, TEX_Z).normal(-1, 0, 0).endVertex();
-		
-		//draw down face
-		buf.pos(dx*UNIT, -r, -r).tex(TEX_X, TEX_Z+d*UNIT).normal(0, -1, 0).endVertex();
-		buf.pos(dx*UNIT+len, -r, -r).tex(TEX_X+len, TEX_Z+d*UNIT).normal(0, -1, 0).endVertex();
-		buf.pos(dx*UNIT+len, -r, r).tex(TEX_X+len, TEX_Z).normal(0, -1, 0).endVertex();
-		buf.pos(dx*UNIT, -r, r).tex(TEX_X, TEX_Z).normal(0, -1, 0).endVertex();
-		
-		//draw side face2
-		buf.pos(dx*UNIT, r, -r).tex(TEX_X, TEX_Z+d*UNIT).normal(1, 0, 0).endVertex();
-		buf.pos(dx*UNIT+len, r, -r).tex(TEX_X+len, TEX_Z+d*UNIT).normal(1, 0, 0).endVertex();
-		buf.pos(dx*UNIT+len, -r, -r).tex(TEX_X+len, TEX_Z).normal(1, 0, 0).endVertex();
-		buf.pos(dx*UNIT, -r, -r).tex(TEX_X, TEX_Z).normal(1, 0, 0).endVertex();
+	private static void drawRoll(VertexConsumer vc, PoseStack.Pose pose, float radius, float dx, int light) {
+		float d = 2 * radius * UNIT;
+		float r = UNIT * radius;
+		float x0 = dx * UNIT, x1 = dx * UNIT + LEN;
+		// top
+		v(vc, pose, x0, r, -r, TEX_X, TEX_Z, 0, 1, 0, light);
+		v(vc, pose, x0, r, r, TEX_X, TEX_Z + d, 0, 1, 0, light);
+		v(vc, pose, x1, r, r, TEX_X + LEN, TEX_Z + d, 0, 1, 0, light);
+		v(vc, pose, x1, r, -r, TEX_X + LEN, TEX_Z, 0, 1, 0, light);
+		// +z side
+		v(vc, pose, x0, r, r, TEX_X, TEX_Z, 0, 0, 1, light);
+		v(vc, pose, x0, -r, r, TEX_X, TEX_Z + d, 0, 0, 1, light);
+		v(vc, pose, x1, -r, r, TEX_X + LEN, TEX_Z + d, 0, 0, 1, light);
+		v(vc, pose, x1, r, r, TEX_X + LEN, TEX_Z, 0, 0, 1, light);
+		// bottom
+		v(vc, pose, x0, -r, -r, TEX_X, TEX_Z + d, 0, -1, 0, light);
+		v(vc, pose, x1, -r, -r, TEX_X + LEN, TEX_Z + d, 0, -1, 0, light);
+		v(vc, pose, x1, -r, r, TEX_X + LEN, TEX_Z, 0, -1, 0, light);
+		v(vc, pose, x0, -r, r, TEX_X, TEX_Z, 0, -1, 0, light);
+		// -z side
+		v(vc, pose, x0, r, -r, TEX_X, TEX_Z + d, 0, 0, -1, light);
+		v(vc, pose, x1, r, -r, TEX_X + LEN, TEX_Z + d, 0, 0, -1, light);
+		v(vc, pose, x1, -r, -r, TEX_X + LEN, TEX_Z, 0, 0, -1, light);
+		v(vc, pose, x0, -r, -r, TEX_X, TEX_Z, 0, 0, -1, light);
+	}
+
+	private static void v(VertexConsumer vc, PoseStack.Pose pose, float x, float y, float z, float u, float tv, float nx, float ny, float nz, int light) {
+		vc.addVertex(pose, x, y, z).setColor(-1).setUv(u, tv).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, nx, ny, nz);
 	}
 }

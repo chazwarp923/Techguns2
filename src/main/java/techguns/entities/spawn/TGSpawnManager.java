@@ -1,224 +1,188 @@
 package techguns.entities.spawn;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Random;
+import java.util.List;
+import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-import net.minecraft.world.biome.Biome;
-import net.minecraftforge.common.BiomeDictionary;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.MobSpawnSettings;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.common.Tags;
+import net.neoforged.neoforge.common.world.BiomeModifier;
+import net.neoforged.neoforge.common.world.ModifiableBiomeInfo;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import techguns.TGConfig;
+import techguns.TGEntities;
+import techguns.Techguns;
 import techguns.entities.npcs.GenericNPC;
-import techguns.util.MathUtil.Vec2;
-
+import techguns.entities.npcs.TGDummySpawn;
 
 /**
- * Handles spawning of Techguns NPCs
- *
+ * Techguns NPC spawning (1.12 TGSpawnManager): biomes spawn {@link TGDummySpawn}, which is replaced by an NPC picked
+ * by weight from all NPCs up to the danger level of the position (distance to world spawn + biome type).
  */
-public class TGSpawnManager {
+@EventBusSubscriber(modid = Techguns.MODID)
+public final class TGSpawnManager {
 
-	public static TGNpcSpawnTable spawnTableOverworld = new TGNpcSpawnTable(5);
-	public static TGNpcSpawnTable spawnTableNether = new TGNpcSpawnTable(5);
+	public static final int MAX_DANGER = 5;
 
-	protected static Random rnd = new Random();
-	
-	public static void handleSpawn(World w, Entity dummyEnt){
-		
-		GenericNPC entNew = null;
-		
-		Biome biome = w.getBiome(new BlockPos(Math.round(dummyEnt.posX), 64, Math.round(dummyEnt.posZ)));
-			
-		int dist_danger = getDistanceDanger(w, dummyEnt);
-		int biome_danger = getBiomeDanger(w, dummyEnt,biome);
-		
-		int danger = dist_danger+biome_danger;
-		
-		TGNpcSpawn chosenSpawn=null;
-		
-		TGNpcSpawnTable spawntable = getSpawnTableForDimensionId(w.provider.getDimension());
-		
-		int totalweight=0;
-		//calculate possible weights
-		for (int d=0;d<=danger;d++){
-			
-			ArrayList<TGNpcSpawn> list = spawntable.get(d);
-			for(int i=0;i<list.size();i++){
-				TGNpcSpawn spawn = list.get(i);
-				
-				//if(spawn.dimensionMatches(w)){
-				totalweight+=spawn.getWeightForBiome(biome);
-				//}
-			}
-			
-		}
-		
-		if (totalweight>0){
-		
-			int roll = rnd.nextInt(totalweight);
-			
-			//System.out.println("Danger:"+danger+" TotalWeight:"+totalweight+" Roll:"+roll);			
-			totalweight=0;
+	/** an NPC that can spawn naturally, weight from the config */
+	public record NpcSpawn(Supplier<? extends EntityType<? extends GenericNPC>> type, IntSupplier weight, int danger) {
+	}
 
-			for (int d=0;d<=danger;d++){
-				ArrayList<TGNpcSpawn> list = spawntable.get(d);
-				for(int i=0;i<list.size();i++){
-					TGNpcSpawn spawn = list.get(i);
-					//if(spawn.dimensionMatches(w)){
-						totalweight+=spawn.getWeightForBiome(biome);
-						if (totalweight >=roll){
-							chosenSpawn = spawn;
-							
-							//System.out.println("Spawning: "+spawn.type.toString());
-							
-							break;
-						}
-					//}
-				}
-				if (chosenSpawn !=null){
-					break;
-				}
+	public static final List<NpcSpawn> OVERWORLD = new ArrayList<>();
+	public static final List<NpcSpawn> NETHER = new ArrayList<>();
+
+	static {
+		OVERWORLD.add(new NpcSpawn(TGEntities.ZOMBIE_SOLDIER, () -> TGConfig.spawnWeightZombieSoldier, 1));
+		OVERWORLD.add(new NpcSpawn(TGEntities.ZOMBIE_FARMER, () -> TGConfig.spawnWeightZombieFarmer, 0));
+		OVERWORLD.add(new NpcSpawn(TGEntities.ZOMBIE_MINER, () -> TGConfig.spawnWeightZombieMiner, 0));
+		OVERWORLD.add(new NpcSpawn(TGEntities.SKELETON_SOLDIER, () -> TGConfig.spawnWeightSkeletonSoldier, 1));
+		OVERWORLD.add(new NpcSpawn(TGEntities.PSYCHO_STEVE, () -> TGConfig.spawnWeightPsychoSteve, 1));
+		OVERWORLD.add(new NpcSpawn(TGEntities.BANDIT, () -> TGConfig.spawnWeightBandit, 2));
+		NETHER.add(new NpcSpawn(TGEntities.ZOMBIE_PIGMAN_SOLDIER, () -> TGConfig.spawnWeightZombiePigmanSoldier, 0));
+		NETHER.add(new NpcSpawn(TGEntities.CYBER_DEMON, () -> TGConfig.spawnWeightCyberDemon, 0));
+	}
+
+	public static final DeferredRegister<MapCodec<? extends BiomeModifier>> BIOME_MODIFIERS = DeferredRegister
+			.create(NeoForgeRegistries.Keys.BIOME_MODIFIER_SERIALIZERS, Techguns.MODID);
+
+	public static final Supplier<MapCodec<NpcSpawnsModifier>> NPC_SPAWNS = BIOME_MODIFIERS.register("npc_spawns",
+			() -> RecordCodecBuilder.mapCodec(i -> i.group(Biome.LIST_CODEC.fieldOf("biomes").forGetter(NpcSpawnsModifier::biomes),
+					com.mojang.serialization.Codec.BOOL.optionalFieldOf("nether", false).forGetter(NpcSpawnsModifier::nether))
+					.apply(i, NpcSpawnsModifier::new)));
+
+	private TGSpawnManager() {
+	}
+
+	public static void register(IEventBus modBus) {
+		BIOME_MODIFIERS.register(modBus);
+	}
+
+	/** adds the dummy spawn with the configured weight to all non blacklisted biomes of the set */
+	public record NpcSpawnsModifier(HolderSet<Biome> biomes, boolean nether) implements BiomeModifier {
+
+		@Override
+		public void modify(Holder<Biome> biome, Phase phase, ModifiableBiomeInfo.BiomeInfo.Builder builder) {
+			if (phase != Phase.ADD || !biomes.contains(biome) || isBlacklisted(biome)) {
+				return;
 			}
-			
-			if (chosenSpawn!=null){
-			
-				try {
-					entNew = chosenSpawn.type.getDeclaredConstructor(World.class).newInstance(w);
-					setPositionsAndReplace(w, entNew, dummyEnt, danger);
-					
-				} catch (InstantiationException e) {
-					e.printStackTrace();
-				} catch (IllegalAccessException e) {
-					e.printStackTrace();
-				} catch (IllegalArgumentException e) {
-					e.printStackTrace();
-				} catch (InvocationTargetException e) {
-					e.printStackTrace();
-				} catch (NoSuchMethodException e) {
-					e.printStackTrace();
-				} catch (SecurityException e) {
-					e.printStackTrace();
-				} finally {
-					dummyEnt.setDead();
-				}
-			} else {
-				dummyEnt.setDead();
+			int weight = nether ? TGConfig.spawnWeightTGNether : TGConfig.spawnWeightTGOverworld;
+			if (weight > 0) {
+				builder.getMobSpawnSettings().addSpawn(MobCategory.MONSTER, new MobSpawnSettings.SpawnerData(TGEntities.DUMMY_SPAWN.get(), weight, 1, 3));
 			}
-		
-		} else {
-			if(dummyEnt!=null) {
-				dummyEnt.setDead();
-			}
-			//System.out.println("TotalWeight 0, nothing to spawn???");
 		}
-		
-		
-	}
-	
-	private static int getBiomeDanger(World w, Entity ent, Biome biome){
-			
-		if (BiomeDictionary.hasType(biome, BiomeDictionary.Type.NETHER)){
-			return 0;
-		}
-		if (BiomeDictionary.hasType(biome, BiomeDictionary.Type.END)){
-			return 0;
-		}
-		
-		if (BiomeDictionary.hasType(biome, BiomeDictionary.Type.WASTELAND)){
-			return 2;
-		}
-		if (BiomeDictionary.hasType(biome, BiomeDictionary.Type.SANDY)){
-			return 2;
-		}
-		if (BiomeDictionary.hasType(biome, BiomeDictionary.Type.SNOWY)){
-			return 2;
-		}
-		if (BiomeDictionary.hasType(biome, BiomeDictionary.Type.SWAMP)){
-			return 2;
-		}
-		if (BiomeDictionary.hasType(biome, BiomeDictionary.Type.SPOOKY)){
-			return 2;
-		}
-		if (BiomeDictionary.hasType(biome, BiomeDictionary.Type.DEAD)){
-			return 2;
-		}
-			
-		
-		if (BiomeDictionary.hasType(biome, BiomeDictionary.Type.COLD)){
-			return 1;
-		}
-		if (BiomeDictionary.hasType(biome, BiomeDictionary.Type.SPARSE)){
-			return 1;
-		}
-		if (BiomeDictionary.hasType(biome, BiomeDictionary.Type.SAVANNA)){
-			return 1;
-		}
-		if (BiomeDictionary.hasType(biome, BiomeDictionary.Type.DRY)){
-			return 1;
-		}
-		
-		return 0;
-	}
-	
-	protected static TGNpcSpawnTable getSpawnTableForDimensionId(int id) {
-		switch(id) {
-		case -1:
-			return spawnTableNether;
-		default:
-			return spawnTableOverworld;
+
+		@Override
+		public MapCodec<? extends BiomeModifier> codec() {
+			return NPC_SPAWNS.get();
 		}
 	}
-	
-	private static int getDistanceDanger(World w, Entity ent){
-		Vec2 spawn = new Vec2(w.getSpawnPoint().getX(),w.getSpawnPoint().getZ());
-		Vec2 pos = new Vec2(ent.posX, ent.posZ);
-		
-		double distance = spawn.getVecTo(pos).len();
-		
-		//System.out.println("Distance:"+distance);
-		
-		float factor=1;
-		
-		//if nether distance is halfed
-		if(w.provider.getDimension()==-1){
-			factor = 0.5f;
+
+	private static boolean isBlacklisted(Holder<Biome> biome) {
+		if (TGConfig.biomeBlacklist == null) {
+			return false;
 		}
-		
-		
-		if (distance < TGConfig.distanceSpawnLevel0*factor){
-			return 0;
-		} else if (distance<TGConfig.distanceSpawnLevel1*factor){
-			return 1;
-		} else if (distance<TGConfig.distanceSpawnLevel2*factor){
-			return 2;
-		} else {
-			return 3;
-		}
-		
-	}
-	
-	public static boolean isInArray(Biome biome, Biome[] biomes){
-		for (int i=0;i<biomes.length;i++){
-			
-			if (biome.equals(biomes[i])){
+		String id = biome.unwrapKey().map(k -> k.location().toString()).orElse("");
+		for (String s : TGConfig.biomeBlacklist) {
+			if (!s.isEmpty() && s.equals(id)) {
 				return true;
 			}
 		}
-		
 		return false;
 	}
-	
-	private static void setPositionsAndReplace(World w, GenericNPC newNpc, Entity entity, int difficulty){
-		newNpc.setLocationAndAngles(entity.posX, entity.posY, entity.posZ, entity.rotationYaw, 0.0f);
-		//newNpc.setRotationYawHead(entity.rotationYaw);
-		//newNpc.onSpawnWithEgg((IEntityLivingData)null);
-		newNpc.onSpawnByManager(difficulty);
-		w.spawnEntity(newNpc);
-		
-		entity.setDead();
+
+	@SubscribeEvent
+	public static void onJoin(EntityJoinLevelEvent event) {
+		if (event.getEntity() instanceof TGDummySpawn dummy) {
+			event.setCanceled(true);
+			if (event.getLevel() instanceof ServerLevel level) {
+				handleSpawn(level, dummy);
+			}
+		}
 	}
-	
-	
+
+	public static void handleSpawn(ServerLevel level, TGDummySpawn dummy) {
+		boolean nether = level.dimension() == Level.NETHER;
+		List<NpcSpawn> table = nether ? NETHER : OVERWORLD;
+		BlockPos pos = dummy.blockPosition();
+		int danger = getDistanceDanger(level, pos, nether) + getBiomeDanger(level.getBiome(pos));
+
+		int total = 0;
+		for (NpcSpawn s : table) {
+			if (s.danger() <= danger) {
+				total += Math.max(0, s.weight().getAsInt());
+			}
+		}
+		if (total <= 0) {
+			return;
+		}
+		int roll = level.random.nextInt(total);
+		NpcSpawn chosen = null;
+		total = 0;
+		for (NpcSpawn s : table) {
+			if (s.danger() <= danger) {
+				total += Math.max(0, s.weight().getAsInt());
+				if (total > roll) {
+					chosen = s;
+					break;
+				}
+			}
+		}
+		if (chosen == null) {
+			return;
+		}
+		GenericNPC npc = chosen.type().get().create(level);
+		if (npc == null) {
+			return;
+		}
+		npc.moveTo(dummy.getX(), dummy.getY(), dummy.getZ(), dummy.getYRot(), 0f);
+		npc.onSpawnByManager(Math.min(danger, MAX_DANGER));
+		level.addFreshEntity(npc);
+	}
+
+	private static int getBiomeDanger(Holder<Biome> b) {
+		if (b.is(Tags.Biomes.IS_NETHER) || b.is(Tags.Biomes.IS_END)) {
+			return 0;
+		}
+		if (b.is(Tags.Biomes.IS_WASTELAND) || b.is(Tags.Biomes.IS_SANDY) || b.is(Tags.Biomes.IS_SNOWY) || b.is(Tags.Biomes.IS_SWAMP)
+				|| b.is(Tags.Biomes.IS_SPOOKY) || b.is(Tags.Biomes.IS_DEAD)) {
+			return 2;
+		}
+		if (b.is(Tags.Biomes.IS_COLD) || b.is(Tags.Biomes.IS_SPARSE_VEGETATION) || b.is(Tags.Biomes.IS_SAVANNA) || b.is(Tags.Biomes.IS_DRY)) {
+			return 1;
+		}
+		return 0;
+	}
+
+	private static int getDistanceDanger(ServerLevel level, BlockPos pos, boolean nether) {
+		BlockPos spawn = level.getServer().overworld().getSharedSpawnPos();
+		double dx = pos.getX() - spawn.getX();
+		double dz = pos.getZ() - spawn.getZ();
+		double distance = Math.sqrt(dx * dx + dz * dz);
+		float factor = nether ? 0.5f : 1f;
+		if (distance < TGConfig.distanceSpawnLevel0 * factor) {
+			return 0;
+		} else if (distance < TGConfig.distanceSpawnLevel1 * factor) {
+			return 1;
+		} else if (distance < TGConfig.distanceSpawnLevel2 * factor) {
+			return 2;
+		}
+		return 3;
+	}
 }

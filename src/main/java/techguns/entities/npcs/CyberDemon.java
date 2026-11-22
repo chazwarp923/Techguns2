@@ -1,77 +1,42 @@
 package techguns.entities.npcs;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.level.Level;
+import techguns.TGSounds;
 import techguns.TGuns;
-import techguns.Techguns;
 
+/** 1.12 CyberDemon: nether undead with a nether blaster built into its arm (no aimed arm pose). */
 public class CyberDemon extends GenericNPCUndead {
 
-	public static final ResourceLocation LOOT = new ResourceLocation(Techguns.MODID, "entities/cyberdemon");
-	
-	public CyberDemon(World world) {
-		super(world);
+	public CyberDemon(EntityType<? extends CyberDemon> type, Level level) {
+		super(type, level);
 		setTGArmorStats(10.0f, 0f);
 	}
 
-	@Override
-	protected void applyEntityAttributes() {
-		super.applyEntityAttributes();
-		this.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).setBaseValue(0.35D);
-		this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(30);
-		this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).setBaseValue(7);
-		this.getEntityAttribute(SharedMonsterAttributes.FOLLOW_RANGE).setBaseValue(50.0D);
-		this.getEntityAttribute(SharedMonsterAttributes.ARMOR_TOUGHNESS).setBaseValue(1D);
-		this.isImmuneToFire = true;
-		this.hasAimedBowAnim = false;
+	public static AttributeSupplier.Builder createAttributes() {
+		return GenericNPC.createAttributes(0.35D, 30D, 7D, 50D).add(Attributes.ARMOR_TOUGHNESS, 1D);
 	}
 
 	@Override
 	protected void addRandomArmor(int difficulty) {
-
-		// No Armor
-		// Weapons
-		Item weapon = null;
-		
-		weapon = TGuns.netherblaster;
-		
-		if (weapon != null) this.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, new ItemStack(weapon));
-	}
-	
-	@Override
-	public SoundEvent getAmbientSound() {
-		return techguns.TGSounds.CYBERDEMON_IDLE;
+		equip(EquipmentSlot.MAINHAND, TGuns.NETHERBLASTER.get());
 	}
 
 	@Override
-	public SoundEvent getHurtSound(DamageSource damageSourceIn) {
-		return techguns.TGSounds.CYBERDEMON_HURT;
+	protected boolean shouldBurnInDay() {
+		return false;
 	}
 
-	@Override
-	public SoundEvent getDeathSound() {
-		return techguns.TGSounds.CYBERDEMON_DEATH;
-	}
-
-	public SoundEvent getStepSound() {
-		return techguns.TGSounds.CYBERDEMON_STEP;
-	}
-	
 	@Override
 	public boolean hasWeaponArmPose() {
 		return false;
 	}
 
-	
-	
 	@Override
 	public float getWeaponPosX() {
 		return 0.16f;
@@ -92,8 +57,6 @@ public class CyberDemon extends GenericNPCUndead {
 		return 1.5f;
 	}
 
-	
-	
 	@Override
 	public float getBulletOffsetSide() {
 		return 0.3f;
@@ -105,21 +68,22 @@ public class CyberDemon extends GenericNPCUndead {
 	}
 
 	@Override
-    protected void playStepSound(BlockPos pos, Block blockIn)
-    {
-        this.playSound(this.getStepSound(), 0.15F, 1.0F);
-    }
-	
-	
-	@Override
-	protected ResourceLocation getLootTable() {
-		return LOOT;
+	protected SoundEvent getAmbientSound() {
+		return TGSounds.CYBERDEMON_IDLE.get();
 	}
 
 	@Override
-	protected boolean shouldBurnInDay() {
-		return false;
+	protected SoundEvent getHurtSound(DamageSource src) {
+		return TGSounds.CYBERDEMON_HURT.get();
 	}
-	
-	
+
+	@Override
+	protected SoundEvent getDeathSound() {
+		return TGSounds.CYBERDEMON_DEATH.get();
+	}
+
+	@Override
+	protected SoundEvent getStepSound() {
+		return TGSounds.CYBERDEMON_STEP.get();
+	}
 }

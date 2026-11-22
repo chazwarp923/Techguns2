@@ -1,82 +1,56 @@
 package techguns.entities.npcs;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.init.SoundEvents;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
 import techguns.TGArmors;
 import techguns.TGuns;
-import techguns.Techguns;
+import techguns.items.armors.GenericArmorMultiCamo;
 
+/** 1.12 DictatorDave */
 public class DictatorDave extends GenericNPC {
 
-	public static final ResourceLocation LOOT = new ResourceLocation(Techguns.MODID, "entities/dictatordave");
-	
-	public DictatorDave(World world) {
-		super(world);
-		setTGArmorStats(15.0f, 0f);
+	public DictatorDave(EntityType<? extends DictatorDave> type, Level level) {
+		super(type, level);
+		setTGArmorStats(15f, 0f);
+		this.xpReward = 35;
 	}
 
-	@Override
-	protected void applyEntityAttributes() {
-		super.applyEntityAttributes();
-		this.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).setBaseValue(0.40D);
-		this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(100);
-		this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).setBaseValue(7);
-		this.getEntityAttribute(SharedMonsterAttributes.FOLLOW_RANGE).setBaseValue(60.0D);
-		this.getEntityAttribute(SharedMonsterAttributes.ARMOR_TOUGHNESS).setBaseValue(2D);
-		this.experienceValue = 35;
+	public static AttributeSupplier.Builder createAttributes() {
+		return GenericNPC.createAttributes(0.4D, 100D, 7D, 60D).add(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR_TOUGHNESS, 2D);
 	}
 
 	@Override
 	protected void addRandomArmor(int difficulty) {
-
-		// Armors
-				this.setItemStackToSlot(EntityEquipmentSlot.HEAD, new ItemStack(TGArmors.t2_beret));
-				this.setItemStackToSlot(EntityEquipmentSlot.CHEST,new ItemStack(TGArmors.t1_combat_Chestplate));
-				this.setItemStackToSlot(EntityEquipmentSlot.LEGS, new ItemStack(TGArmors.t1_scout_Leggings));
-			    this.setItemStackToSlot(EntityEquipmentSlot.FEET, new ItemStack(TGArmors.t1_combat_Boots));
-
-				// Weapons
-				Item weapon = TGuns.goldenrevolver;
-				
-				if (weapon != null) this.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, new ItemStack(weapon));
-	}
-	
-	@Override
-	public SoundEvent getAmbientSound() {
-		return SoundEvents.ENTITY_VILLAGER_AMBIENT;
+		equip(EquipmentSlot.HEAD, TGArmors.BERET.get());
+		equip(EquipmentSlot.CHEST, TGArmors.T1_COMBAT_CHESTPLATE.get());
+		equip(EquipmentSlot.LEGS, TGArmors.T1_SCOUT_LEGGINGS.get());
+		equip(EquipmentSlot.FEET, TGArmors.T1_COMBAT_BOOTS.get());
+		equip(EquipmentSlot.MAINHAND, TGuns.GOLDENREVOLVER.get());
 	}
 
 	@Override
-	public SoundEvent getHurtSound(DamageSource damageSourceIn) {
-		return SoundEvents.ENTITY_VILLAGER_HURT;
+	protected SoundEvent getAmbientSound() {
+		return SoundEvents.VILLAGER_AMBIENT;
 	}
 
 	@Override
-	public SoundEvent getDeathSound() {
-		return SoundEvents.ENTITY_VILLAGER_DEATH;
+	protected SoundEvent getHurtSound(DamageSource src) {
+		return SoundEvents.VILLAGER_HURT;
 	}
 
-	public SoundEvent getStepSound() {
-		return SoundEvents.ENTITY_ZOMBIE_VILLAGER_STEP;
+	@Override
+	protected SoundEvent getDeathSound() {
+		return SoundEvents.VILLAGER_DEATH;
 	}
-	
+
 	@Override
-    protected void playStepSound(BlockPos pos, Block blockIn)
-    {
-        this.playSound(this.getStepSound(), 0.15F, 1.0F);
-    }
-	
-	@Override
-	protected ResourceLocation getLootTable() {
-		return LOOT;
+	protected SoundEvent getStepSound() {
+		return SoundEvents.ZOMBIE_VILLAGER_STEP;
 	}
 }

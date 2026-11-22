@@ -1,0 +1,15 @@
+{
+  "type": "techguns:ammo_change_crafting",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "techguns:m4"
+    },
+    {
+      "item": "techguns:assaultriflemagazine"
+    }
+  ],
+  "result": {
+    "id": "techguns:m4"
+  }
+}

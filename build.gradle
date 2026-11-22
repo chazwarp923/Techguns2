@@ -1,137 +1,161 @@
-buildscript {
-    repositories {
-        jcenter()
-        maven { url = "http://files.minecraftforge.net/maven" }
-    }
-    dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
-    }
-}
-apply plugin: 'net.minecraftforge.gradle.forge'
-//Only edit below this line, the above code adds and enables the necessary things for Forge to be setup.
-
-
-version = "1.12.2-2.0.2.0"
-group = "techguns" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
-archivesBaseName = "techguns"
-
-sourceCompatibility = targetCompatibility = '1.8' // Need this here so eclipse task generates correctly.
-compileJava {
-    sourceCompatibility = targetCompatibility = '1.8'
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'idea'
+    id 'net.neoforged.moddev' version '2.0.148'
 }
 
-minecraft {
-    version = "1.12.2-14.23.5.2807"
-    runDir = "run"
-    
-    // the mappings can be changed at any time, and must be in the following format.
-    // snapshot_YYYYMMDD   snapshot are built nightly.
-    // stable_#            stables are built at the discretion of the MCP team.
-    // Use non-default mappings at your own risk. they may not always work.
-    // simply re-run your setup task after changing the mappings to update your workspace.
-    mappings = "snapshot_20180104"
-    // makeObfSourceJar = false // an Srg named sources jar is made by default. uncomment this to disable.
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = mod_id
 }
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 repositories {
-	maven {
-		url 'https://repo.elytradev.com/'
-	}
-	maven {
-		// location of the maven that hosts JEI files
-		name = "Progwml6 maven"
-		url = "http://dvs1.progwml6.com/files/maven"
-	}
-	maven {
-		// location of a maven mirror for JEI files, as a fallback
-		name = "ModMaven"
-		url = "modmaven.k-4u.nl"
-	}
-	maven {
-        name = "CurseForge"
-        url = "https://minecraft.curseforge.com/api/maven/"
+    // Add mod dependency repositories here (e.g. JEI, CraftTweaker) once the port reaches that point.
+    maven {
+        name = "Curios"
+        url = "https://maven.theillusivec4.top/"
+        content { includeGroup "top.theillusivec4.curios" }
     }
-	//ivy { name "com.latmod.mods"; artifactPattern "http://mods.latmod.com/[module]/[revision]/[module]-[revision](-[classifier]).[ext]" }
-	maven { 
-		name="Latmods"
-		url "https://maven.latmod.com/"
-	}
-	maven {
-		name = "OpenComputers"
-		url = "http://maven.cil.li/"
-	}
+    maven {
+        name = "Jared's maven (JEI)"
+        url = "https://maven.blamejared.com/"
+        content {
+            includeGroup "mezz.jei"
+            includeGroup "net.mezzdev.config"
+        }
+    }
+    maven {
+        name = "FTB"
+        url = "https://maven.ftb.dev/releases"
+        content { includeGroup "dev.ftb.mods" }
+    }
+    maven {
+        name = "Architectury"
+        url = "https://maven.architectury.dev/"
+        content { includeGroup "dev.architectury" }
+    }
+    maven {
+        name = "Modrinth"
+        url = "https://api.modrinth.com/maven"
+        content { includeGroup "maven.modrinth" }
+    }
 }
+
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    // Uncomment once src/main/resources/META-INF/accesstransformer.cfg exists (the 1.12.2 techguns_at.cfg uses old SRG names).
+    // accessTransformers = files('src/main/resources/META-INF/accesstransformer.cfg')
+
+    runs {
+        client {
+            client()
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        server {
+            server()
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        gameTestServer {
+            type = 'gameTestServer'
+            gameDirectory = project.file('run-gametest')
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        data {
+            data()
+            programArguments.addAll '--mod', project.mod_id, '--all',
+                    '--output', file('src/generated/resources/').getAbsolutePath(),
+                    '--existing', file('src/main/resources/').getAbsolutePath()
+        }
+
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+}
+
 dependencies {
-    // you may put jars on which you depend on in ./libs
-    // or you may define them like so..
-    //compile "some.group:artifact:version:classifier"
-    //compile "some.group:artifact:version"
-      
-    // real examples
-    //compile 'com.mod-buildcraft:buildcraft:6.0.8:dev'  // adds buildcraft to the dev env
-    //compile 'com.googlecode.efficient-java-matrix-library:ejml:0.24' // adds ejml to the dev env
+    // Mod dependencies go here, e.g.:
+    // compileOnly "mezz.jei:jei-1.21.1-neoforge-api:<version>"
+    // localRuntime "mezz.jei:jei-1.21.1-neoforge:<version>"
 
-    // the 'provided' configuration is for optional dependencies that exist at compile-time but might not at runtime.
-    //provided 'com.mod-buildcraft:buildcraft:6.0.8:dev'
-
-    // the deobf configurations:  'deobfCompile' and 'deobfProvided' are the same as the normal compile and provided,
-    // except that these dependencies get remapped to your current MCP mappings
-    //deobfCompile 'com.mod-buildcraft:buildcraft:6.0.8:dev'
-    //deobfProvided 'com.mod-buildcraft:buildcraft:6.0.8:dev'
-
-    // for more info...
-    // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
-    // http://www.gradle.org/docs/current/userguide/dependency_management.html
-
-	//compile 'elucent:albedo:2.0-SNAPSHOT'
-	//deobfCompile 'albedo:albedo:0.1.3:deobf'
-	compile 'albedo:albedo:1.12.2:1.1.0'
-	
-	compile 'crafttweaker:CraftTweaker2:1.12:4.1.13'
-	
-	//provided 'chisel:Chisel-MC1.12:0.0.14.18:api'
-	//provided 'chisel:Chisel:MC1.12:0.0.14.18'
-	
-	compile 'the-lost-cities:lostcities:1.12:2.0.12'
-	
-	//compile 'com.latmod.mods:FTBLib:4.2.5:api'
-	deobfCompile "com.feed_the_beast.mods:FTBLib:5.4.0.64"
-	
-	 // compile against the JEI API but do not include it at runtime
-	deobfProvided "mezz.jei:jei_${mc_version}:${jei_version}:api"
-	// at runtime, use the full JEI jar
-	runtime "mezz.jei:jei_${mc_version}:${jei_version}"
-	
-	deobfCompile "li.cil.oc:OpenComputers:${openComputersVersion}"
+    // face / back / hands, ammo, food and healing slots (replaces the 1.12 Techguns player inventory)
+    implementation "top.theillusivec4.curios:curios-neoforge:${curios_version}"
+    // JEI only in the dev client, not a dependency of the mod
+    // JEI: recipe categories for the machines (techguns.plugins.jei), the full mod only in the dev client
+    compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
+    compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
+    localRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+    // JEI needs the mezz_config mod at runtime, its pom only pulls in the API
+    localRuntime "net.mezzdev.config:mezz_config-${minecraft_version}-neoforge:${mezz_config_version}"
+    // FTB Teams: optional, gives the machine security its ally / team levels
+    compileOnly "dev.ftb.mods:ftb-teams-neoforge:${ftb_teams_version}"
+    localRuntime "dev.ftb.mods:ftb-teams-neoforge:${ftb_teams_version}"
+    localRuntime "dev.ftb.mods:ftb-library-neoforge:${ftb_library_version}"
+    localRuntime "dev.architectury:architectury-neoforge:${architectury_version}"
+    // Powah (FE generators to power the machines) and its dependencies, dev client only
+    localRuntime "maven.modrinth:powah:${powah_version}"
+    localRuntime "maven.modrinth:cloth-config:${cloth_config_version}"
+    localRuntime "maven.modrinth:guideme:${guideme_version}"
+    // C2ME (multithreaded chunk generation), dev client only: tests worldgen code under concurrency; bundles its own libraries
+    localRuntime "maven.modrinth:c2me-neoforge:${c2me_version}"
 }
 
-processResources {
-    // this will ensure that this task is redone when the versions change.
-    inputs.property "version", project.version
-    inputs.property "mcversion", project.minecraft.version
+var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from 'src/main/templates'
+    into 'build/generated/sources/modMetadata'
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
 
-    // replace stuff in mcmod.info, nothing else
-    from(sourceSets.main.resources.srcDirs) {
-        include 'mcmod.info'
-                
-        // replace version and mcversion
-        expand 'version':project.version, 'mcversion':project.minecraft.version
-    }
-        
-    // copy everything else except the mcmod.info
-    from(sourceSets.main.resources.srcDirs) {
-        exclude 'mcmod.info'
-    }
-	
-	rename '(.+_at.cfg)', 'META-INF/$1'
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
 }
 
-
-jar {
-
-	manifest {
-		attributes 'FMLCorePlugin': "techguns.core.TechgunsFMLPlugin"
-		attributes 'FMLCorePluginContainsFMLMod': "true"
-	    attributes 'FMLAT': 'techguns_at.cfg'
-	}
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
 }

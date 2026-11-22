@@ -1,172 +1,132 @@
 package techguns.tileentities.operation;
 
-import java.util.ArrayList;
-import java.util.Random;
+import java.util.List;
 
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraftforge.fluids.FluidStack;
-import techguns.TGRadiationSystem;
-import techguns.entities.special.EntityRadiation;
+import javax.annotation.Nullable;
+
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.level.Level;
+import techguns.recipes.ReactionChamberRecipe;
 import techguns.tileentities.ReactionChamberTileEntMaster;
 
+/**
+ * Running reaction (1.12 ReactionChamberOperation): every {@link #RECIPE_TICKRATE} ticks the reaction completes one step
+ * if powered, the focus still matches and intensity / liquid level are right. Unstable recipes move the wanted
+ * intensity around.
+ */
 public class ReactionChamberOperation extends MachineOperation {
 
-	public static final byte RECIPE_TICKRATE=60;
+	public static final int RECIPE_TICKRATE = 60;
 
+	@Nullable
+	protected ResourceLocation recipeId;
+	@Nullable
 	protected ReactionChamberRecipe recipe;
-	
-	public byte completion;
-	public byte required_intensity;
-	public byte nextTick;
-	
-	Random rnd;
-	
-	public ReactionChamberOperation(NBTTagCompound tags, ReactionChamberTileEntMaster tile) {
-		super(new ArrayList<ItemStack>(), new ArrayList<ItemStack>(), null, null, 1);
-		this.readFromNBT(tags);
-		this.rnd=new Random();
-	}
-	
-	
-	public ReactionChamberOperation(ReactionChamberRecipe r, ReactionChamberTileEntMaster tile) {
-		super(new ArrayList<ItemStack>(), new ArrayList<ItemStack>(), null, null, 1);
-		ItemStack input =tile.input.get().copy();
-		input.setCount(1);
-		this.inputs.add(input);
-		this.outputs.addAll(r.outputs);
-		if(r.liquidConsumtion>0) {
-			this.fluid_inputs = new ArrayList<FluidStack>();
-			this.fluid_inputs.add(new FluidStack(r.liquidIn,r.liquidConsumtion));
-		}
-		this.recipe=r;
-		this.completion=0;
-		this.nextTick=RECIPE_TICKRATE;
-		this.required_intensity=r.preferredIntensity;
-		this.rnd=new Random();
+	public int completion = 0;
+	public int requiredIntensity = 0;
+	public int nextTick = RECIPE_TICKRATE;
+
+	public ReactionChamberOperation() {
 	}
 
-	@Override
-	protected void writeSubclassDataToNBT(NBTTagCompound tags) {
-		super.writeSubclassDataToNBT(tags);
-		if(recipe!=null) {
-			tags.setString("ReactionID", recipe.ID);
-		}
-		tags.setByte("completion", completion);
-		tags.setByte("required_intensity", required_intensity);
-		tags.setByte("nextTick", nextTick);
+	public ReactionChamberOperation(RecipeHolder<ReactionChamberRecipe> holder, ItemStack input) {
+		super(holder.value().results(), List.of(input.copyWithCount(1)));
+		this.recipeId = holder.id();
+		this.recipe = holder.value();
+		this.requiredIntensity = recipe.intensity();
+		this.setPowerPerTick(recipe.power());
 	}
 
-	@Override
-	protected void readSubClassDataFromNBT(NBTTagCompound tags) {
-		super.readSubClassDataFromNBT(tags);
-		String recID = tags.getString("ReactionID");
-		this.recipe = ReactionChamberRecipe.getByKey(recID);
-		if(this.recipe==null) {
-			System.out.println("WARNING: RECIPE UNKNOWN:"+recID);
+	@Nullable
+	public ReactionChamberRecipe getRecipe(@Nullable Level level) {
+		if (recipe == null && recipeId != null && level != null) {
+			level.getRecipeManager().byKey(recipeId).ifPresent(h -> {
+				if (h.value() instanceof ReactionChamberRecipe r) {
+					this.recipe = r;
+				}
+			});
 		}
-		this.completion=tags.getByte("completion");
-		this.required_intensity = tags.getByte("required_intensity");
-		this.nextTick=tags.getByte("nextTick");
-	}
-
-	public ReactionChamberRecipe getRecipe() {
 		return recipe;
 	}
 
-	public boolean focusMatches(ItemStack item){
-		return this.recipe.beamFocus == ReactionBeamFocus.getBeamFocus(item);
-	}
-	
-	public boolean tick(byte intensity,byte liquidLevel, boolean client, ReactionChamberTileEntMaster tile, int RFTick){
-		int progress = tile.progress;
-		int totalTime = tile.totaltime;
-		
+	/** reaction tick, returns true if something changed the server has to send */
+	public boolean tick(ReactionChamberTileEntMaster tile, ReactionChamberRecipe rec, RandomSource rnd) {
 		nextTick--;
-		if (!client && nextTick==0 && progress<totalTime){
-			boolean powered = tile.consumePower(RFTick);
-			
-			boolean focusMatch = focusMatches(tile.getInventory().getStackInSlot(ReactionChamberTileEntMaster.SLOT_FOCUS));
-			
-			//do recipe tick
-			if (powered && focusMatch && this.required_intensity==intensity && this.recipe.liquidLevel==liquidLevel){
+		boolean client = tile.getLevel().isClientSide;
+		if (!client && nextTick <= 0 && tile.progress < tile.totaltime) {
+			boolean powered = tile.consumeReactionPower(rec.power());
+			boolean focusMatch = tile.getFocus().is(rec.focus());
+			boolean success = powered && focusMatch && this.requiredIntensity == tile.getIntensity() && rec.liquidLevel() == tile.getLiquidLevel();
+			if (success) {
 				completion++;
-				this.doRadiation(tile, true);
-			} else {
-				this.doRadiation(tile, false);
 			}
-			
-			if(!focusMatch) {
-				//instantly finish operation on focus mismatch and remove all completion
-				tile.progress=tile.totaltime;
-				this.completion=0;
-			} else {
-			
-				if(this.recipe.instability>0.0f && rnd.nextFloat() < this.recipe.instability) {
-					//rolled a change
-					
-					int val = 1;
-					if(this.recipe.intensityMargin>1) {
-						val += rnd.nextInt(this.recipe.intensityMargin);
-					}
-					
-					if(rnd.nextBoolean()) {
-						this.required_intensity-=val;
-						if(this.required_intensity<0) {
-							this.required_intensity=0;
-						}
-					} else {
-						this.required_intensity+=val;
-						if(this.required_intensity>10) {
-							this.required_intensity=10;
-						}
-					}
-					
+			doRadiation(tile, success);
+			if (!focusMatch) {
+				tile.progress = tile.totaltime;
+				this.completion = 0;
+			} else if (rec.instability() > 0.0f && rnd.nextFloat() < rec.instability()) {
+				int val = 1;
+				if (rec.intensityMargin() > 1) {
+					val += rnd.nextInt(rec.intensityMargin());
 				}
-			}
-			nextTick=RECIPE_TICKRATE;
-			
-			return true;
-		} else {
-			return this.isFinished(tile);
-		}
-	}
-	
-	public void doRadiation(ReactionChamberTileEntMaster tile, boolean success) {
-		if(!tile.getWorld().isRemote && TGRadiationSystem.isEnabled()) { 
-			ReactionBeamFocus focus = ReactionBeamFocus.getBeamFocus(tile.getInventory().getStackInSlot(ReactionChamberTileEntMaster.SLOT_FOCUS));
-			if(focus!=null) {
-				int rad=0;
-				if(success) {
-					rad = (int) Math.ceil(focus.radiationFactor_success*tile.getIntensity());
+				if (rnd.nextBoolean()) {
+					this.requiredIntensity = Math.max(0, this.requiredIntensity - val);
 				} else {
-					rad = (int) Math.ceil(focus.radiationFactor_failure*tile.getIntensity());
+					this.requiredIntensity = Math.min(ReactionChamberRecipe.MAX_LEVEL, this.requiredIntensity + val);
 				}
-				
-				if(rad>0) {
-					
-					TGRadiationSystem.applyRadToEntities(tile, focus.rad_radius_outer, 62, rad-1, focus.rad_radius_inner, 0);
-					
-				}
-				
 			}
+			nextTick = RECIPE_TICKRATE;
+			return true;
 		}
-	}
-	
-	public boolean isFinished(ReactionChamberTileEntMaster master){
-		return master.progress>=master.totaltime || this.completion>=this.getRecipe().requiredCompletion;
-	}
-	
-	public boolean isSuccess(){
-		return this.completion>=this.getRecipe().requiredCompletion;
-	}
-	
-	public boolean isFailure(ReactionChamberTileEntMaster master){
-		return master.progress>=master.totaltime;
-	}
-	
-	public int getCurrentPreferedIntensity(){
-		return this.required_intensity;
+		return isFinished(tile, rec);
 	}
 
+	/** reactions give off radiation depending on focus and intensity, more when failing */
+	private void doRadiation(ReactionChamberTileEntMaster tile, boolean success) {
+		if (!techguns.radiation.TGRadiationSystem.isEnabled()) {
+			return;
+		}
+		ReactionBeamFocus focus = ReactionBeamFocus.get(tile.getFocus());
+		if (focus == null) {
+			return;
+		}
+		int rad = (int) Math.ceil((success ? focus.radiationFactorSuccess() : focus.radiationFactorFailure()) * tile.getIntensity());
+		if (rad > 0) {
+			net.minecraft.core.BlockPos p = tile.getBlockPos();
+			techguns.radiation.TGRadiationSystem.applyRadToEntities(tile.getLevel(), p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5, focus.radRadiusOuter(), 62,
+					rad - 1, focus.radRadiusInner(), 0);
+		}
+	}
+
+	public boolean isFinished(ReactionChamberTileEntMaster tile, ReactionChamberRecipe rec) {
+		return tile.progress >= tile.totaltime || isSuccess(rec);
+	}
+
+	public boolean isSuccess(ReactionChamberRecipe rec) {
+		return this.completion >= rec.requiredCompletion();
+	}
+
+	@Override
+	protected void writeSubclassData(CompoundTag tags, HolderLookup.Provider reg) {
+		if (recipeId != null) {
+			tags.putString("recipe", recipeId.toString());
+		}
+		tags.putByte("completion", (byte) completion);
+		tags.putByte("requiredIntensity", (byte) requiredIntensity);
+		tags.putByte("nextTick", (byte) nextTick);
+	}
+
+	@Override
+	protected void readSubclassData(CompoundTag tags, HolderLookup.Provider reg) {
+		this.recipeId = tags.contains("recipe") ? ResourceLocation.tryParse(tags.getString("recipe")) : null;
+		this.recipe = null;
+		this.completion = tags.getByte("completion");
+		this.requiredIntensity = tags.getByte("requiredIntensity");
+		this.nextTick = tags.getByte("nextTick");
+	}
 }

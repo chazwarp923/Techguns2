@@ -1,99 +1,99 @@
 package techguns.items.additionalslots;
 
 import java.util.List;
+import java.util.function.Supplier;
 
-import com.mojang.realmsclient.gui.ChatFormatting;
+import javax.annotation.Nullable;
 
-import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.EnumActionResult;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.World;
-import techguns.Techguns;
-import techguns.api.tginventory.ITGSpecialSlot;
+import net.minecraft.ChatFormatting;
+import net.minecraft.locale.Language;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import techguns.api.tginventory.TGSlotType;
-import techguns.capabilities.TGExtendedPlayer;
-import techguns.gui.player.TGPlayerInventory;
 import techguns.items.GenericItem;
 import techguns.items.armors.ICamoChangeable;
+import techguns.util.InventoryUtil;
 import techguns.util.TextUtil;
 
-public abstract class ItemTGSpecialSlot extends GenericItem implements ITGSpecialSlot, ICamoChangeable {
-	protected ResourceLocation texture;
-	protected byte camoCount;
-	
-	protected TGSlotType slot;
-	
-	public ItemTGSpecialSlot(String unlocalizedName, TGSlotType slot, int camoCount,int dur) {
-		super(unlocalizedName);
-	    this.maxStackSize=1;
-	    this.setMaxDamage(dur);
-	    this.camoCount = (byte) camoCount;
-	    this.slot=slot;
-	    
+/**
+ * Item worn in a Curios face / back / hands slot (1.12 ItemTGSpecialSlot + ItemTGSpecialSlotAmmo). Durability is
+ * used as charge: at max damage the item stops working (it never breaks) and reloads from its ammo item.
+ */
+public abstract class ItemTGSpecialSlot extends GenericItem implements ICamoChangeable {
+
+	protected final int camoCount;
+	@Nullable
+	protected final Supplier<? extends Item> ammo;
+	@Nullable
+	protected final Supplier<? extends Item> ammoEmpty;
+
+	/** dur &lt;= 0: no durability */
+	protected ItemTGSpecialSlot(TGSlotType slot, int camoCount, int dur, @Nullable Supplier<? extends Item> ammo,
+			@Nullable Supplier<? extends Item> ammoEmpty) {
+		super(dur > 0 ? new Item.Properties().durability(dur) : new Item.Properties().stacksTo(1), slot, false);
+		this.camoCount = Math.max(1, camoCount);
+		this.ammo = ammo;
+		this.ammoEmpty = ammoEmpty;
 	}
-	
+
+	protected ItemTGSpecialSlot(TGSlotType slot, int camoCount, int dur) {
+		this(slot, camoCount, dur, null, null);
+	}
+
+	/** charge left (not at max damage) */
+	public static boolean hasCharge(ItemStack stack) {
+		return !stack.isDamageableItem() || stack.getDamageValue() < stack.getMaxDamage();
+	}
+
+	/** uses charge without ever breaking the item */
+	public static void useCharge(ItemStack stack, int amount) {
+		if (stack.isDamageableItem()) {
+			stack.setDamageValue(Math.min(stack.getMaxDamage(), stack.getDamageValue() + amount));
+		}
+	}
+
+	/** server: consume one ammo item from the player, refill and give back the empty container */
+	protected void tryReloadAndRepair(ItemStack item, Player ply) {
+		if (this.ammo == null || ply.level().isClientSide) {
+			return;
+		}
+		if (InventoryUtil.consumeAmmoPlayer(ply, new ItemStack(this.ammo.get()))) {
+			item.setDamageValue(0);
+			if (this.ammoEmpty != null) {
+				int left = InventoryUtil.addAmmoToPlayerInventory(ply, new ItemStack(this.ammoEmpty.get()));
+				if (left > 0) {
+					ply.level().addFreshEntity(new ItemEntity(ply.level(), ply.getX(), ply.getY(), ply.getZ(), new ItemStack(this.ammoEmpty.get(), left)));
+				}
+			}
+		}
+	}
+
 	@Override
 	public int getCamoCount() {
 		return this.camoCount;
 	}
 
 	@Override
-	public String getCurrentCamoName(ItemStack item) {
-		NBTTagCompound tags = item.getTagCompound();
-		byte camoID=0;
-		if (tags!=null && tags.hasKey("camo")){
-			camoID=tags.getByte("camo");
+	public Component getCurrentCamoName(ItemStack item) {
+		String key = this.getDescriptionId() + ".camoname." + getCurrentCamoIndex(item);
+		if (Language.getInstance().has(key)) {
+			return Component.translatable(key);
 		}
-		if(camoID>0){
-			return TextUtil.trans(this.getUnlocalizedName()+".camoname."+camoID);
-		} else {
-			return TextUtil.trans("techguns.item.defaultcamo");
-		}
+		return TextUtil.transTG("item.defaultcamo");
 	}
 
 	@Override
-	public TGSlotType getSlot(ItemStack item) {
-		return slot;
-	}
-
-	@Override
-	public void addInformation(ItemStack stack, World worldIn, List<String> tooltip, ITooltipFlag flagIn) {
-		super.addInformation(stack, worldIn, tooltip, flagIn);
-		tooltip.add(ChatFormatting.GRAY+TextUtil.trans(Techguns.MODID+".tooltip.slot")+": "+this.getSlot(stack));
-	}
-	
-	@Override
-	public ActionResult<ItemStack> onItemRightClick(World worldIn, EntityPlayer playerIn, EnumHand handIn) {
-		ItemStack stack = playerIn.getHeldItem(handIn);
-		
-		if(this.getSlot(stack)==TGSlotType.BACKSLOT) {
-			TGExtendedPlayer props  = TGExtendedPlayer.get(playerIn);
-			if (props.tg_inventory.inventory.get(TGPlayerInventory.SLOT_BACK).isEmpty()){
-				props.tg_inventory.inventory.set(TGPlayerInventory.SLOT_BACK,stack.copy());
-				stack.setCount(0);
-				return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, stack);
-			}
-		} else if (this.getSlot(stack)==TGSlotType.FACESLOT){
-			TGExtendedPlayer props  = TGExtendedPlayer.get(playerIn);
-			if (props.tg_inventory.inventory.get(TGPlayerInventory.SLOT_FACE).isEmpty()){
-				props.tg_inventory.inventory.set(TGPlayerInventory.SLOT_FACE,stack.copy());
-				stack.setCount(0);
-				return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, stack);
-			}
-		} else if (this.getSlot(stack)==TGSlotType.HANDSLOT){
-			TGExtendedPlayer props  = TGExtendedPlayer.get(playerIn);
-			if (props.tg_inventory.inventory.get(TGPlayerInventory.SLOT_HAND).isEmpty()){
-				props.tg_inventory.inventory.set(TGPlayerInventory.SLOT_HAND,stack.copy());
-				stack.setCount(0);
-				return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, stack);
-			}
+	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
+		super.appendHoverText(stack, context, tooltip, flag);
+		if (this.ammo != null) {
+			tooltip.add(TextUtil.transTG("tooltip.reloads_with").append(": ").append(this.ammo.get().getDescription()).withStyle(ChatFormatting.AQUA));
 		}
-		return super.onItemRightClick(worldIn, playerIn, handIn);
+		if (this.camoCount > 1) {
+			tooltip.add(TextUtil.transTG("tooltip.currentcamo").append(": ").append(getCurrentCamoName(stack)).withStyle(ChatFormatting.GRAY));
+		}
 	}
-
 }

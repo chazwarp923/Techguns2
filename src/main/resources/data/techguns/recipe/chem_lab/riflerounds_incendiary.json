@@ -1,0 +1,17 @@
+{
+  "type": "techguns:chem_lab",
+  "input1": {
+    "item": "techguns:riflerounds"
+  },
+  "input2": {
+    "item": "minecraft:blaze_powder"
+  },
+  "fluid_input": {
+    "tag": "minecraft:lava",
+    "amount": 250
+  },
+  "result": {
+    "id": "techguns:riflerounds_incendiary"
+  },
+  "power_per_tick": 25
+}

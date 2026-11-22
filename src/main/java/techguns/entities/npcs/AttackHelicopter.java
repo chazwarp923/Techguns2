@@ -1,365 +1,153 @@
 package techguns.entities.npcs;
 
-import java.util.Random;
+import java.util.EnumSet;
 
-import javax.annotation.Nullable;
-
-import net.minecraft.entity.EntityFlying;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.entity.ai.EntityAIBase;
-import net.minecraft.entity.ai.EntityAIFindEntityNearestPlayer;
-import net.minecraft.entity.ai.EntityMoveHelper;
-import net.minecraft.entity.item.EntityXPOrb;
-import net.minecraft.entity.monster.EntityGhast;
-import net.minecraft.entity.monster.IMob;
-import net.minecraft.network.datasync.DataParameter;
-import net.minecraft.network.datasync.DataSerializers;
-import net.minecraft.network.datasync.EntityDataManager;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.EnumDifficulty;
-import net.minecraft.world.World;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
-import techguns.TGPackets;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.Difficulty;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.FlyingMob;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.control.LookControl;
+import net.minecraft.world.entity.ai.control.MoveControl;
+import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
+import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import techguns.TGSounds;
-import techguns.Techguns;
 import techguns.api.npc.INPCTechgunsShooter;
 import techguns.api.npc.INpcTGDamageSystem;
-import techguns.capabilities.TGSpawnerNPCData;
-import techguns.client.audio.TGSoundCategory;
 import techguns.damagesystem.TGDamageSource;
 import techguns.entities.projectiles.EnumBulletFirePos;
 import techguns.entities.projectiles.GenericProjectile;
 import techguns.entities.projectiles.RocketProjectile;
-import techguns.packets.PacketPlaySound;
-import techguns.util.MathUtil;
+import techguns.packets.PacketSpawnParticle;
+import techguns.packets.TGPackets;
 
-public class AttackHelicopter extends GenericFlyingMob
-{
-    private static final DataParameter<Boolean> ATTACKING = EntityDataManager.<Boolean>createKey(AttackHelicopter.class, DataSerializers.BOOLEAN);
+/**
+ * 1.12 AttackHelicopter: flies 24 blocks above ground, fires machine gun bursts and rockets at the nearest player,
+ * crashes spinning when killed.
+ */
+public class AttackHelicopter extends FlyingMob implements Enemy, INpcTGDamageSystem, INPCTechgunsShooter {
 
-    private int ambientSoundTick = 0;
-    
-    protected static final int TARGET_FLY_HEIGHT=24;
-    
-    public static final int MAX_DEATH_TIME = 100;
-    
-    protected static final ResourceLocation LOOT = new ResourceLocation(Techguns.MODID, "entities/attackhelicopter");
-	
-    protected boolean tryLink=true;
-    
-    public AttackHelicopter(World worldIn)
-    {
-        super(worldIn);
-        this.setSize(4.0F, 4.0F);
-        this.isImmuneToFire = true;
-        this.experienceValue = 5;
-        this.moveHelper = new GenericFlyingMob.FlyingMobMoveHelper(this);
-    }
+	private static final EntityDataAccessor<Boolean> ATTACKING = SynchedEntityData.defineId(AttackHelicopter.class, EntityDataSerializers.BOOLEAN);
+	protected static final int TARGET_FLY_HEIGHT = 24;
+	public static final int MAX_DEATH_TIME = 100;
+
+	private int ambientSoundTick = 0;
+
+	public AttackHelicopter(EntityType<? extends AttackHelicopter> type, Level level) {
+		super(type, level);
+		this.xpReward = 5;
+		this.moveControl = new FlyingMoveControl(this);
+		this.lookControl = new LookControl(this) {
+			@Override
+			protected boolean resetXRotOnTick() {
+				return false;
+			}
+		};
+	}
+
+	public static AttributeSupplier.Builder createAttributes() {
+		return FlyingMob.createMobAttributes().add(Attributes.MAX_HEALTH, 100D).add(Attributes.FOLLOW_RANGE, 128D).add(Attributes.ARMOR, 16D)
+				.add(Attributes.ARMOR_TOUGHNESS, 5D);
+	}
 
 	@Override
-    @Nullable
-    protected ResourceLocation getLootTable()
-    {
-        return LOOT;
-    }
-    
-    protected void initEntityAI()
-    {
-        this.tasks.addTask(5, new GenericFlyingMob.AIRandomFly(this));
-        this.tasks.addTask(7, new GenericFlyingMob.AILookAround(this));
-        this.tasks.addTask(7, new AttackHelicopter.AIHelicopterAttack(this));
-        this.targetTasks.addTask(1, new EntityAIFindEntityNearestPlayer(this));
-    }
-
-    @SideOnly(Side.CLIENT)
-    public boolean isAttacking()
-    {
-        return ((Boolean)this.dataManager.get(ATTACKING)).booleanValue();
-    }
-
-    public void setAttacking(boolean attacking)
-    {
-        this.dataManager.set(ATTACKING, Boolean.valueOf(attacking));
-    }
-
-    /*public int getFireballStrength()
-    {
-        return this.explosionStrength;
-    }*/
-
-    protected void entityInit()
-    {
-        super.entityInit();
-        this.dataManager.register(ATTACKING, Boolean.valueOf(false));
-    }
-
-    protected void applyEntityAttributes()
-    {
-        super.applyEntityAttributes();
-        this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(100.0D);
-        this.getEntityAttribute(SharedMonsterAttributes.FOLLOW_RANGE).setBaseValue(128.0D);
-       	this.getEntityAttribute(SharedMonsterAttributes.ARMOR).setBaseValue(16.0);
-       	this.getEntityAttribute(SharedMonsterAttributes.ARMOR_TOUGHNESS).setBaseValue(5);
-    }
-
-    public SoundCategory getSoundCategory()
-    {
-        return SoundCategory.HOSTILE;
-    }
-
-    protected SoundEvent getAmbientSound()
-    {
-        return null; //SoundEvents.ENTITY_GHAST_AMBIENT;
-    }
-
-    protected SoundEvent getHurtSound(DamageSource damageSourceIn)
-    {
-        return TGSounds.HELICOPTER_HIT;
-    }
-
-    protected SoundEvent getDeathSound()
-    {
-        return TGSounds.HELICOPTER_HIT;
-    }
-
-    /**
-     * Returns the volume for the sounds this mob makes.
-     */
-    protected float getSoundVolume()
-    {
-        return 10.0F;
-    }
-
-    /**
-     * Checks if the entity's current position is a valid location to spawn this entity.
-     */
-    public boolean getCanSpawnHere()
-    {
-        return this.rand.nextInt(20) == 0 && super.getCanSpawnHere() && this.world.getDifficulty() != EnumDifficulty.PEACEFUL;
-    }
-
-    /**
-     * Will return how many at most can spawn in a chunk at once.
-     */
-    public int getMaxSpawnedInChunk()
-    {
-        return 1;
-    }
-
-    
-    
-    //TODO ???
-    /*public static void registerFixesGhast(DataFixer fixer)
-    {
-        EntityLiving.registerFixesMob(fixer, EntityGhast.class);
-    }*/
-
-    @Override
-	public void onEntityUpdate() {
-		super.onEntityUpdate();
-		
-		 if (--ambientSoundTick <= 0 && this.deathTime == 0) {
-        	this.playSound(TGSounds.HELICOPTER_ROTOR, 6.0f, 1.0f);
-        	ambientSoundTick = 61;
-        }
+	protected void registerGoals() {
+		this.goalSelector.addGoal(5, new RandomFlyGoal(this));
+		this.goalSelector.addGoal(7, new LookAroundGoal(this));
+		this.goalSelector.addGoal(7, new HelicopterAttackGoal(this));
+		this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, Player.class, false));
 	}
 
-    public float getEyeHeight()
-    {
-        return 0.5f;
-    }
-    
-    
-    
-    @Override
-	protected void onDeathUpdate() {
-    	  if (this.deathTime == 0) {
-	        	this.playSound(TGSounds.HELICOPTER_DEATH, 6.0f, 1.0f);
-	        }    	
-	    	++this.deathTime;
-	        
-	    	float yoffset = (float) (Math.pow(((float)deathTime/(float)MAX_DEATH_TIME),2)*10.0f);
-	    	//this.setPosition(this.posX, this.posY-yoffset, this.posZ);
-	    	
-	        if (deathTime % 5 == 0) {
-	           double d2 = this.rand.nextGaussian() * 0.02D;
-	           double d0 = this.rand.nextGaussian() * 0.02D;
-	           double d1 = this.rand.nextGaussian() * 0.02D;
-	         //  Techguns.proxy.spawnParticle("LargeSmoke", this.world, this.posX + (double)(this.rand.nextFloat() * this.width * 2.0F) - (double)this.width, this.posY + (double)(this.rand.nextFloat() * this.height), this.posZ + (double)(this.rand.nextFloat() * this.width * 2.0F) - (double)this.width, d2, d0, d1);
-	        }
-	        if (deathTime % 6 == 0) {
-	        	float v = 1.0f;
-	        	float angle = this.rand.nextFloat()*((float)Math.PI)*2f;
-      		float x = (float) Math.cos(angle);
-      		float z = (float) Math.sin(angle);
-      		float r = 0.5f+(this.rand.nextFloat()*0.5f);
-      		/*Techguns.proxy.spawnParticle("Fireblast", this.world, this.posX+x, this.posY-yoffset, this.posZ+z, x*v*r, r, z*v*r);
-      		Techguns.proxy.spawnParticle("Fireblast", this.world, this.posX+x, this.posY-yoffset, this.posZ+z, x*v*r*0.75f, r, z*v*r*0.75f);
-      		Techguns.proxy.spawnParticle("Fireblast", this.world, this.posX+x, this.posY-yoffset, this.posZ+z, x*v*r*1.25f, r, z*v*r*1.25f);*/
-	        }
-	        
-
-	        if (this.deathTime == MAX_DEATH_TIME)
-	        {
-	
-	            if (!this.world.isRemote && (this.isPlayer() || this.recentlyHit > 0 && this.canDropLoot() && this.world.getGameRules().getBoolean("doMobLoot")))
-	            {
-	                int i = this.getExperiencePoints(this.attackingPlayer);
-	                i = net.minecraftforge.event.ForgeEventFactory.getExperienceDrop(this, this.attackingPlayer, i);
-	                while (i > 0)
-	                {
-	                    int j = EntityXPOrb.getXPSplit(i);
-	                    i -= j;
-	                    this.world.spawnEntity(new EntityXPOrb(this.world, this.posX, this.posY, this.posZ, j));
-	                }
-	            }
-
-	            this.setDead();
-
-	            this.playSound(TGSounds.HELICOPTER_EXPLODE, 6.0f, 1.0f);
-	            
-	            //for (int i = 0; i < 10; ++i)
-	            //{
-	             //   double d2 = this.rand.nextGaussian() * 0.02D;
-	             //   double d0 = this.rand.nextGaussian() * 0.02D;
-	             //   double d1 = this.rand.nextGaussian() * 0.02D;
-	                //Techguns.proxy.spawnParticle("ExplosionHuge", this.world, this.posX + (double)(this.rand.nextFloat() * this.width * 2.0F) - (double)this.width, this.posY + (double)(this.rand.nextFloat() * this.height*2.0f) -10.f, this.posZ + (double)(this.rand.nextFloat() * this.width * 2.0F) - (double)this.width, d2, d0, d1);
-	            	//Techguns.proxy.spawnParticle("LargeSmoke", this.world, this.posX + (double)(this.rand.nextFloat() * this.width * 2.0F) - (double)this.width, this.posY + (double)(this.rand.nextFloat() * this.height*2.0f) -10.f, this.posZ + (double)(this.rand.nextFloat() * this.width * 2.0F) - (double)this.width, d2, d0, d1);
-	            //}
-	            
-	            Techguns.proxy.createFX("HelicopterDeathExplosion", this.world, this.posX, this.posY-8D, this.posZ, 0, 0, 0);
-	        }
+	@Override
+	protected void defineSynchedData(SynchedEntityData.Builder builder) {
+		super.defineSynchedData(builder);
+		builder.define(ATTACKING, false);
 	}
 
+	public boolean isAttacking() {
+		return this.entityData.get(ATTACKING);
+	}
 
+	public void setAttacking(boolean attacking) {
+		this.entityData.set(ATTACKING, attacking);
+	}
 
-	static class AIHelicopterAttack extends EntityAIBase
-        {
-            private final AttackHelicopter parentEntity;
-            public int attackTimer;
+	@Override
+	public SoundSource getSoundSource() {
+		return SoundSource.HOSTILE;
+	}
 
-            public AIHelicopterAttack(AttackHelicopter heli)
-            {
-                this.parentEntity = heli;
-            }
+	@Override
+	protected SoundEvent getAmbientSound() {
+		return null;
+	}
 
-            /**
-             * Returns whether the EntityAIBase should begin execution.
-             */
-            public boolean shouldExecute()
-            {
-                return this.parentEntity.getAttackTarget() != null;
-            }
+	@Override
+	protected SoundEvent getHurtSound(DamageSource src) {
+		return TGSounds.HELICOPTER_HIT.get();
+	}
 
-            /**
-             * Execute a one shot task or start executing a continuous task
-             */
-            public void startExecuting()
-            {
-                this.attackTimer = 0;
-            }
+	@Override
+	protected SoundEvent getDeathSound() {
+		return TGSounds.HELICOPTER_HIT.get();
+	}
 
-            /**
-             * Reset the task's internal state. Called when this task is interrupted by another one
-             */
-            public void resetTask()
-            {
-                this.parentEntity.setAttacking(false);
-            }
+	@Override
+	protected float getSoundVolume() {
+		return 10.0F;
+	}
 
-            /**
-             * Keep ticking a continuous task that has already been started
-             */
-            public void updateTask()
-            {
-                EntityLivingBase entitylivingbase = this.parentEntity.getAttackTarget();
-                double d0 = 64.0D;
+	@Override
+	public void tick() {
+		super.tick();
+		if (!this.level().isClientSide && this.level().getDifficulty() == Difficulty.PEACEFUL) {
+			this.discard();
+			return;
+		}
+		if (--ambientSoundTick <= 0 && this.deathTime == 0) {
+			this.playSound(TGSounds.HELICOPTER_ROTOR.get(), 6.0f, 1.0f);
+			ambientSoundTick = 61;
+		}
+	}
 
-                if (entitylivingbase.getDistanceSq(this.parentEntity) < 4096.0D && this.parentEntity.canEntityBeSeen(entitylivingbase))
-                {
-                    World world = this.parentEntity.world;
-                    ++this.attackTimer;
+	/** 5 second crash, then explodes */
+	@Override
+	protected void tickDeath() {
+		if (this.deathTime == 0) {
+			this.playSound(TGSounds.HELICOPTER_DEATH.get(), 6.0f, 1.0f);
+		}
+		++this.deathTime;
+		if (this.deathTime >= MAX_DEATH_TIME && !this.level().isClientSide() && !this.isRemoved()) {
+			this.playSound(TGSounds.HELICOPTER_EXPLODE.get(), 6.0f, 1.0f);
+			TGPackets.sendToAllAround(new PacketSpawnParticle("HelicopterDeathExplosion", getX(), getY() - 8D, getZ()), this, 150.0);
+			this.level().broadcastEntityEvent(this, (byte) 60);
+			this.remove(Entity.RemovalReason.KILLED);
+		}
+	}
 
-                    if (this.attackTimer >= 14 && (this.attackTimer <24) && (this.attackTimer % 2 == 0))
-                    {
-                    	if(this.attackTimer==14) {
-                    		
-                			TGPackets.network.sendToAllAround(new PacketPlaySound(TGSounds.HELICOPTER_BURST, this.parentEntity, 8.0f, 1.0f, false, false, TGSoundCategory.GUN_FIRE), TGPackets.targetPointAroundEnt(parentEntity, 100.0f));
-                    	}
-     
-                        GenericProjectile bullet = new GenericProjectile(this.parentEntity.world, this.parentEntity,12.0f, 1.0f, 100, 0.05f, 30, 40, 8.0f, 0.25f,false,EnumBulletFirePos.CENTER);         
-                        world.spawnEntity(bullet);
-
-                    } else if (attackTimer == 35) {
-                    	
-
-                    	TGPackets.network.sendToAllAround(new PacketPlaySound(TGSounds.ROCKET_FIRE, this.parentEntity, 8.0f, 1.0f, false, false, TGSoundCategory.GUN_FIRE), TGPackets.targetPointAroundEnt(parentEntity, 100.0f));
-                	    RocketProjectile rocket = new RocketProjectile(this.parentEntity.world, this.parentEntity,12.0f, 1.0f, 100, 0.05f, 30, 40, 8.0f, 0.25f,false,this.parentEntity.rand.nextBoolean()?EnumBulletFirePos.LEFT:EnumBulletFirePos.RIGHT, 4.0f, 0.0f);         
-                        world.spawnEntity(rocket);
-                    	
-                    	
-                    } else if (attackTimer >35) {
-                    	this.attackTimer=-30;
-                    }
-                }
-                else if (this.attackTimer > 0)
-                {
-                    --this.attackTimer;
-                }
-
-                this.parentEntity.setAttacking(this.attackTimer > 10);
-            }
-        }
-
-    
 	@Override
 	public float getTotalArmorAgainstType(TGDamageSource dmgsrc) {
-		switch(dmgsrc.damageType){
-			case EXPLOSION:
-				return 0.0f;
-			case LIGHTNING:
-			case ENERGY:
-				return 10.0f;
-			case FIRE:
-			case ICE:
-			case PHYSICAL:
-			case PROJECTILE:
-			case POISON:
-			case RADIATION:
-				return 20.0f;
-			case UNRESISTABLE:
-			default:
-				return 0.0f;
-		}
-	}
-
-	@Override
-	public float getPenetrationResistance(TGDamageSource dmgsrc) {
-		switch(dmgsrc.damageType){
-		case PROJECTILE:
-			return 0.5f;
-		case EXPLOSION:
-		case LIGHTNING:
-		case ENERGY:
-		case FIRE:
-		case ICE:
-		case PHYSICAL:
-		case POISON:
-		case RADIATION:
-		case UNRESISTABLE:
-			return 0.0f;
-		default:
-			return 0.0f;
-		}
+		return switch (dmgsrc.damageType) {
+			case LIGHTNING, ENERGY -> 10f;
+			case FIRE, ICE, PHYSICAL, PROJECTILE, POISON, RADIATION -> 20f;
+			default -> 0f;
+		};
 	}
 
 	@Override
@@ -382,8 +170,180 @@ public class AttackHelicopter extends GenericFlyingMob
 		return 2.0f;
 	}
 
-	@Override
-	protected int getTargetFlyHeight() {
-		return TARGET_FLY_HEIGHT;
+	/* ------------------------------------------------------------------ AI (1.12 GenericFlyingMob) */
+
+	/** faces its flight direction, or the target with the gun pitched at it */
+	static class LookAroundGoal extends Goal {
+		private final AttackHelicopter mob;
+
+		LookAroundGoal(AttackHelicopter mob) {
+			this.mob = mob;
+			this.setFlags(EnumSet.of(Goal.Flag.LOOK));
+		}
+
+		@Override
+		public boolean canUse() {
+			return true;
+		}
+
+		@Override
+		public boolean requiresUpdateEveryTick() {
+			return true;
+		}
+
+		@Override
+		public void tick() {
+			LivingEntity target = this.mob.getTarget();
+			if (target == null) {
+				Vec3 m = this.mob.getDeltaMovement();
+				if (m.horizontalDistanceSqr() > 1.0E-6) {
+					float yaw = -((float) Mth.atan2(m.x, m.z)) * (180F / (float) Math.PI);
+					this.mob.setYRot(yaw);
+					this.mob.yBodyRot = yaw;
+					this.mob.setYHeadRot(yaw);
+				}
+				this.mob.setXRot(0f);
+			} else if (target.distanceToSqr(this.mob) < 96.0 * 96.0) {
+				Ghastling.aimAt(this.mob, target);
+				if (this.mob.getXRot() < 0f) {
+					this.mob.setXRot(0f);
+				}
+			}
+		}
+	}
+
+	/** picks a random point 16 blocks around at fly height above ground */
+	static class RandomFlyGoal extends Goal {
+		private final AttackHelicopter mob;
+
+		RandomFlyGoal(AttackHelicopter mob) {
+			this.mob = mob;
+			this.setFlags(EnumSet.of(Goal.Flag.MOVE));
+		}
+
+		@Override
+		public boolean canUse() {
+			MoveControl mc = this.mob.getMoveControl();
+			if (!mc.hasWanted()) {
+				return true;
+			}
+			double d0 = mc.getWantedX() - this.mob.getX();
+			double d1 = mc.getWantedY() - this.mob.getY();
+			double d2 = mc.getWantedZ() - this.mob.getZ();
+			double d3 = d0 * d0 + d1 * d1 + d2 * d2;
+			return d3 < 1.0D || d3 > 3600.0D;
+		}
+
+		@Override
+		public boolean canContinueToUse() {
+			return false;
+		}
+
+		@Override
+		public void start() {
+			RandomSource random = this.mob.getRandom();
+			double x = this.mob.getX() + (random.nextFloat() * 2.0F - 1.0F) * 16.0F;
+			double z = this.mob.getZ() + (random.nextFloat() * 2.0F - 1.0F) * 16.0F;
+			int ground = this.mob.level().getHeight(Heightmap.Types.MOTION_BLOCKING, Mth.floor(x), Mth.floor(z));
+			this.mob.getMoveControl().setWantedPosition(x, ground + TARGET_FLY_HEIGHT, z, 1.0D);
+		}
+	}
+
+	/** ghast style movement */
+	static class FlyingMoveControl extends MoveControl {
+		private final AttackHelicopter mob;
+		private int courseChangeCooldown;
+
+		FlyingMoveControl(AttackHelicopter mob) {
+			super(mob);
+			this.mob = mob;
+		}
+
+		@Override
+		public void tick() {
+			if (this.operation == MoveControl.Operation.MOVE_TO) {
+				if (this.courseChangeCooldown-- <= 0) {
+					this.courseChangeCooldown += this.mob.getRandom().nextInt(5) + 2;
+					Vec3 v = new Vec3(this.wantedX - this.mob.getX(), this.wantedY - this.mob.getY(), this.wantedZ - this.mob.getZ());
+					double d = v.length();
+					v = v.normalize();
+					if (this.canReach(v, Mth.ceil(d))) {
+						this.mob.setDeltaMovement(this.mob.getDeltaMovement().add(v.scale(0.1D)));
+					} else {
+						this.operation = MoveControl.Operation.WAIT;
+					}
+				}
+			}
+		}
+
+		private boolean canReach(Vec3 dir, int steps) {
+			AABB bb = this.mob.getBoundingBox();
+			for (int i = 1; i < steps; ++i) {
+				bb = bb.move(dir);
+				if (!this.mob.level().noCollision(this.mob, bb)) {
+					return false;
+				}
+			}
+			return true;
+		}
+	}
+
+	/** machine gun burst, then a rocket */
+	static class HelicopterAttackGoal extends Goal {
+		private final AttackHelicopter mob;
+		private int attackTimer;
+
+		HelicopterAttackGoal(AttackHelicopter mob) {
+			this.mob = mob;
+		}
+
+		@Override
+		public boolean canUse() {
+			return this.mob.getTarget() != null;
+		}
+
+		@Override
+		public void start() {
+			this.attackTimer = 0;
+		}
+
+		@Override
+		public void stop() {
+			this.mob.setAttacking(false);
+		}
+
+		@Override
+		public boolean requiresUpdateEveryTick() {
+			return true;
+		}
+
+		@Override
+		public void tick() {
+			LivingEntity target = this.mob.getTarget();
+			if (target == null) {
+				return;
+			}
+			Level level = this.mob.level();
+			if (target.distanceToSqr(this.mob) < 4096.0D && this.mob.hasLineOfSight(target)) {
+				++this.attackTimer;
+				if (this.attackTimer >= 14 && this.attackTimer < 24 && this.attackTimer % 2 == 0) {
+					if (this.attackTimer == 14) {
+						level.playSound(null, this.mob.getX(), this.mob.getY(), this.mob.getZ(), TGSounds.HELICOPTER_BURST.get(), SoundSource.HOSTILE, 8.0f, 1.0f);
+					}
+					Ghastling.aimAt(this.mob, target);
+					level.addFreshEntity(new GenericProjectile(level, this.mob, 12.0f, 1.0f, 100, 0.05f, 30, 40, 8.0f, 0.25f, false, EnumBulletFirePos.CENTER));
+				} else if (this.attackTimer == 35) {
+					level.playSound(null, this.mob.getX(), this.mob.getY(), this.mob.getZ(), TGSounds.ROCKET_FIRE.get(), SoundSource.HOSTILE, 8.0f, 1.0f);
+					Ghastling.aimAt(this.mob, target);
+					level.addFreshEntity(new RocketProjectile(level, this.mob, 12.0f, 1.0f, 100, 0.05f, 30, 40, 8.0f, 0.25f, false,
+							this.mob.getRandom().nextBoolean() ? EnumBulletFirePos.LEFT : EnumBulletFirePos.RIGHT, 4.0f, 0.0));
+				} else if (this.attackTimer > 35) {
+					this.attackTimer = -30;
+				}
+			} else if (this.attackTimer > 0) {
+				--this.attackTimer;
+			}
+			this.mob.setAttacking(this.attackTimer > 10);
+		}
 	}
 }

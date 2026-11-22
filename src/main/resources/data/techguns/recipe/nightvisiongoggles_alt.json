@@ -1,0 +1,35 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "rhr",
+    "cec",
+    "gsg"
+  ],
+  "key": {
+    "r": {
+      "tag": "c:rubbers"
+    },
+    "c": {
+      "tag": "c:circuits/basic"
+    },
+    "s": {
+      "tag": "c:ingots/iron"
+    },
+    "e": {
+      "item": "techguns:redstone_battery_empty"
+    },
+    "g": {
+      "tag": "c:glass_blocks"
+    },
+    "h": {
+      "item": "techguns:heavycloth"
+    }
+  },
+  "result": {
+    "id": "techguns:nightvisiongoggles",
+    "components": {
+      "minecraft:damage": 24000
+    }
+  }
+}

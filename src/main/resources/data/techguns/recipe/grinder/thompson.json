@@ -1,0 +1,15 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:thompson"
+  },
+  "results": [
+    {
+      "id": "minecraft:iron_ingot",
+      "count": 4
+    },
+    {
+      "id": "minecraft:oak_log"
+    }
+  ]
+}

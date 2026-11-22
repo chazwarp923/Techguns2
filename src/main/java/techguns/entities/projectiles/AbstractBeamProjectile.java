@@ -1,95 +1,85 @@
 package techguns.entities.projectiles;
 
-import io.netty.buffer.ByteBuf;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
+/**
+ * Instant hit beam: traces the full range when created (damage applied immediately), then only
+ * lives TTL ticks for rendering. distance / laserPitch / laserYaw are synced in the spawn data.
+ */
 public abstract class AbstractBeamProjectile extends GenericProjectile {
 
 	public double distance = -1d;
 	public float laserPitch = 0.0f;
 	public float laserYaw = 0.0f;
 	public short maxTicks = 0;
-	
-	public AbstractBeamProjectile(World worldIn) {
-		super(worldIn);
+
+	public AbstractBeamProjectile(EntityType<? extends AbstractBeamProjectile> type, Level level) {
+		super(type, level);
+		this.discardOnHit = false;
 	}
 
-	public AbstractBeamProjectile(World par2World, EntityLivingBase p, float damage, float speed, int TTL, float spread,
-			float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos leftGun) {
-		super(par2World, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage,
-				leftGun);
-		maxTicks = (short) this.ticksToLive;
+	public AbstractBeamProjectile(EntityType<? extends AbstractBeamProjectile> type, Level level, LivingEntity p, float damage, float speed, int TTL,
+			float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos) {
+		super(type, level, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos);
+		this.discardOnHit = false;
+		this.maxTicks = (short) this.ticksToLive;
 	}
 
-	public AbstractBeamProjectile(World worldIn, double posX, double posY, double posZ, float yaw, float pitch,
-			float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin,
-			float penetration, boolean blockdamage, EnumBulletFirePos leftGun) {
-		super(worldIn, posX, posY, posZ, yaw, pitch, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin,
-				penetration, blockdamage, leftGun);
-		maxTicks = (short) this.ticksToLive;
-	}
-	
-	protected void trace() {	
-		Vec3d vec3d1 = new Vec3d(this.posX, this.posY, this.posZ);
-		Vec3d vec3d = new Vec3d(this.posX + this.motionX, this.posY + this.motionY, this.posZ + this.motionZ);
-		RayTraceResult raytraceresult = this.world.rayTraceBlocks(vec3d1, vec3d, false, true, false);
-
-		if (raytraceresult != null) {
-			vec3d = new Vec3d(raytraceresult.hitVec.x, raytraceresult.hitVec.y, raytraceresult.hitVec.z);
+	protected void trace() {
+		if (!this.posInitialized) {
+			this.initStartPos();
+		}
+		Vec3 start = this.position();
+		Vec3 end = start.add(this.getDeltaMovement());
+		HitResult hit = this.level().clip(new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
+		if (hit.getType() != HitResult.Type.MISS) {
+			end = hit.getLocation();
+		} else {
+			hit = null;
 		}
 
-		/*Entity entity = this.findEntityOnPath(vec3d1, vec3d);
-
-		if (entity != null) {
-			raytraceresult = new RayTraceResult(entity);
-		}*/
-		RayTraceResult rayTraceResultEntity = this.findEntityOnPath(vec3d1, vec3d);
-		if(rayTraceResultEntity!=null) {
-			raytraceresult=rayTraceResultEntity;
+		EntityHitResult entityHit = this.findEntityOnPath(start, end);
+		if (entityHit != null) {
+			hit = entityHit;
 		}
 
-
-		if (raytraceresult != null && raytraceresult.entityHit instanceof EntityPlayer) {
-			EntityPlayer entityplayer = (EntityPlayer) raytraceresult.entityHit;
-
-			if (this.shooter instanceof EntityPlayer && !((EntityPlayer) this.shooter).canAttackPlayer(entityplayer)) {
-				raytraceresult = null;
+		if (hit instanceof EntityHitResult ehr && ehr.getEntity() instanceof Player target) {
+			if (this.shooter instanceof Player sp && !sp.canHarmPlayer(target)) {
+				hit = null;
 			}
 		}
 
-		if (raytraceresult != null) {
-			this.onHit(raytraceresult);
-			this.isDead = false;
-			Vec3d hitVec = raytraceresult.hitVec;
-			distance = vec3d1.distanceTo(hitVec);
-//			if (!this.world.isRemote){
-//				this.createImpactEffect(hitVec);
-//			}
+		if (hit != null) {
+			this.onHit(hit);
+			distance = start.distanceTo(hit.getLocation());
 		}
-		laserPitch = this.rotationPitch;
-		laserYaw = this.rotationYaw;
+
+		laserPitch = this.getXRot();
+		laserYaw = this.getYRot();
 		if (distance <= 0) {
 			distance = this.speed;
 		}
 	}
-	
-	//protected void createImpactEffect(Vec3d hitVec) {}
-	
+
 	@Override
-	public void onUpdate() {
+	public void tick() {
 		--this.ticksToLive;
-		if (this.ticksToLive<=0){
-			this.setDead();
+		if (this.ticksToLive <= 0) {
+			this.discard();
 		}
 	}
-	
+
 	@Override
-	public void writeSpawnData(ByteBuf buffer) {
+	public void writeSpawnData(RegistryFriendlyByteBuf buffer) {
 		super.writeSpawnData(buffer);
 		buffer.writeDouble(this.distance);
 		buffer.writeFloat(this.laserPitch);
@@ -98,18 +88,23 @@ public abstract class AbstractBeamProjectile extends GenericProjectile {
 	}
 
 	@Override
-	public void readSpawnData(ByteBuf additionalData) {
-		super.readSpawnData(additionalData);
-		this.distance=additionalData.readDouble();
-		this.laserPitch = additionalData.readFloat();
-		this.laserYaw = additionalData.readFloat();
-		this.maxTicks = additionalData.readShort();
+	public void readSpawnData(RegistryFriendlyByteBuf buffer) {
+		super.readSpawnData(buffer);
+		this.distance = buffer.readDouble();
+		this.laserPitch = buffer.readFloat();
+		this.laserYaw = buffer.readFloat();
+		this.maxTicks = buffer.readShort();
 	}
-	
+
 	@Override
-	public AxisAlignedBB getRenderBoundingBox() { //TODO
-		//Vec3d pos2 = new Vec3d(0, 0, distance).rotatePitch(laserPitch).rotateYaw(laserYaw);
-		Vec3d pos2 = new Vec3d(this.motionX, this.motionY, this.motionZ).normalize().scale(distance);
-		return new AxisAlignedBB(this.posX, this.posY, this.posZ, this.posX+pos2.z, this.posY + pos2.y, this.posZ + pos2.z);
+	public AABB getBoundingBoxForCulling() {
+		// projectile rotations use the arrow convention (yaw = atan2(x, z), pitch up = positive)
+		Vec3 dir = Vec3.directionFromRotation(-laserPitch, -laserYaw).scale(Math.max(distance, 1.0));
+		return new AABB(this.position(), this.position().add(dir)).inflate(1.0);
+	}
+
+	@Override
+	public boolean shouldRenderAtSqrDistance(double dist) {
+		return dist < 256 * 256;
 	}
 }

@@ -1,0 +1,18 @@
+{
+  "type": "techguns:chem_lab",
+  "input1": {
+    "item": "minecraft:gravel"
+  },
+  "input2": {
+    "item": "minecraft:dirt"
+  },
+  "fluid_input": {
+    "tag": "minecraft:water",
+    "amount": 250
+  },
+  "result": {
+    "id": "minecraft:clay",
+    "count": 2
+  },
+  "power_per_tick": 5
+}

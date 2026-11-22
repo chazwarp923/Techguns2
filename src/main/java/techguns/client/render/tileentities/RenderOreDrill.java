@@ -1,205 +1,138 @@
 package techguns.client.render.tileentities;
 
-import org.lwjgl.opengl.GL11;
+import org.joml.Quaternionf;
 
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.math.BlockPos;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
+
+import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.phys.AABB;
 import techguns.Techguns;
 import techguns.tileentities.OreDrillTileEntMaster;
 
-public class RenderOreDrill extends TileEntitySpecialRenderer<OreDrillTileEntMaster> {
-	private static final int DRILLERCUBESPERBLOCK=4;
-	
-	protected ResourceLocation texture = new ResourceLocation(Techguns.MODID,"textures/blocks/drillhead.png");
-	protected OreDrillCube tessellatorcube = new OreDrillCube(texture);
-	
-	protected ResourceLocation texture2 = new ResourceLocation(Techguns.MODID,"textures/blocks/drillhead_obsidian.png");
-	private OreDrillCube tessellatorcube2 = new OreDrillCube(texture2);
-	
-	protected ResourceLocation texture3 = new ResourceLocation(Techguns.MODID,"textures/blocks/drillhead_carbon.png");
-	private OreDrillCube tessellatorcube3 = new OreDrillCube(texture3);
-	
+/**
+ * Formed ore drill (1.12 RenderOreDrill): the rod line, or with a drill head a tapering stack of turning cubes, from
+ * the engines to the ore cluster.
+ */
+public class RenderOreDrill implements BlockEntityRenderer<OreDrillTileEntMaster> {
+
+	private static final int CUBES_PER_BLOCK = 4;
+	private static final ResourceLocation[] TEXTURES = { Techguns.rl("textures/blocks/drillhead.png"), Techguns.rl("textures/blocks/drillhead.png"),
+			Techguns.rl("textures/blocks/drillhead_obsidian.png"), Techguns.rl("textures/blocks/drillhead_carbon.png") };
+
 	@Override
-	public void render(OreDrillTileEntMaster te, double x, double y, double z, float partialTick, int destroyStage,
-			float alpha) {
-		//super.render(te, x, y, z, partialTick, destroyStage, alpha); //Renders floating name text
-		
-		OreDrillTileEntMaster tile = (OreDrillTileEntMaster) te;
-		
-		if (tile.isFormed()){
-		
-			EnumFacing drill_direction = tile.getDrill_direction();
-			
-			int[] vec = getNextBlockInDirOffset(0,0,0, drill_direction, tile.getEngines()+1);
-			int[] dir = getNextBlockInDirOffset(0,0,0, drill_direction,1);
-			
-			GL11.glPushMatrix();
-			    //This is setting the initial location.
-	        GL11.glTranslatef((float) x +0.5f-vec[0], (float) y+1.25f -vec[1], (float) z+0.5f -vec[2]);
-	        
-	        GL11.glPushMatrix();
-	        int rot = (int) (tile.getWorld().getTotalWorldTime()%360);
-	        
-
-           // System.out.println("Rotation:"+tile.rotation);
-            if(dir[1]<0){
-                GL11.glRotatef(180F, 0.0F, 0.0F, 1.0F);
-            } else if (dir[1]>0) {
-            	GL11.glTranslatef(0, -1.5f, 0);
-            } else if (dir[0]!=0){
-            	GL11.glRotatef(-90F*dir[0], 0.0F, 0.0F, 1.0F);
-            	GL11.glTranslatef(dir[0]*0.75f, 0, 0);
-            	GL11.glTranslatef(0, -0.75f, 0);
-            } else if (dir[2]!=0){
-            	GL11.glRotatef(90F*dir[2], 1.0F, 0.0F, 0.0F);
-            	GL11.glTranslatef(0, 0, dir[2]*0.75f);
-            	GL11.glTranslatef(0, -0.75f, 0);
-            }
-            GL11.glTranslatef(0, 2*(tile.getEngines()+1), 0);
-           
-            if(tile.hasDrill()&&tile.isRedstoneEnabled()&&tile.hasPower()){
-            	GL11.glRotatef(rot*10f + ((1f/36f)*partialTick), 0, 1, 0);
-            }
-            
-            //System.out.println("Radius:"+tile.getDrillRadius()+" HasDrill:"+tile.hasDrill()+" DrillType:"+tile.getDrillType());
-            
-            Tessellator tess = Tessellator.getInstance();
-            if (tile.hasDrill()){
-            	if (tile.getDrillType()==1){
-            		drawDriller(tile,tessellatorcube, tess); 
-            	} else if (tile.getDrillType()==2){
-            		drawDriller(tile,tessellatorcube2, tess);
-            	} else if (tile.getDrillType()==3){
-            		drawDriller(tile,tessellatorcube3, tess);
-            	}
-            } else {
-            	drawDrillRod(tile, tess);
-            }
-	        
-	        
-	        GL11.glPopMatrix();
-	        GL11.glPopMatrix();
+	public void render(OreDrillTileEntMaster te, float partialTicks, PoseStack ps, MultiBufferSource buffers, int light, int overlay) {
+		Direction dir = te.getDrillDirection();
+		if (!te.isFormed() || dir == null || te.getLevel() == null) {
+			return;
 		}
-	}
+		int engines = te.getEngines();
+		int rods = te.getRods();
+		int rodLight = LevelRenderer.getLightColor(te.getLevel(), te.getBlockPos().relative(dir, engines + 1 + rods / 2));
 
-	public static int[] getNextBlockInDirOffset(int x, int y, int z, EnumFacing dir, int offset) {
-		int[] pos = new int[] { x, y, z };
-		if(dir.getAxisDirection() == EnumFacing.AxisDirection.POSITIVE) {
-			pos[dir.getAxis().ordinal()] += offset;
+		ps.pushPose();
+		ps.translate(0.5d, 0.5d, 0.5d);
+		// local +y along the drill
+		ps.mulPose(new Quaternionf().rotationTo(0f, 1f, 0f, dir.getStepX(), dir.getStepY(), dir.getStepZ()));
+		// local origin at the start of the first rod
+		ps.translate(0d, engines + 0.5d, 0d);
+
+		if (te.hasDrill() && te.isRedstoneEnabled() && te.hasPower()) {
+			float rot = ((te.getLevel().getGameTime() % 36) + partialTicks) * 10f;
+			ps.mulPose(Axis.YP.rotationDegrees(rot));
+		}
+		if (te.hasDrill() && te.getDrillType() > 0) {
+			drawDriller(te, ps, buffers.getBuffer(RenderType.entityCutout(TEXTURES[Math.min(3, te.getDrillType())])), rods, rodLight);
 		} else {
-			pos[dir.getAxis().ordinal()] -= offset;
+			drawDrillRod(ps, buffers.getBuffer(RenderType.entityCutout(TEXTURES[0])), rods, rodLight);
 		}
-		return pos;
+		ps.popPose();
 	}
-	
+
+	/** tapering stack, every second cube turned by 45 degrees */
+	private void drawDriller(OreDrillTileEntMaster te, PoseStack ps, VertexConsumer vc, int rods, int light) {
+		int n = rods * CUBES_PER_BLOCK;
+		float step = 1.0f / CUBES_PER_BLOCK;
+		float max = (float) Math.log(n + 1.0f);
+		int drillRadius = te.getDrillRadius();
+		float radiusFactor = switch (drillRadius) {
+			case 0, 1 -> 0.35f;
+			case 2 -> 0.5f;
+			case 3 -> 0.55f;
+			default -> 0.6f;
+		};
+		for (int i = 0; i < n; i++) {
+			float factor = (float) Math.log(n - i + 1.0f);
+			float size = (drillRadius == 0 ? 1.0f : drillRadius) * factor / max * radiusFactor;
+			ps.pushPose();
+			ps.translate(0f, step * (i + 1), 0f);
+			if (i % 2 == 1) {
+				ps.mulPose(Axis.YP.rotationDegrees(45f));
+			}
+			cube(ps.last(), vc, size, step, size, light);
+			ps.popPose();
+		}
+	}
+
+	/** thin rod segment per rod block, turned by 45 degrees */
+	private void drawDrillRod(PoseStack ps, VertexConsumer vc, int rods, int light) {
+		for (int i = 0; i < rods; i++) {
+			ps.pushPose();
+			ps.translate(0f, i + 0.5f, 0f);
+			ps.mulPose(Axis.YP.rotationDegrees(45f));
+			cube(ps.last(), vc, 0.2f, 0.5f, 0.2f, light);
+			ps.popPose();
+		}
+	}
+
+	/** box centered on the origin with half sizes, full texture on every face (1.12 OreDrillCube) */
+	private static void cube(PoseStack.Pose pose, VertexConsumer vc, float x, float y, float z, int light) {
+		// top / bottom
+		quad(pose, vc, light, 0, 1, 0, -x, y, -z, 0, 1, -x, y, z, 0, 0, x, y, z, 1, 0, x, y, -z, 1, 1);
+		quad(pose, vc, light, 0, -1, 0, x, -y, -z, 1, 0, x, -y, z, 1, 1, -x, -y, z, 0, 1, -x, -y, -z, 0, 0);
+		// north / south
+		quad(pose, vc, light, 0, 0, -1, -x, -y, -z, 0, 1, -x, y, -z, 0, 0, x, y, -z, 1, 0, x, -y, -z, 1, 1);
+		quad(pose, vc, light, 0, 0, 1, x, -y, z, 1, 1, x, y, z, 1, 0, -x, y, z, 0, 0, -x, -y, z, 0, 1);
+		// west / east
+		quad(pose, vc, light, -1, 0, 0, -x, -y, z, 1, 1, -x, y, z, 1, 0, -x, y, -z, 0, 0, -x, -y, -z, 0, 1);
+		quad(pose, vc, light, 1, 0, 0, x, -y, -z, 0, 1, x, y, -z, 0, 0, x, y, z, 1, 0, x, -y, z, 1, 1);
+	}
+
+	private static void quad(PoseStack.Pose pose, VertexConsumer vc, int light, float nx, float ny, float nz, float... v) {
+		for (int i = 0; i < 4; i++) {
+			int o = i * 5;
+			vc.addVertex(pose, v[o], v[o + 1], v[o + 2]).setColor(1f, 1f, 1f, 1f).setUv(v[o + 3], v[o + 4]).setOverlay(OverlayTexture.NO_OVERLAY)
+					.setLight(light).setNormal(pose, nx, ny, nz);
+		}
+	}
+
 	@Override
-	public boolean isGlobalRenderer(OreDrillTileEntMaster te) {
-		return te.isFormed();
+	public boolean shouldRenderOffScreen(OreDrillTileEntMaster te) {
+		return true;
 	}
 
-	protected void drawDriller(OreDrillTileEntMaster tile, OreDrillCube cube, Tessellator tess){
-
-		int length = tile.getRods();
-		
-		GL11.glPushMatrix();
-		
-		int[] axis = getNextBlockInDirOffset(0, 0, 0, tile.getDrill_direction(),1);
-		float height = 1.0f/DRILLERCUBESPERBLOCK;
-		float pos = height;
-		boolean negative=false;
-
-		axis[0]=0;
-		axis[1]=1;
-		axis[2]=0;
-		
-		float max = (float) Math.log((length*DRILLERCUBESPERBLOCK+1.0f));
-		float radiusfactor=1.0f;
-		switch(tile.getDrillRadius()){
-			case 0:
-			case 1:
-				radiusfactor=0.35f;
-				break;
-			case 2:
-				radiusfactor=0.5f;
-				break;
-			case 3:
-				radiusfactor=0.55f;
-				break;
-			case 4:
-				radiusfactor=0.60f;
-				break;
-		} 
-		
-		BlockPos tilePos=tile.getPos();
-		int[] worldpos = getNextBlockInDirOffset(tilePos.getX(), tilePos.getY(), tilePos.getZ(), tile.getDrill_direction(), tile.getEngines());
-		
-		for (int i=0;i<length*DRILLERCUBESPERBLOCK;i++){
-			boolean rotate=false;
-			if(i%2==1){
-				rotate=true;
-			}
-			float factor = (float) Math.log((length*DRILLERCUBESPERBLOCK)-i+1.0f);
-			float size = ((tile.getDrillRadius()==0?1.0f:tile.getDrillRadius()*1.0f)*factor)*(1.0f/max)*radiusfactor;
-			
-			GL11.glTranslatef(axis[0]*height, axis[1]*height, axis[2]*height);
-			
-			if (rotate){
-				GL11.glPushMatrix();
-				GL11.glRotatef(45.0f, Math.abs(axis[0]),Math.abs(axis[1]),Math.abs(axis[2]));
-			}
-			
-			if(i % DRILLERCUBESPERBLOCK==0){
-				//this.adjustLightFixture(tile.getWorld(), worldpos[0], worldpos[1], worldpos[2], tile.getBlockType());
-				worldpos = getNextBlockInDirOffset(worldpos[0],worldpos[1],worldpos[2],tile.getDrill_direction(),1);
-			}
-			
-			cube.drawCube(axis[0]==0?size:pos, (axis[1]==0?size:pos), (axis[2]==0?size:pos), tess);
-					
-			if(rotate){
-				GL11.glPopMatrix();
-			}
-		}
-		GL11.glPopMatrix();
+	@Override
+	public int getViewDistance() {
+		return 96;
 	}
-	
-	protected void drawDrillRod(OreDrillTileEntMaster tile, Tessellator tess){
 
-			int length = tile.getRods();
-			
-			GL11.glPushMatrix();
-			
-			int[] axis = getNextBlockInDirOffset(0, 0, 0, tile.getDrill_direction(),1);
-			float height = 0.5f;
-			float pos = height;
-
-			axis[0]=0;
-			axis[1]=1;
-			axis[2]=0;
-			
-			BlockPos tilePos=tile.getPos();
-			int[] worldpos = getNextBlockInDirOffset(tilePos.getX(), tilePos.getY(), tilePos.getZ(), tile.getDrill_direction(), tile.getEngines());
-			
-			float f = -0.4f;
-			GL11.glTranslatef(axis[0]*height*f, axis[1]*height*f, axis[2]*height*f);
-			for (int i=0;i<length;i++){
-				float size = 0.2f;
-				
-				GL11.glTranslatef(axis[0]*height*2, axis[1]*height*2, axis[2]*height*2);
-
-				GL11.glPushMatrix();
-				GL11.glRotatef(45.0f, Math.abs(axis[0]),Math.abs(axis[1]),Math.abs(axis[2]));
-
-				//this.adjustLightFixture(tile.getWorldObj(), worldpos[0], worldpos[1], worldpos[2], tile.getBlockType());
-				worldpos = getNextBlockInDirOffset(worldpos[0],worldpos[1],worldpos[2],tile.getDrill_direction(),1);
-
-				tessellatorcube.drawCube(axis[0]==0?size:pos, (axis[1]==0?size:pos), (axis[2]==0?size:pos), tess);
-
-				GL11.glPopMatrix();
-
-			}
-			GL11.glPopMatrix();
+	@Override
+	public AABB getRenderBoundingBox(OreDrillTileEntMaster te) {
+		Direction dir = te.getDrillDirection();
+		BlockPos p = te.getBlockPos();
+		if (dir == null) {
+			return new AABB(p);
 		}
+		BlockPos end = p.relative(dir, te.getTotalDrillLength() + 1);
+		int r = te.getRadius() + 2;
+		return new AABB(p.getX(), p.getY(), p.getZ(), end.getX() + 1, end.getY() + 1, end.getZ() + 1).inflate(r);
+	}
 }

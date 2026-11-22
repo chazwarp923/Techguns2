@@ -1,14 +1,16 @@
 package techguns.client.models.guns;
 
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemDisplayContext;
 import techguns.capabilities.TGExtendedPlayer;
 import techguns.client.models.ModelMultipart;
+import techguns.client.models.ModelRenderer;
 import techguns.client.render.TGRenderHelper;
+import techguns.client.render.gl.GlStateManager;
 import techguns.items.guns.GenericGun;
+
+
 
 public class ModelGuidedMissileLauncher extends ModelMultipart {
 	// fields
@@ -155,7 +157,7 @@ public class ModelGuidedMissileLauncher extends ModelMultipart {
 
 	@Override
 	public void render(Entity entityIn, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw,
-			float headPitch, float scale, int ammoLeft, float reloadProgress, TransformType transformType, int part,
+			float headPitch, float scale, int ammoLeft, float reloadProgress, ItemDisplayContext transformType, int part,
 			float fireProgress, float chargeProgress) {
 		this.Optics07.render(scale);
 		this.End02.render(scale);
@@ -201,12 +203,12 @@ public class ModelGuidedMissileLauncher extends ModelMultipart {
 		GlStateManager.translate(-this.Holo2.rotationPointX * scale, -this.Holo2.rotationPointY * scale,
 				-this.Holo2.rotationPointZ * scale);
 		boolean locked = false;
-		if (transformType == TransformType.FIRST_PERSON_LEFT_HAND || transformType == TransformType.FIRST_PERSON_RIGHT_HAND ) {
-			if (entityIn != null && entityIn instanceof EntityPlayer) {
-				EntityPlayer player = (EntityPlayer) entityIn;
+		if (transformType == ItemDisplayContext.FIRST_PERSON_LEFT_HAND || transformType == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND ) {
+			if (entityIn != null && entityIn instanceof Player) {
+				Player player = (Player) entityIn;
 				TGExtendedPlayer tge = TGExtendedPlayer.get(player);
-				if (tge != null && player.getActiveItemStack() != null && player.getActiveItemStack().getItem() instanceof GenericGun) {
-					GenericGun gun = (GenericGun)player.getActiveItemStack().getItem();
+				if (tge != null && player.getUseItem() != null && player.getUseItem().getItem() instanceof GenericGun) {
+					GenericGun gun = (GenericGun)player.getUseItem().getItem();
 					if (tge.lockOnTicks >= gun.getLockOnTicks()) {
 						locked = true;
 					}

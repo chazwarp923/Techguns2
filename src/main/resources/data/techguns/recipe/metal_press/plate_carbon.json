@@ -1,0 +1,14 @@
+{
+  "type": "techguns:metal_press",
+  "input1": {
+    "tag": "c:fibers/carbon"
+  },
+  "input2": {
+    "tag": "c:fibers/carbon"
+  },
+  "allow_swap": true,
+  "result": {
+    "id": "techguns:platecarbon",
+    "count": 2
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "values": [
+    {
+      "id": "#c:redstone",
+      "required": false
+    },
+    {
+      "id": "#c:molten_redstone",
+      "required": false
+    },
+    "#minecraft:lava"
+  ]
+}

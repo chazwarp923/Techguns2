@@ -1,0 +1,56 @@
+{
+  "variants": {
+    "master=true,state=opening,zplane=false": {
+      "model": "techguns:block/hangar_door_frame"
+    },
+    "master=false,state=opening,zplane=false": {
+      "model": "techguns:block/door3x3_slave_hangar"
+    },
+    "master=true,state=closing,zplane=false": {
+      "model": "techguns:block/hangar_door_frame"
+    },
+    "master=false,state=closing,zplane=false": {
+      "model": "techguns:block/door3x3_slave_hangar"
+    },
+    "master=true,state=opened,zplane=false": {
+      "model": "techguns:block/hangar_door_opened_obj"
+    },
+    "master=false,state=opened,zplane=false": {
+      "model": "techguns:block/door3x3_slave_hangar"
+    },
+    "master=true,state=closed,zplane=false": {
+      "model": "techguns:block/hangar_door_closed"
+    },
+    "master=false,state=closed,zplane=false": {
+      "model": "techguns:block/door3x3_slave_hangar"
+    },
+    "master=true,state=opening,zplane=true": {
+      "model": "techguns:block/hangar_door_frame",
+      "y": 90
+    },
+    "master=false,state=opening,zplane=true": {
+      "model": "techguns:block/door3x3_slave_hangar"
+    },
+    "master=true,state=closing,zplane=true": {
+      "model": "techguns:block/hangar_door_frame",
+      "y": 90
+    },
+    "master=false,state=closing,zplane=true": {
+      "model": "techguns:block/door3x3_slave_hangar"
+    },
+    "master=true,state=opened,zplane=true": {
+      "model": "techguns:block/hangar_door_opened_obj",
+      "y": 90
+    },
+    "master=false,state=opened,zplane=true": {
+      "model": "techguns:block/door3x3_slave_hangar"
+    },
+    "master=true,state=closed,zplane=true": {
+      "model": "techguns:block/hangar_door_closed",
+      "y": 90
+    },
+    "master=false,state=closed,zplane=true": {
+      "model": "techguns:block/door3x3_slave_hangar"
+    }
+  }
+}

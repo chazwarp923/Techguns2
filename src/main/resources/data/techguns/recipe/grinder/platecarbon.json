@@ -1,0 +1,11 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:platecarbon"
+  },
+  "results": [
+    {
+      "id": "techguns:carbonfibers"
+    }
+  ]
+}

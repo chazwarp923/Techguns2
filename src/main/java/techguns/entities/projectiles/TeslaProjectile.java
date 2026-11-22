@@ -2,162 +2,133 @@ package techguns.entities.projectiles;
 
 import java.util.List;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import techguns.TGEntities;
 import techguns.api.damagesystem.DamageType;
 import techguns.damagesystem.TGDamageSource;
-import techguns.deatheffects.EntityDeathUtils.DeathType;
+import techguns.deatheffects.DeathType;
 import techguns.items.guns.GenericGun;
 import techguns.items.guns.IProjectileFactory;
 import techguns.util.MathUtil;
 
-public class TeslaProjectile extends AbstractBeamProjectile{
+/** Tesla gun lightning beam, chains to up to CHAIN_TARGETS further targets. */
+public class TeslaProjectile extends AbstractBeamProjectile {
 
 	public static final int TTL = 10;
 	public static final float CHAIN_RANGE = 8.0f;
 	public static final int CHAIN_TARGETS = 4;
 	public static final float CHAIN_DAMAGE_FACTOR = 0.75f;
-	
+
+	/** client render seed for the lightning shape */
 	public long seed = 0;
-	
+
 	protected int chainTargets = CHAIN_TARGETS;
 	protected Entity prevTarget = null;
-	
-	public TeslaProjectile(World worldIn) {
-		super(worldIn);
-		this.seed = worldIn.rand.nextLong();
+
+	public TeslaProjectile(EntityType<? extends TeslaProjectile> type, Level level) {
+		super(type, level);
+		this.seed = level.random.nextLong();
 	}
-	
-//	public TeslaProjectile(World worldIn, double posX, double posY, double posZ, float yaw, float pitch, float damage,
-//			float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration,
-//			boolean blockdamage, boolean leftGun) {
-//		super(worldIn, posX, posY, posZ, yaw, pitch, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration,
-//				blockdamage, leftGun);
-//	}
-	
-	public TeslaProjectile(World par2World, EntityLivingBase p, float damage, float speed, int TTL, float spread,
-			float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos leftGun, int chainTargets) {
-		super(par2World, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, leftGun);
+
+	public TeslaProjectile(Level level, LivingEntity p, float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd,
+			float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, int chainTargets) {
+		super(TGEntities.TESLA.get(), level, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos);
 		this.chainTargets = chainTargets;
 		trace();
 	}
-	
-	public TeslaProjectile(World world, EntityLivingBase shooter, Entity source, EntityLivingBase target, int chainTargets, float damage, float speed, int TTL, float dmgDropStart,
-			float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage) {
-		super(world, shooter, damage, speed, TTL, 0, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, EnumBulletFirePos.CENTER);
-		maxTicks = (short) this.ticksToLive;
+
+	/** chain beam from source to target */
+	public TeslaProjectile(Level level, LivingEntity shooter, Entity source, LivingEntity target, int chainTargets, float damage, float speed,
+			int TTL, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage) {
+		super(TGEntities.TESLA.get(), level, shooter, damage, speed, TTL, 0, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage,
+				EnumBulletFirePos.CENTER);
+		this.maxTicks = (short) this.ticksToLive;
 		this.chainTargets = chainTargets;
 		this.prevTarget = target;
-		//TODO Align Projectile from Source to Target
-		this.posX = source.posX;
-		this.posY = source.posY+ source.getEyeHeight()*0.5f;
-		this.posZ = source.posZ;
-		Vec3d src = new Vec3d(posX, posY, posZ);
-		Vec3d tgt = new Vec3d(target.posX, target.posY+target.getEyeHeight()*0.5f, target.posZ);
-		Vec3d dir = tgt.subtract(src).normalize();
-		
+
+		Vec3 src = new Vec3(source.getX(), source.getY() + source.getEyeHeight() * 0.5f, source.getZ());
+		this.setPos(src);
+		this.initStartPos();
+		Vec3 tgt = new Vec3(target.getX(), target.getY() + target.getEyeHeight() * 0.5f, target.getZ());
+		Vec3 dir = tgt.subtract(src).normalize();
 		this.distance = src.distanceTo(tgt);
-		this.laserPitch = (float) (Math.asin(-dir.y) * MathUtil.R2D);
+		this.laserPitch = (float) (Math.atan2(dir.y, dir.horizontalDistance()) * MathUtil.R2D);
 		this.laserYaw = (float) (Math.atan2(dir.x, dir.z) * MathUtil.R2D);
-		
-		//System.out.printf("pitch : %.3f,  yaw : %.3f,  distance : %.3f\n", laserPitch, laserYaw, distance);
-		
-		this.rotationPitch = laserPitch;
-		this.rotationYaw = laserYaw;
-		
-		this.motionX = dir.x*this.speed;
-		this.motionY = dir.y*this.speed;
-		this.motionZ = dir.z*this.speed;
-		//trace();
-		
+		this.setXRot(laserPitch);
+		this.setYRot(laserYaw);
+		this.setDeltaMovement(dir.scale(this.speed));
 		if (distance <= 0) {
 			distance = this.speed;
 		}
-		
-		RayTraceResult raytraceresult = new RayTraceResult(target);
-
-		if (raytraceresult != null) {
-			this.onHit(raytraceresult);
-			this.isDead = false;
-//			if (!this.world.isRemote){
-//				this.createImpactEffect(tgt);
-//			}
-		}
+		this.onHit(new EntityHitResult(target));
 	}
-	
+
 	@Override
-	protected void onHit(RayTraceResult raytraceResultIn) {
-		super.onHit(raytraceResultIn);
-		if (!world.isRemote) {
-			Entity lastTarget = raytraceResultIn.entityHit;
-			if (lastTarget != null && this.chainTargets > 0) {
-				EntityLivingBase nextTarget = findNextTarget(lastTarget);
+	protected void onHit(HitResult hit) {
+		super.onHit(hit);
+		if (!this.level().isClientSide && hit instanceof EntityHitResult ehr) {
+			Entity lastTarget = ehr.getEntity();
+			if (this.chainTargets > 0) {
+				LivingEntity nextTarget = findNextTarget(lastTarget);
 				if (nextTarget != null) {
-					TeslaProjectile proj = new TeslaProjectile(world, this.shooter, lastTarget, nextTarget, chainTargets-1, this.damage*CHAIN_DAMAGE_FACTOR, this.speed, TTL, this.damageDropStart,  this.damageDropEnd, this.damageMin, this.penetration, this.blockdamage);
-					world.spawnEntity(proj);
+					TeslaProjectile proj = new TeslaProjectile(this.level(), this.shooter, lastTarget, nextTarget, chainTargets - 1,
+							this.damage * CHAIN_DAMAGE_FACTOR, this.speed, TTL, this.damageDropStart, this.damageDropEnd, this.damageMin, this.penetration,
+							this.blockdamage);
+					this.level().addFreshEntity(proj);
 				}
 			}
 		}
 	}
-	
-	private EntityLivingBase findNextTarget(Entity lastTarget) {
-		List<Entity> list = this.world.getEntitiesInAABBexcluding(lastTarget, new AxisAlignedBB(lastTarget.posX
-						- CHAIN_RANGE, lastTarget.posY
-						- CHAIN_RANGE, lastTarget.posZ
-						- CHAIN_RANGE, lastTarget.posX
-						+ CHAIN_RANGE, lastTarget.posY
-						+ CHAIN_RANGE, lastTarget.posZ
-						+ CHAIN_RANGE), BULLET_TARGETS);
-		
-		for (int i1 = 0; i1 < list.size(); ++i1)
-        {
-			Entity e = list.get(i1);
-			if (e instanceof EntityLivingBase) {
-				EntityLivingBase entity = (EntityLivingBase)e;
-	            
-	            double distance = entity.getDistance(lastTarget.posX, lastTarget.posY+lastTarget.getEyeHeight()*0.5f, lastTarget.posZ);
-	            
-	            if (distance < CHAIN_RANGE && entity.isEntityAlive() && entity != lastTarget) {
-            		if (!entity.equals(shooter) && !entity.equals(prevTarget)) {
-            			Vec3d vec3d1 = new Vec3d(lastTarget.posX, lastTarget.posY+lastTarget.getEyeHeight()*0.5f, lastTarget.posZ);
-            			Vec3d vec3d2 = new Vec3d(entity.posX, entity.posY+entity.getEyeHeight()*0.5f, entity.posZ);
-            			RayTraceResult raytraceresult = this.world.rayTraceBlocks(vec3d1, vec3d2, false, true, false);
-            			
-            			if (raytraceresult == null)
-            				return entity;
-            		}
-	            }
+
+	private LivingEntity findNextTarget(Entity lastTarget) {
+		Vec3 from = new Vec3(lastTarget.getX(), lastTarget.getY() + lastTarget.getEyeHeight() * 0.5f, lastTarget.getZ());
+		List<Entity> list = this.level().getEntities(lastTarget, new AABB(from, from).inflate(CHAIN_RANGE), BULLET_TARGETS);
+		for (Entity e : list) {
+			if (e instanceof LivingEntity entity) {
+				double dist = entity.position().distanceTo(from);
+				if (dist < CHAIN_RANGE && entity.isAlive() && entity != lastTarget && !entity.equals(shooter) && !entity.equals(prevTarget)) {
+					Vec3 to = new Vec3(entity.getX(), entity.getY() + entity.getEyeHeight() * 0.5f, entity.getZ());
+					HitResult rtr = this.level().clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, entity));
+					if (rtr.getType() == HitResult.Type.MISS) {
+						return entity;
+					}
+				}
 			}
-        }
+		}
 		return null;
 	}
-	
-	
-	
+
 	@Override
 	protected TGDamageSource getProjectileDamageSource() {
 		TGDamageSource src = TGDamageSource.causeLightningDamage(this, this.shooter, DeathType.LASER);
 		src.armorPenetration = this.penetration;
 		src.setNoKnockback();
-		src.goreChance=0.5f;
+		src.goreChance = 0.5f;
 		return src;
 	}
 
 	@Override
-	public boolean shouldRenderInPass(int pass) {
-		return pass==1;
+	public void readSpawnData(RegistryFriendlyByteBuf buffer) {
+		super.readSpawnData(buffer);
+		this.seed = this.random.nextLong();
 	}
-	
+
 	public static class Factory implements IProjectileFactory<TeslaProjectile> {
 		@Override
-		public TeslaProjectile createProjectile(GenericGun gun, World world, EntityLivingBase p, float damage, float speed,
-				int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration,
-				boolean blockdamage, EnumBulletFirePos firePos, float radius, double gravity) {
-			return new TeslaProjectile(world, p, damage, speed, TeslaProjectile.TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos, CHAIN_TARGETS);
+		public TeslaProjectile createProjectile(GenericGun gun, Level level, LivingEntity p, float damage, float speed, int TTL, float spread,
+				float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, float radius,
+				double gravity) {
+			return new TeslaProjectile(level, p, damage, speed, TeslaProjectile.TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage,
+					firePos, CHAIN_TARGETS);
 		}
 
 		@Override
@@ -165,5 +136,4 @@ public class TeslaProjectile extends AbstractBeamProjectile{
 			return DamageType.LIGHTNING;
 		}
 	}
-
 }

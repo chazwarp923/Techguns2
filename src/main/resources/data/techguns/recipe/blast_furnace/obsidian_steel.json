@@ -1,0 +1,14 @@
+{
+  "type": "techguns:blast_furnace",
+  "input1": {
+    "tag": "c:ingots/steel"
+  },
+  "input2": {
+    "item": "minecraft:obsidian"
+  },
+  "result": {
+    "id": "techguns:ingotobsidiansteel"
+  },
+  "power_per_tick": 10,
+  "time": 200
+}

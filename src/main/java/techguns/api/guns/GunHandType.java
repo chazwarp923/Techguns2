@@ -1,30 +1,20 @@
 package techguns.api.guns;
 
-import com.mojang.realmsclient.gui.ChatFormatting;
-
-import techguns.util.TextUtil;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 
 public enum GunHandType {
-	TWO_HANDED,
-	ONE_HANDED,
-	ONE_POINT_FIVE_HANDED;
+	TWO_HANDED(ChatFormatting.GOLD),
+	ONE_HANDED(ChatFormatting.GREEN),
+	ONE_POINT_FIVE_HANDED(ChatFormatting.YELLOW);
 
-	@Override
-	public String toString() {
-		String s="";
-		switch(this) {
-		case ONE_HANDED:
-			s+=ChatFormatting.GREEN;
-			break;
-		case ONE_POINT_FIVE_HANDED:
-			s+=ChatFormatting.YELLOW;
-			break;
-		case TWO_HANDED:
-			s+=ChatFormatting.GOLD;
-			break;
-		default:
-			break;
-		}
-		return s+TextUtil.trans("techguns.gunhandtype."+super.toString().toLowerCase());
+	private final ChatFormatting color;
+
+	GunHandType(ChatFormatting color) {
+		this.color = color;
+	}
+
+	public Component getDisplayName() {
+		return Component.translatable("techguns.gunhandtype." + name().toLowerCase()).withStyle(color);
 	}
 }

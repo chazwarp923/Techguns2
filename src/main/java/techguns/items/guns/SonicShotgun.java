@@ -1,91 +1,66 @@
 package techguns.items.guns;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Supplier;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
-import techguns.TGPackets;
+import javax.annotation.Nullable;
+
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import techguns.entities.projectiles.EnumBulletFirePos;
 import techguns.entities.projectiles.SonicShotgunProjectile;
-import techguns.packets.PacketSpawnParticleOnEntity;
 import techguns.util.MathUtil;
 
+/** Fires a center projectile plus two rings; all share one hit list so each target is damaged once. */
 public class SonicShotgun extends GenericGun {
 
-	public SonicShotgun(boolean addToGunList, String name, ProjectileSelector projectile_selector, boolean semiAuto,
-			int minFiretime, int clipsize, int reloadtime, float damage, SoundEvent firesound, SoundEvent reloadsound,
-			int TTL, float accuracy) {
-		super(addToGunList, name, projectile_selector, semiAuto, minFiretime, clipsize, reloadtime, damage, firesound,
-				reloadsound, TTL, accuracy);
+	public SonicShotgun(ProjectileSelector<SonicShotgunProjectile> projectileSelector, boolean semiAuto, int minFiretime, int clipsize,
+			int reloadtime, float damage, Supplier<SoundEvent> firesound, Supplier<SoundEvent> reloadsound, int TTL, float accuracy) {
+		super(projectileSelector, semiAuto, minFiretime, clipsize, reloadtime, damage, firesound, reloadsound, TTL, accuracy);
 	}
 
-	public SonicShotgun(String name, ProjectileSelector projectileSelector, boolean semiAuto, int minFiretime,
-			int clipsize, int reloadtime, float damage, SoundEvent firesound, SoundEvent reloadsound, int TTL,
-			float accuracy) {
-		super(name, projectileSelector, semiAuto, minFiretime, clipsize, reloadtime, damage, firesound, reloadsound, TTL,
-				accuracy);
+	private SonicShotgunProjectile create(Level level, LivingEntity player, float damagebonus, EnumBulletFirePos firePos, List<Entity> entitiesHit) {
+		SonicShotgunProjectile proj = new SonicShotgunProjectile(level, player, damage * damagebonus, speed, this.ticksToLive, 0f,
+				this.damageDropStart, this.damageDropEnd, this.damageMin * damagebonus, this.penetration, getDoBlockDamage(player), firePos);
+		proj.entitiesHit = entitiesHit;
+		return proj;
 	}
 
 	@Override
-	protected void spawnProjectile(World world, EntityLivingBase player, ItemStack itemstack, float spread,
-			float offset, float damagebonus, EnumBulletFirePos firePos, Entity target) {
-		
-		int count = 5; //Base projectile count per ring
-		int rings = 2; //number of rings
-		
+	protected void spawnProjectile(Level level, LivingEntity player, ItemStack itemstack, float spread, float offset, float damagebonus,
+			EnumBulletFirePos firePos, @Nullable Entity target) {
+		int count = 5; // base projectile count per ring
+		int rings = 2;
 		spread = 0.075f;
-		
-		//Center
-		ArrayList<Entity> entitiesHit = new ArrayList<Entity>();
-		SonicShotgunProjectile proj = new SonicShotgunProjectile(world, player, damage*damagebonus, speed, this.ticksToLive, 0f, this.damageDropStart, this.damageDropEnd, this.damageMin*damagebonus, this.penetration, getDoBlockDamage(player), firePos);    	
-		proj.entitiesHit = entitiesHit;
+
+		List<Entity> entitiesHit = new ArrayList<>();
+		SonicShotgunProjectile proj = create(level, player, damagebonus, firePos, entitiesHit);
 		proj.mainProjectile = true;
-		if (offset>0.0f){
-    		proj.shiftForward(offset);
-    	}
-    	world.spawnEntity(proj);
-    	TGPackets.network.sendToAllAround(new PacketSpawnParticleOnEntity("SonicShotgunTrail", proj), TGPackets.targetPointAroundEnt(proj, 100.0f));
-    	
-		
-		//Vec3 motion = Vec3.createVectorHelper(proj.motionX, proj.motionY, proj.motionZ).normalize(); //Shoot direction
-		//Vec3 pos = Vec3.createVectorHelper(proj.posX, proj.posY, proj.posZ);
-    	
-    	//Rings
+		if (offset > 0.0f) {
+			proj.shiftForward(offset);
+		}
+		level.addFreshEntity(proj);
+
 		for (int j = 1; j <= rings; j++) {
-			
-			float angle =(float) ((Math.PI*2.0)/(double)(count*j));
-			for (int i = 0; i < (count*j); i++) {
-			
-				proj = new SonicShotgunProjectile(world, player, damage*damagebonus, speed, this.ticksToLive, 0f, this.damageDropStart, this.damageDropEnd, this.damageMin*damagebonus, this.penetration, getDoBlockDamage(player), firePos);    	
-				proj.entitiesHit = entitiesHit;
-				Vec3d dir = new Vec3d(1,0,0); //Vec3.createVectorHelper(1, 0, 0);
-		
-				dir = dir.rotateYaw(spread*j);
-				dir = dir.rotatePitch(angle*i);
-								
-				dir = MathUtil.rotateVec3dAroundZ(dir, (float)(player.rotationPitch*MathUtil.D2R));
-				
-				dir = dir.rotateYaw((float) ((-player.rotationYawHead-90.0)*MathUtil.D2R));
-				
-				proj.motionX = dir.x*speed;
-				proj.motionY = dir.y*speed;
-				proj.motionZ = dir.z*speed;
-				
-				//System.out.println("MOTION:"+proj.motionX+","+proj.motionY+","+proj.motionZ);
-				
-		    	if (offset>0.0f){
-		    		proj.shiftForward(offset);
-		    	}
-		
-		    	world.spawnEntity(proj);
+			float angle = (float) ((Math.PI * 2.0) / (double) (count * j));
+			for (int i = 0; i < (count * j); i++) {
+				proj = create(level, player, damagebonus, firePos, entitiesHit);
+				Vec3 dir = new Vec3(1, 0, 0);
+				dir = dir.yRot(spread * j);
+				dir = dir.xRot(angle * i);
+				dir = MathUtil.rotateVec3dAroundZ(dir, (float) (player.getXRot() * MathUtil.D2R));
+				dir = dir.yRot((float) ((-player.getYHeadRot() - 90.0) * MathUtil.D2R));
+				proj.setDeltaMovement(dir.scale(speed));
+				if (offset > 0.0f) {
+					proj.shiftForward(offset);
+				}
+				level.addFreshEntity(proj);
 			}
 		}
 	}
-	
-	
-
 }

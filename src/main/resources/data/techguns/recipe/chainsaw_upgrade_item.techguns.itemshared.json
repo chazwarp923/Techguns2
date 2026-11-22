@@ -1,0 +1,15 @@
+{
+  "type": "techguns:miningtool_upgrade",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "techguns:chainsaw"
+    },
+    {
+      "item": "techguns:chainsawblades_obsidian"
+    }
+  ],
+  "result": {
+    "id": "techguns:chainsaw"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "prs",
+    "fm "
+  ],
+  "key": {
+    "p": {
+      "item": "techguns:pumpmechanism"
+    },
+    "r": {
+      "item": "techguns:ironreceiver"
+    },
+    "s": {
+      "item": "techguns:plasticstock"
+    },
+    "f": {
+      "item": "minecraft:flint_and_steel"
+    },
+    "m": {
+      "item": "techguns:fueltankempty"
+    }
+  },
+  "result": {
+    "id": "techguns:flamethrower",
+    "components": {
+      "techguns:ammo": 0
+    }
+  }
+}

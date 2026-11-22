@@ -1,0 +1,18 @@
+{
+  "type": "techguns:chem_lab",
+  "input1": {
+    "item": "techguns:enricheduranium"
+  },
+  "bottle": {
+    "item": "techguns:nuclearpowercelldepleted"
+  },
+  "fluid_input": {
+    "tag": "minecraft:water",
+    "amount": 1000
+  },
+  "result": {
+    "id": "techguns:nuclearpowercell"
+  },
+  "allow_swap": true,
+  "power_per_tick": 40
+}

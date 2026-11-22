@@ -1,8 +1,8 @@
 package techguns.client.models.machines;
 
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.entity.Entity;
+import techguns.client.models.ModelRenderer;
+import techguns.client.render.gl.GlStateManager;
+import net.minecraft.world.entity.Entity;
 
 public class ModelMetalPress extends ModelMachine {
 

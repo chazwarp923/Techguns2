@@ -1,36 +1,35 @@
 package techguns.items;
 
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
-import net.minecraft.item.Item;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.client.model.ModelLoader;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
-import techguns.TGItems;
-import techguns.Techguns;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import techguns.api.tginventory.ITGSpecialSlot;
+import techguns.api.tginventory.TGSlotType;
 
-public class GenericItem extends Item {
-	
-	public GenericItem(String name, boolean addToItemList){
-		setMaxStackSize(64);
-		setCreativeTab(Techguns.tabTechgun);
-		setRegistryName(name);
-		setUnlocalizedName(Techguns.MODID+"."+name);
-		if (addToItemList){
-			TGItems.ITEMLIST.add(this);
-		}
+/**
+ * Base class for simple Techguns items. In 1.12.2 most of these were metadata
+ * variants of a single "itemshared" item; since 1.13 every variant is its own item.
+ */
+public class GenericItem extends Item implements ITGSpecialSlot {
+	protected final TGSlotType slotType;
+	/** Legacy flag: render this item with its 3D model when held. */
+	protected final boolean useRenderHack;
+
+	public GenericItem(Properties properties, TGSlotType slotType, boolean useRenderHack) {
+		super(properties);
+		this.slotType = slotType;
+		this.useRenderHack = useRenderHack;
 	}
-	
-	public GenericItem(String name) {
-		this(name,true);
+
+	public GenericItem(Properties properties) {
+		this(properties, TGSlotType.NORMAL, false);
 	}
-	
-	public ResourceLocation getModelLocation() {
-		return this.getRegistryName();
+
+	@Override
+	public TGSlotType getSlot(ItemStack item) {
+		return slotType;
 	}
-	
-	@SideOnly(Side.CLIENT)
-    public void initModel() {
-        ModelLoader.setCustomModelResourceLocation(this, 0, new ModelResourceLocation(getModelLocation(), "inventory"));
-    }
+
+	public boolean shouldUseRenderHack(ItemStack stack) {
+		return useRenderHack;
+	}
 }

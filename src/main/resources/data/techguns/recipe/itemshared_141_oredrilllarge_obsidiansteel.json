@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "d d",
+    " d "
+  ],
+  "key": {
+    "d": {
+      "item": "techguns:oredrillmedium_obsidiansteel"
+    }
+  },
+  "result": {
+    "id": "techguns:oredrilllarge_obsidiansteel"
+  }
+}

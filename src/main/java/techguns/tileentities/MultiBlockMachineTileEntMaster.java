@@ -1,60 +1,40 @@
 package techguns.tileentities;
 
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-import techguns.TGBlocks;
-import techguns.blocks.machines.BasicMachine;
-import techguns.blocks.machines.MultiBlockMachine;
-import techguns.blocks.machines.multiblocks.MultiBlockMachineSchematic;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import techguns.blocks.machines.BlockMultiBlockController;
 import techguns.blocks.machines.multiblocks.MultiBlockRegister;
+import techguns.blocks.machines.multiblocks.MultiBlockSchematic;
 
+/**
+ * Controller of a multiblock machine (1.12 MultiBlockMachineTileEntMaster). Formed state and the multiblock direction
+ * live in the controller blockstate, the machine only works while formed.
+ */
 public abstract class MultiBlockMachineTileEntMaster extends BasicMachineTileEnt {
 
-	protected boolean formed=false;
-	protected EnumFacing multiblockDirection;
-	
-	public MultiBlockMachineTileEntMaster(int inventorySize, int maximumPower) {
-		super(inventorySize, false, maximumPower);
-	}
-
-	public EnumFacing getMultiblockDirection() {
-		return multiblockDirection;
+	public MultiBlockMachineTileEntMaster(BlockEntityType<?> type, BlockPos pos, BlockState state, int inventorySize, int maximumPower) {
+		super(type, pos, state, inventorySize, false, maximumPower);
 	}
 
 	public boolean isFormed() {
-		return formed;
+		BlockState s = getBlockState();
+		return s.hasProperty(BlockMultiBlockController.FORMED) && s.getValue(BlockMultiBlockController.FORMED);
 	}
-	
+
+	public Direction getMultiblockDirection() {
+		BlockState s = getBlockState();
+		return s.hasProperty(BlockMultiBlockController.FACING) ? s.getValue(BlockMultiBlockController.FACING) : Direction.SOUTH;
+	}
+
 	@Override
 	protected boolean enabled() {
 		return this.isFormed();
 	}
 
-	@Override
-	protected BasicMachine getMachineBlockType() {
-		return TGBlocks.ORE_DRILL_BLOCK;
-	}
-	
-	@Override
-	public void readClientDataFromNBT(NBTTagCompound tags) {
-		super.readClientDataFromNBT(tags);
-		this.formed = tags.getBoolean("formed");
-		if (this.formed) {
-			this.multiblockDirection = EnumFacing.getFront(tags.getByte("multiblockDirection"));
-		}
-	}
-
-	@Override
-	public void writeClientDataToNBT(NBTTagCompound tags) {
-		super.writeClientDataToNBT(tags);
-		tags.setBoolean("formed", this.formed);
-		if (this.formed) {
-			tags.setByte("multiblockDirection", (byte) this.multiblockDirection.getIndex());
-		}
+	public MultiBlockSchematic getSchematic() {
+		return MultiBlockRegister.get(this);
 	}
 
 	@Override
@@ -62,50 +42,37 @@ public abstract class MultiBlockMachineTileEntMaster extends BasicMachineTileEnt
 		super.onBlockBreak();
 		this.onMultiBlockBreak();
 	}
-	
-	@Override
-	public boolean canBeWrenchRotated() {
+
+	/** does a formed part of this type hand the capability to this controller */
+	public boolean forwardsCapability(int slaveType, net.neoforged.neoforge.capabilities.BlockCapability<?, ?> cap) {
 		return false;
 	}
 
-	@Override
-	public boolean canBeWrenchDismantled() {
-		return false;
+	/** collision / outline shape of a formed part */
+	public net.minecraft.world.phys.shapes.VoxelShape getSlaveShape(int slaveType, BlockPos slavePos) {
+		return net.minecraft.world.phys.shapes.Shapes.block();
 	}
 
+	/** a part (or this controller) was broken */
 	public void onMultiBlockBreak() {
-		if(!this.world.isRemote && this.formed) {
-			MultiBlockMachineSchematic multiblock = MultiBlockRegister.REGISTER.get(this.getClass());
-			if(multiblock!=null) {
-				multiblock.unform(this.world, this);
+		if (level != null && !level.isClientSide && this.isFormed()) {
+			MultiBlockSchematic schematic = getSchematic();
+			if (schematic != null) {
+				schematic.unform(level, this);
 			}
 		}
 	}
-	
-	public void form(EnumFacing facing) {
-		this.formed=true;
-		if(!this.world.isRemote) {
-			this.multiblockDirection=facing;
-			this.world.setBlockState(getPos(), this.world.getBlockState(getPos()).withProperty(MultiBlockMachine.FORMED, true),3);
-			this.needUpdate();
+
+	/** set the controller blockstate formed / unformed (only while the controller block is still there) */
+	public void setFormed(boolean formed, Direction direction) {
+		if (level == null || level.isClientSide) {
+			return;
 		}
-	}
-	
-	public void unform() {
-		this.formed=false;
-		if(!this.world.isRemote){
-			IBlockState bs = world.getBlockState(getPos());
-			if (bs.getBlock()==this.getMachineBlockType()) {
-				this.world.setBlockState(getPos(), this.world.getBlockState(getPos()).withProperty(MultiBlockMachine.FORMED, false),3);
-			}
+		BlockState s = level.getBlockState(worldPosition);
+		if (s.getBlock() instanceof BlockMultiBlockController<?>) {
+			level.setBlock(worldPosition, s.setValue(BlockMultiBlockController.FORMED, formed).setValue(BlockMultiBlockController.FACING, direction), 3);
 		}
+		this.contentsChanged = true;
+		this.needUpdate();
 	}
-	
-	@Override
-	public boolean shouldRefresh(World world, BlockPos pos, IBlockState oldState, IBlockState newState) {
-		return (oldState.getBlock()!=newState.getBlock()) || (oldState.getValue(getMachineBlockType().MACHINE_TYPE) != newState.getValue(getMachineBlockType().MACHINE_TYPE));
-	}
-	
-	public abstract AxisAlignedBB getBBforSlave(BlockPos slavePos);
-	
 }

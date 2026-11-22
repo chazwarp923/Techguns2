@@ -1,0 +1,25 @@
+{
+  "type": "techguns:legacy",
+  "biomes": "#minecraft:is_overworld",
+  "step": "surface_structures",
+  "spawn_overrides": {},
+  "terrain_adaptation": "none",
+  "structures": [
+    {
+      "name": "factory_house_small",
+      "weight": 10
+    },
+    {
+      "name": "small_trainstation",
+      "weight": 10
+    },
+    {
+      "name": "small_mine",
+      "weight": 10
+    },
+    {
+      "name": "gas_station",
+      "weight": 10
+    }
+  ]
+}

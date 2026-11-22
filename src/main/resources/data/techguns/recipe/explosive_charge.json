@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "rtr",
+    "tct",
+    "rtr"
+  ],
+  "key": {
+    "r": {
+      "tag": "c:rubbers"
+    },
+    "t": {
+      "item": "minecraft:tnt"
+    },
+    "c": {
+      "tag": "c:circuits/basic"
+    }
+  },
+  "result": {
+    "id": "techguns:explosive_charge",
+    "count": 8
+  }
+}

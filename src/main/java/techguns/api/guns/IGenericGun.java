@@ -1,34 +1,33 @@
 package techguns.api.guns;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
 public interface IGenericGun {
+	boolean isShootWithLeftClick();
 
-	public boolean isShootWithLeftClick();
+	boolean isSemiAuto();
 
-	public boolean isSemiAuto();
+	/** Client only. */
+	boolean isZooming();
 
-	@SideOnly(Side.CLIENT)
-	public boolean isZooming();
+	void shootGunPrimary(ItemStack stack, Level level, Player player, boolean zooming, InteractionHand hand, Entity target);
 
-	public void shootGunPrimary(ItemStack stack, World world, EntityPlayer player, boolean zooming, EnumHand hand, Entity target);
+	int getAmmoLeft(ItemStack stack);
 
-	public int getAmmoLeft(ItemStack stack);
-	
-	public GunHandType getGunHandType();
+	GunHandType getGunHandType();
 
-	public boolean isHoldZoom();
+	boolean isHoldZoom();
 
-	public float getZoomMult();
+	float getZoomMult();
 
-	public default boolean canCharge() {return false;};
+	default boolean canCharge() {
+		return false;
+	}
 
-	public ResourceLocation getCurrentTexture(ItemStack stack);
+	ResourceLocation getCurrentTexture(ItemStack stack);
 }

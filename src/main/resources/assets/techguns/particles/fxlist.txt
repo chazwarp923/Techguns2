@@ -514,7 +514,7 @@ bioblobExplosionBlobs
 }
 
 bioblobExplosionExplosion {
-Texture = techguns:textures/fx/Explosion.png
+Texture = techguns:textures/fx/explosion.png
 RenderType = ADDITIVE
 Rows = 5
 Columns = 5

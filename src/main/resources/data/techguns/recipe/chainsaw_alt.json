@@ -1,0 +1,32 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ccp",
+    "mmr",
+    "ccf"
+  ],
+  "key": {
+    "p": {
+      "item": "techguns:plasticsheet"
+    },
+    "r": {
+      "item": "techguns:ironreceiver"
+    },
+    "c": {
+      "item": "techguns:mechanicalpartsiron"
+    },
+    "f": {
+      "item": "techguns:fueltankempty"
+    },
+    "m": {
+      "tag": "c:plates/iron"
+    }
+  },
+  "result": {
+    "id": "techguns:chainsaw",
+    "components": {
+      "techguns:ammo": 0
+    }
+  }
+}

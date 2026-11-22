@@ -1,41 +1,30 @@
 package techguns.client.render.tileentities;
 
-import net.minecraft.block.state.IBlockState;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
-import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumFacing;
-import techguns.blocks.machines.SimpleMachine;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
 import techguns.tileentities.ChargingStationTileEnt;
 
-public class RenderChargingStation extends TileEntitySpecialRenderer<ChargingStationTileEnt> {
-	
+/** The item being charged, inside the station (1.12 RenderChargingStation). */
+public class RenderChargingStation implements BlockEntityRenderer<ChargingStationTileEnt> {
+
 	@Override
-	public void render(ChargingStationTileEnt te, double x, double y, double z, float partialTicks, int destroyStage,
-			float alpha) {
-		if(te!=null && (te.isWorking() || te.charging)) {
-			ItemStack item = ItemStack.EMPTY;
-			if(te.charging) {
-				item = te.getInventory().getStackInSlot(ChargingStationTileEnt.SLOT_INPUT);
-			} else {
-				item = te.currentOperation.getItemInputI(0);
-			}
-			if(!item.isEmpty()) {
-				IBlockState bs = te.getWorld().getBlockState(te.getPos());
-				EnumFacing dir = bs.getValue(SimpleMachine.FACING);
-				
-				GlStateManager.pushMatrix();
-				GlStateManager.translate( x + 0.5d, y + 0.4d, z + 0.5d);
-				
-				GlStateManager.rotate(-90.0f*dir.getHorizontalIndex(), 0f, 1f, 0f);
-
-				Minecraft.getMinecraft().getRenderItem().renderItem(item, TransformType.GROUND);
-				
-				GlStateManager.popMatrix();
-			}
+	public void render(ChargingStationTileEnt te, float partialTick, PoseStack ps, MultiBufferSource buffers, int light, int overlay) {
+		ItemStack item = te.getDisplayedItem();
+		if (item.isEmpty()) {
+			return;
 		}
+		ps.pushPose();
+		ps.translate(0.5d, 0.4d, 0.5d);
+		ps.mulPose(Axis.YP.rotationDegrees(-te.getFacing().toYRot()));
+		Minecraft.getInstance().getItemRenderer().renderStatic(item, ItemDisplayContext.GROUND, light, OverlayTexture.NO_OVERLAY, ps, buffers,
+				te.getLevel(), (int) te.getBlockPos().asLong());
+		ps.popPose();
 	}
-
 }

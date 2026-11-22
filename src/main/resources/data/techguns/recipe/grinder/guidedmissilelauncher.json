@@ -1,0 +1,15 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:guidedmissilelauncher"
+  },
+  "results": [
+    {
+      "id": "techguns:ingotobsidiansteel",
+      "count": 8
+    },
+    {
+      "id": "techguns:copperwire"
+    }
+  ]
+}

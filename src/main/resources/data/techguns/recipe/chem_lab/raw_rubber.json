@@ -1,0 +1,14 @@
+{
+  "type": "techguns:chem_lab",
+  "input1": {
+    "tag": "minecraft:logs"
+  },
+  "fluid_input": {
+    "tag": "minecraft:water",
+    "amount": 1000
+  },
+  "result": {
+    "id": "techguns:rawrubber"
+  },
+  "power_per_tick": 20
+}

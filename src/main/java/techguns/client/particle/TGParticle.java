@@ -1,42 +1,31 @@
 package techguns.client.particle;
 
-import java.awt.Color;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.Particle;
-import net.minecraft.client.renderer.BufferBuilder;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
-import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
-import net.minecraft.client.renderer.vertex.VertexFormat;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.EnumHandSide;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
-import techguns.client.models.projectiles.ModelRocket;
+import java.util.ArrayList;
 import techguns.client.particle.TGParticleSystemType.AlphaEntry;
 import techguns.client.particle.TGParticleSystemType.ColorEntry;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import java.util.Iterator;
+import java.util.List;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import techguns.client.render.TGRenderHelper;
 import techguns.client.render.TGRenderHelper.RenderType;
-import techguns.client.render.item.RenderItemBase;
-import techguns.debug.Keybinds;
+import techguns.util.EntityCondition;
 import techguns.util.MathUtil;
-
-
 /**
  * An actual spawned particle
  */
-@SideOnly(Side.CLIENT)
-public class TGParticle extends Particle implements ITGParticle {
-	
-	 protected static final VertexFormat VERTEX_FORMAT = (new VertexFormat()).addElement(DefaultVertexFormats.POSITION_3F).addElement(DefaultVertexFormats.TEX_2F).addElement(DefaultVertexFormats.COLOR_4UB).addElement(DefaultVertexFormats.TEX_2S).addElement(DefaultVertexFormats.NORMAL_3B).addElement(DefaultVertexFormats.PADDING_1B);
+public class TGParticle extends TGParticleBase implements ITGParticle {
 	   
 	
 //	public double posX;
@@ -75,7 +64,7 @@ public class TGParticle extends Particle implements ITGParticle {
 	
 	//int angle;
 
-	public TGParticle(World worldIn, double xCoordIn, double yCoordIn, double zCoordIn, double xSpeedIn,
+	public TGParticle(Level worldIn, double xCoordIn, double yCoordIn, double zCoordIn, double xSpeedIn,
 			double ySpeedIn, double zSpeedIn, TGParticleSystem particleSystem) {
 		super(worldIn, xCoordIn, yCoordIn, zCoordIn);
 		this.motionX = xSpeedIn;
@@ -147,51 +136,51 @@ public class TGParticle extends Particle implements ITGParticle {
 			
 			if (this.particleSystem.entity != null) {
 				
-				if (!this.particleSystem.entity.isEntityAlive()) {
+				if (!this.particleSystem.entity.isAlive()) {
 					this.setExpired();
 					return;
 				}
 				
-				if (this.type.particlesMoveWithSystem && this.particleSystem.attachToHead && this.particleSystem.entity instanceof EntityLivingBase) {
-					EntityLivingBase ent = (EntityLivingBase)this.particleSystem.entity;
+				if (this.type.particlesMoveWithSystem && this.particleSystem.attachToHead && this.particleSystem.entity instanceof LivingEntity) {
+					LivingEntity ent = (LivingEntity)this.particleSystem.entity;
 					
-					double p = ent.rotationPitch*MathUtil.D2R;
-					double y = ent.rotationYawHead*MathUtil.D2R;
+					double p = ent.getXRot()*MathUtil.D2R;
+					double y = ent.getYHeadRot()*MathUtil.D2R;
 					
-					double prevP = ent.prevRotationPitch * MathUtil.D2R;
-					double prevY =ent.prevRotationYawHead * MathUtil.D2R;
+					double prevP = ent.xRotO * MathUtil.D2R;
+					double prevY =ent.yHeadRotO * MathUtil.D2R;
 					
-					Vec3d offsetBase = this.particleSystem.entityOffset.add(this.particleSystem.type.offset);
+					Vec3 offsetBase = this.particleSystem.entityOffset.add(this.particleSystem.type.offset);
 					
 					//ViewBobbing
 					/*if (this.particleSystem.entity == Minecraft.getMinecraft().player
 							&& Minecraft.getMinecraft().gameSettings.thirdPersonView == 0
 							&& Minecraft.getMinecraft().gameSettings.viewBobbing) {
-						Vec3d vec = setupViewBobbing(1.0f).scale(2.0);
+						Vec3 vec = setupViewBobbing(1.0f).scale(2.0);
 						offsetBase = offsetBase.add(vec);
 					}
 					*/
 					
-					Vec3d offset = offsetBase.rotatePitch((float)-p);
-					offset = offset.rotateYaw((float)-y);
+					Vec3 offset = offsetBase.xRot((float)-p);
+					offset = offset.yRot((float)-y);
 					
-					Vec3d offsetP = offsetBase.rotatePitch((float)-prevP);
-					offsetP = offsetP.rotateYaw((float)-prevY);
+					Vec3 offsetP = offsetBase.xRot((float)-prevP);
+					offsetP = offsetP.yRot((float)-prevY);
 										
-					this.prevPosX = this.particleSystem.entity.prevPosX + offsetP.x;
-					this.prevPosY = this.particleSystem.entity.prevPosY + ent.getEyeHeight() + offsetP.y;
-					this.prevPosZ = this.particleSystem.entity.prevPosZ + offsetP.z;
-					this.posX = this.particleSystem.entity.posX + offset.x;
-					this.posY = this.particleSystem.entity.posY + ent.getEyeHeight() + offset.y;
-					this.posZ = this.particleSystem.entity.posZ + offset.z;
+					this.prevPosX = this.particleSystem.entity.xo + offsetP.x;
+					this.prevPosY = this.particleSystem.entity.yo + ent.getEyeHeight() + offsetP.y;
+					this.prevPosZ = this.particleSystem.entity.zo + offsetP.z;
+					this.posX = this.particleSystem.entity.getX() + offset.x;
+					this.posY = this.particleSystem.entity.getY() + ent.getEyeHeight() + offset.y;
+					this.posZ = this.particleSystem.entity.getZ() + offset.z;
 				}else {
 				
-					this.prevPosX = this.particleSystem.entity.prevPosX;
-					this.prevPosY = this.particleSystem.entity.prevPosY;
-					this.prevPosZ = this.particleSystem.entity.prevPosZ;
-					this.posX = this.particleSystem.entity.posX;
-					this.posY = this.particleSystem.entity.posY;
-					this.posZ = this.particleSystem.entity.posZ;
+					this.prevPosX = this.particleSystem.entity.xo;
+					this.prevPosY = this.particleSystem.entity.yo;
+					this.prevPosZ = this.particleSystem.entity.zo;
+					this.posX = this.particleSystem.entity.getX();
+					this.posY = this.particleSystem.entity.getY();
+					this.posZ = this.particleSystem.entity.getZ();
 				}
 			}else {
 				
@@ -209,16 +198,16 @@ public class TGParticle extends Particle implements ITGParticle {
 			double dP = (this.particleSystem.rotationPitch - this.particleSystem.prevRotationPitch)*MathUtil.D2R;
 			double dY = (this.particleSystem.rotationYaw - this.particleSystem.prevRotationYaw)*MathUtil.D2R;
 			
-			Vec3d pos = new Vec3d(this.posX,  this.posY, this.posZ);
-			Vec3d sysPos = new Vec3d(this.particleSystem.posX(), this.particleSystem.posY(), this.particleSystem.posZ());
+			Vec3 pos = new Vec3(this.posX,  this.posY, this.posZ);
+			Vec3 sysPos = new Vec3(this.particleSystem.posX(), this.particleSystem.posY(), this.particleSystem.posZ());
 			
-			Vec3d offset = sysPos.subtract(pos);
-			offset = offset.rotateYaw((float)-dY);
-			offset = offset.rotatePitch((float)-dP);
+			Vec3 offset = sysPos.subtract(pos);
+			offset = offset.yRot((float)-dY);
+			offset = offset.xRot((float)-dP);
 			
-			Vec3d motion = new Vec3d (this.motionX, this.motionY, this.motionZ);
-			motion = motion.rotateYaw((float)-dY);
-			motion = motion.rotatePitch((float)-dP);
+			Vec3 motion = new Vec3 (this.motionX, this.motionY, this.motionZ);
+			motion = motion.yRot((float)-dY);
+			motion = motion.xRot((float)-dP);
 			
 			this.posX = sysPos.x+offset.x;
 			this.posY = sysPos.y+offset.y;
@@ -274,7 +263,7 @@ public class TGParticle extends Particle implements ITGParticle {
 	 /**
      * Renders the particle
      */
-    public void renderParticle(BufferBuilder buffer, Entity entityIn, float partialTickTime, float rotX, float rotZ, float rotYZ, float rotXY, float rotXZ)
+    public void renderParticle(TGParticleBuffers buffers, float partialTickTime, float rotX, float rotZ, float rotYZ, float rotXY, float rotXZ)
     {
     	float progress = ((float)this.particleAge+partialTickTime) / (float)this.particleMaxAge;
     	
@@ -294,10 +283,6 @@ public class TGParticle extends Particle implements ITGParticle {
          * RENDER PARTICLE
          */
         this.particleScale = sizePrev + (size-sizePrev)*partialTickTime;
-    	
-        
-        //Minecraft.getMinecraft().renderEngine.bindTexture(type.texture);
-        Minecraft.getMinecraft().getTextureManager().bindTexture(type.texture);
 
 //        float f6 = ((float)this.particleTextureIndexX + this.particleTextureJitterX / 4.0F) / 16.0F;
 //        float f7 = f6 + 0.015609375F;
@@ -314,14 +299,14 @@ public class TGParticle extends Particle implements ITGParticle {
 				&& this.particleSystem.entity == Minecraft.getMinecraft().player
 				&& Minecraft.getMinecraft().gameSettings.thirdPersonView == 0
 				&& Minecraft.getMinecraft().gameSettings.viewBobbing) {
-			Vec3d vec = setupViewBobbing(partialTickTime);
+			Vec3 vec = setupViewBobbing(partialTickTime);
 			
-			EntityPlayer entityplayer = (EntityPlayer)Minecraft.getMinecraft().getRenderViewEntity();
+			Player entityplayer = (Player)Minecraft.getMinecraft().getRenderViewEntity();
 			float pitch_ = entityplayer.prevCameraYaw + (entityplayer.cameraYaw - entityplayer.prevCameraYaw) * partialTickTime;
             float yaw_ = entityplayer.prevCameraPitch + (entityplayer.cameraPitch - entityplayer.prevCameraPitch) * partialTickTime;
 			
-            vec = vec.rotatePitch(-pitch_ * (float)MathUtil.D2R);
-            vec = vec.rotateYaw(-yaw_ * (float)MathUtil.D2R);          
+            vec = vec.xRot(-pitch_ * (float)MathUtil.D2R);
+            vec = vec.yRot(-yaw_ * (float)MathUtil.D2R);          
             
 			fPosX += (float)vec.x;
 			fPosY += (float)vec.y;
@@ -359,53 +344,49 @@ public class TGParticle extends Particle implements ITGParticle {
 //				break;
 //		}
 		
-		enableBlendMode();
-
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-
-        buffer.begin(7, VERTEX_FORMAT);
+		VertexConsumer buffer = buffers.get(type.texture, type.renderType);
         double a = (angle + (partialTickTime * angleRate)) * MathUtil.D2R;
-		Vec3d p1, p2, p3, p4;
+		Vec3 p1, p2, p3, p4;
 		
 		if (this.type.groundAligned) {
 			float s = fscale;
-			p1 = new Vec3d(-s,0,-s);
-			p2 = new Vec3d(s,0,-s);
-			p3 = new Vec3d(s,0,s);
-			p4 = new Vec3d(-s,0,s);
+			p1 = new Vec3(-s,0,-s);
+			p2 = new Vec3(s,0,-s);
+			p3 = new Vec3(s,0,s);
+			p4 = new Vec3(-s,0,s);
 			if (a > 0.0001f) {
-				p1 = p1.rotateYaw((float) a);
-				p2 = p2.rotateYaw((float) a);
-				p3 = p3.rotateYaw((float) a);
-				p4 = p4.rotateYaw((float) a);
+				p1 = p1.yRot((float) a);
+				p2 = p2.yRot((float) a);
+				p3 = p3.yRot((float) a);
+				p4 = p4.yRot((float) a);
 			}
 		}else {
-	        p1 = new Vec3d((double)(- rotX * fscale - rotXY * fscale), (double)(- rotZ * fscale), (double)(- rotYZ * fscale - rotXZ * fscale));
-	        p2 = new Vec3d((double)(- rotX * fscale + rotXY * fscale), (double)( + rotZ * fscale), (double)( - rotYZ * fscale + rotXZ * fscale));
-	        p3 = new Vec3d((double)( rotX * fscale + rotXY * fscale), (double)( + rotZ * fscale), (double)( + rotYZ * fscale + rotXZ * fscale));
-	        p4 = new Vec3d((double)( rotX * fscale - rotXY * fscale), (double)( - rotZ * fscale), (double)( + rotYZ * fscale - rotXZ * fscale));        
+	        p1 = new Vec3((double)(- rotX * fscale - rotXY * fscale), (double)(- rotZ * fscale), (double)(- rotYZ * fscale - rotXZ * fscale));
+	        p2 = new Vec3((double)(- rotX * fscale + rotXY * fscale), (double)( + rotZ * fscale), (double)( - rotYZ * fscale + rotXZ * fscale));
+	        p3 = new Vec3((double)( rotX * fscale + rotXY * fscale), (double)( + rotZ * fscale), (double)( + rotYZ * fscale + rotXZ * fscale));
+	        p4 = new Vec3((double)( rotX * fscale - rotXY * fscale), (double)( - rotZ * fscale), (double)( + rotYZ * fscale - rotXZ * fscale));        
 		
 			//<TEST>
-//			Vec3d angles = RenderItemBase.getTransformAngles((EntityLivingBase)entityIn, EnumHandSide.RIGHT, partialTickTime);
+//			Vec3 angles = RenderItemBase.getTransformAngles((LivingEntity)entityIn, EnumHandSide.RIGHT, partialTickTime);
 //			angles = angles.scale(-1.0);
 //			
 //			p1 = MathUtil.rotateVec3dAroundZ(p1, (float)angles.z);
-//			p1 = p1.rotateYaw((float)angles.y);
-//			p1 = p1.rotatePitch((float)angles.x);
+//			p1 = p1.yRot((float)angles.y);
+//			p1 = p1.xRot((float)angles.x);
 //		
 //			p2 = MathUtil.rotateVec3dAroundZ(p2, (float)angles.z);
-//			p2 = p2.rotateYaw((float)angles.y);
-//			p2 = p2.rotatePitch((float)angles.x);
+//			p2 = p2.yRot((float)angles.y);
+//			p2 = p2.xRot((float)angles.x);
 //			
 //			
 //			p3 = MathUtil.rotateVec3dAroundZ(p3, (float)angles.z);
-//			p3 = p3.rotateYaw((float)angles.y);
-//			p3 = p3.rotatePitch((float)angles.x);
+//			p3 = p3.yRot((float)angles.y);
+//			p3 = p3.xRot((float)angles.x);
 //
 //			
 //			p4 = MathUtil.rotateVec3dAroundZ(p4, (float)angles.z);
-//			p4 = p4.rotateYaw((float)angles.y);
-//			p4 = p4.rotatePitch((float)angles.x);
+//			p4 = p4.yRot((float)angles.y);
+//			p4 = p4.xRot((float)angles.x);
 //
 //			
 			//</TEST>
@@ -416,7 +397,7 @@ public class TGParticle extends Particle implements ITGParticle {
 	        //double a = angle * MathUtil.D2R;
 	        
 	        if (a > 0.0001f) {
-		        Vec3d axis = p1.normalize().crossProduct(p2.normalize());
+		        Vec3 axis = p1.normalize().cross(p2.normalize());
 				double cosa = Math.cos(a);
 				double sina = Math.sin(a);
 		        
@@ -427,28 +408,47 @@ public class TGParticle extends Particle implements ITGParticle {
 	        }	        		
 		}
 		
-		/*p1 = new Vec3d(p1.x + fPosX, p1.y + fPosY, p1.z + fPosZ);
-		p2 = new Vec3d(p2.x + fPosX, p2.y + fPosY, p2.z + fPosZ);
-		p3 = new Vec3d(p3.x + fPosX, p3.y + fPosY, p3.z + fPosZ);
-		p4 = new Vec3d(p4.x + fPosX, p4.y + fPosY, p4.z + fPosZ);*/
+		/*p1 = new Vec3(p1.x + fPosX, p1.y + fPosY, p1.z + fPosZ);
+		p2 = new Vec3(p2.x + fPosX, p2.y + fPosY, p2.z + fPosZ);
+		p3 = new Vec3(p3.x + fPosX, p3.y + fPosY, p3.z + fPosZ);
+		p4 = new Vec3(p4.x + fPosX, p4.y + fPosY, p4.z + fPosZ);*/
         
 		//System.out.println(String.format("p1 = %.2f, %.2f, %.2f, p2 = %.2f, %.2f, %.2f,  p3 = %.2f, %.2f, %.2f,  p4 = %.2f, %.2f, %.2f", p1.x, p1.y, p1.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z, p4.x, p4.y, p4.z));
 		//System.out.println(String.format("fpos = %.2f, %.2f, %.2f", fPosX, fPosY, fPosZ));
 
-		buffer.pos(p1.x + fPosX, p1.y + fPosY, p1.z + fPosZ).tex((double)ua, (double)va).color(this.particleRed, this.particleGreen, this.particleBlue, this.particleAlpha).lightmap(0, 240).normal(0.0f, 1.0f, 0.0f).endVertex();
-		buffer.pos(p2.x + fPosX, p2.y + fPosY, p2.z + fPosZ).tex((double)ub, (double)vb).color(this.particleRed, this.particleGreen, this.particleBlue, this.particleAlpha).lightmap(0, 240).normal(0.0f, 1.0f, 0.0f).endVertex();
-		buffer.pos(p3.x + fPosX, p3.y + fPosY, p3.z + fPosZ).tex((double)uc, (double)vc).color(this.particleRed, this.particleGreen, this.particleBlue, this.particleAlpha).lightmap(0, 240).normal(0.0f, 1.0f, 0.0f).endVertex();
-		buffer.pos(p4.x + fPosX, p4.y + fPosY, p4.z + fPosZ).tex((double)ud, (double)vd).color(this.particleRed, this.particleGreen, this.particleBlue, this.particleAlpha).lightmap(0, 240).normal(0.0f, 1.0f, 0.0f).endVertex();
-
-        Tessellator.getInstance().draw();
+		buffers.vertex(buffer, p1.x + fPosX, p1.y + fPosY, p1.z + fPosZ, ua, va, this.particleRed, this.particleGreen, this.particleBlue, this.particleAlpha);
+		buffers.vertex(buffer, p2.x + fPosX, p2.y + fPosY, p2.z + fPosZ, ub, vb, this.particleRed, this.particleGreen, this.particleBlue, this.particleAlpha);
+		buffers.vertex(buffer, p3.x + fPosX, p3.y + fPosY, p3.z + fPosZ, uc, vc, this.particleRed, this.particleGreen, this.particleBlue, this.particleAlpha);
+		buffers.vertex(buffer, p4.x + fPosX, p4.y + fPosY, p4.z + fPosZ, ud, vd, this.particleRed, this.particleGreen, this.particleBlue, this.particleAlpha);
 
         //new ModelRocket().render(null, 0, 0, 0, 0, 0, 0.625f, 0, 0f, TransformType.GROUND, 0, 0f, 0f);
         //System.out.println("DoRender");
-        
-        disableBlendMode();
 
     }
     
+    /** java.awt.Color.RGBtoHSB equivalent on 0..1 floats (quantized to 8 bit like 1.12) */
+    protected static float[] rgbToHsb(float rf, float gf, float bf) {
+    	int r = (int) (rf * 255), g = (int) (gf * 255), b = (int) (bf * 255);
+    	int cmax = Math.max(r, Math.max(g, b));
+    	int cmin = Math.min(r, Math.min(g, b));
+    	float brightness = cmax / 255.0f;
+    	float saturation = cmax != 0 ? (float) (cmax - cmin) / (float) cmax : 0;
+    	float hue;
+    	if (saturation == 0) {
+    		hue = 0;
+    	} else {
+    		float redc = (float) (cmax - r) / (float) (cmax - cmin);
+    		float greenc = (float) (cmax - g) / (float) (cmax - cmin);
+    		float bluec = (float) (cmax - b) / (float) (cmax - cmin);
+    		if (r == cmax) hue = bluec - greenc;
+    		else if (g == cmax) hue = 2.0f + redc - bluec;
+    		else hue = 4.0f + greenc - redc;
+    		hue = hue / 6.0f;
+    		if (hue < 0) hue = hue + 1.0f;
+    	}
+    	return new float[] { hue, saturation, brightness };
+    }
+
     /**
      * interpolate colors and alpha values
      */
@@ -481,13 +481,13 @@ public class TGParticle extends Particle implements ITGParticle {
 		if (c1 != c2) {
 			
 			//RGB to HSB
-			float[] hsb1 = Color.RGBtoHSB((int)(c1.r*255), (int)(c1.g*255), (int)(c1.b*255), null);
-			float[] hsb2 = Color.RGBtoHSB((int)(c2.r*255), (int)(c2.g*255), (int)(c2.b*255), null);	
+			float[] hsb1 = rgbToHsb(c1.r, c1.g, c1.b);
+			float[] hsb2 = rgbToHsb(c2.r, c2.g, c2.b);	
 			//HSB to RGB;
-			Color color = new Color(Color.HSBtoRGB(hsb1[0]*(1f-p) + hsb2[0]*p, hsb1[1]*(1f-p) + hsb2[1]*p, hsb1[2]*(1f-p) + hsb2[2]*p));
-			this.particleRed = (float)color.getRed() / 255.0f;
-			this.particleGreen = (float)color.getGreen() / 255.0f;
-			this.particleBlue = (float)color.getBlue() / 255.0f;
+			int color = Mth.hsvToRgb(Mth.positiveModulo(hsb1[0]*(1f-p) + hsb2[0]*p, 1f), hsb1[1]*(1f-p) + hsb2[1]*p, hsb1[2]*(1f-p) + hsb2[2]*p);
+			this.particleRed = (float)((color >> 16) & 0xFF) / 255.0f;
+			this.particleGreen = (float)((color >> 8) & 0xFF) / 255.0f;
+			this.particleBlue = (float)(color & 0xFF) / 255.0f;
 		}else {
 			this.particleRed = (float)c1.r;
 			this.particleGreen = (float)c1.g;
@@ -539,51 +539,6 @@ public class TGParticle extends Particle implements ITGParticle {
         return 61680;
     }
 	
-	protected void enableBlendMode() {
-		//GlStateManager.pushAttrib();
-    	if (type.renderType != RenderType.SOLID) {
-    		GlStateManager.enableBlend();
-    		GlStateManager.depthMask(false);
-    		//GlStateManager.disableAlpha();
-    		//GL11.glEnable(GL11.GL_ALPHA_TEST);
-    	}
-        if (type.renderType == RenderType.ALPHA) {
-        	GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
-        } else if (type.renderType == RenderType.ADDITIVE || type.renderType==RenderType.NO_Z_TEST) {
-        	GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE);
-        }
-        
-        if (type.renderType==RenderType.NO_Z_TEST){
-        	GlStateManager.depthMask(false);
-        	GlStateManager.disableDepth();
-        }
-        
-        if (type.renderType != RenderType.ALPHA_SHADED) TGRenderHelper.enableFXLighting();
-	}
-	
-	protected void disableBlendMode() {
-		if (type.renderType != RenderType.ALPHA_SHADED) TGRenderHelper.disableFXLighting();
-		if (type.renderType != RenderType.SOLID) {
-    		GlStateManager.disableBlend();
-    		GlStateManager.depthMask(true);
-    		//GlStateManager.disableAlpha();
-    		//GL11.glDisable(GL11.GL_ALPHA_TEST);
-    	}
-		 if (type.renderType == RenderType.ALPHA) {
-        	GlStateManager.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
-        } else if (type.renderType == RenderType.ADDITIVE || type.renderType==RenderType.NO_Z_TEST) {
-        	GlStateManager.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
-        }
-		
-        if (type.renderType==RenderType.NO_Z_TEST){
-        	GlStateManager.depthMask(true);
-        	GlStateManager.enableDepth();
-        }
-		
-		//GlStateManager.popAttrib();
-	}
-    
-    
     /**
 	 * Retrieve what effect layer (what texture) the particle should be rendered
 	 * with. 0 for the particle sprite sheet, 1 for the main Texture atlas, and 3
@@ -594,10 +549,9 @@ public class TGParticle extends Particle implements ITGParticle {
 	}
 
 // DON'T NEED THIS
-//    @SideOnly(Side.CLIENT)
-//    public static class Factory implements IParticleFactory
+//    //    public static class Factory implements IParticleFactory
 //    {
-//        public Particle createParticle(int particleID, World worldIn, double xCoordIn, double yCoordIn, double zCoordIn, double xSpeedIn, double ySpeedIn, double zSpeedIn, int... parameters)
+//        public Particle createParticle(int particleID, Level worldIn, double xCoordIn, double yCoordIn, double zCoordIn, double xSpeedIn, double ySpeedIn, double zSpeedIn, int... parameters)
 //        {
 //        	if (parameters.length <= 0) return null;
 //        	TGParticleSystemType type = TGParticleList.getType(parameters[0]);
@@ -618,16 +572,16 @@ public class TGParticle extends Particle implements ITGParticle {
 	}
 
 	
-	protected Vec3d rotAxis(Vec3d p1, Vec3d axis, double sina, double cosa) {	
-		  Vec3d v1 = axis.crossProduct(p1);
-		  double d1 = axis.dotProduct(p1);
+	protected Vec3 rotAxis(Vec3 p1, Vec3 axis, double sina, double cosa) {	
+		  Vec3 v1 = axis.cross(p1);
+		  double d1 = axis.dot(p1);
 		  return p1.scale(cosa).add(v1.scale(sina)).add(axis.scale(d1*(1.0 - cosa)));			
-		//  return p1.scale(cosa).add(axis.crossProduct(p1).scale(Math.sin(a))).add(axis.scale(axis.dotProduct(p1)*(1.0 - Math.cos(a))));			
+		//  return p1.scale(cosa).add(axis.cross(p1).scale(Math.sin(a))).add(axis.scale(axis.dot(p1)*(1.0 - Math.cos(a))));			
 	}
 
 	@Override
-	public Vec3d getPos() {
-		return new Vec3d(this.posX, this.posY, this.posZ);
+	public Vec3 getPos() {
+		return new Vec3(this.posX, this.posY, this.posZ);
 	}
 
 	@Override
@@ -641,22 +595,21 @@ public class TGParticle extends Particle implements ITGParticle {
 	}
 
 	@Override
-	public void doRender(BufferBuilder buffer, Entity entityIn, float partialTickTime, float rotX, float rotZ,
+	public void doRender(TGParticleBuffers buffers, float partialTickTime, float rotX, float rotZ,
 			float rotYZ, float rotXY, float rotXZ) {
-		this.renderParticle(buffer, entityIn, partialTickTime, rotX, rotZ, rotYZ, rotXY, rotXZ);
+		this.renderParticle(buffers, partialTickTime, rotX, rotZ, rotYZ, rotXY, rotXZ);
 	}
 
-	@Override
-	public AxisAlignedBB getRenderBoundingBox(float partialTickTime, Entity viewEnt) {
+		public AABB getRenderBoundingBox(float partialTickTime, Entity viewEnt) {
 	    //float fPosX = (float)(this.prevPosX + (this.posX - this.prevPosX) * (double)partialTickTime - interpPosX);
         //float fPosY = (float)(this.prevPosY + (this.posY - this.prevPosY) * (double)partialTickTime - interpPosY);
         //float fPosZ = (float)(this.prevPosZ + (this.posZ - this.prevPosZ) * (double)partialTickTime - interpPosZ);
-		double fPosX = (this.posX-viewEnt.posX);
-		double fPosY = (this.posY-viewEnt.posY);
-		double fPosZ = (this.posZ-viewEnt.posZ);
+		double fPosX = (this.posX-viewEnt.getX());
+		double fPosY = (this.posY-viewEnt.getY());
+		double fPosZ = (this.posZ-viewEnt.getZ());
 	    
 		double s = size*0.5;
-		return new AxisAlignedBB(fPosX-s, fPosY-s, fPosZ-s, fPosX+s, fPosY+s, fPosZ+s);
+		return new AABB(fPosX-s, fPosY-s, fPosZ-s, fPosX+s, fPosY+s, fPosZ+s);
 	}
 
 	@Override
@@ -669,34 +622,6 @@ public class TGParticle extends Particle implements ITGParticle {
 		this.depth=depth;
 	}
 	
-	private Vec3d setupViewBobbing(float ptt)
-    {
-        if (Minecraft.getMinecraft().getRenderViewEntity() instanceof EntityPlayer)
-        {
-            EntityPlayer entityplayer = (EntityPlayer)Minecraft.getMinecraft().getRenderViewEntity();
-            float f1 = entityplayer.distanceWalkedModified - entityplayer.prevDistanceWalkedModified;
-            float f2 = -(entityplayer.distanceWalkedModified + f1 * ptt);
-            float f3 = entityplayer.prevCameraYaw + (entityplayer.cameraYaw - entityplayer.prevCameraYaw) * ptt;
-            float f4 = entityplayer.prevCameraPitch + (entityplayer.cameraPitch - entityplayer.prevCameraPitch) * ptt;
-
-            float F1 = 1.0f; // (float) Keybinds.X;
-            float F2 = 1.0f; //(float) Keybinds.Y;
-            
-//            GlStateManager.translate(MathHelper.sin(f2 * (float)Math.PI) * f3 * 0.5F * F1, -Math.abs(MathHelper.cos(f2 * (float)Math.PI) * f3) * F2, 0.0F);
-//            GlStateManager.rotate(MathHelper.sin(f2 * (float)Math.PI) * f3 * 3.0F, 0.0F, 0.0F, 1.0F);
-//            GlStateManager.rotate(Math.abs(MathHelper.cos(f2 * (float)Math.PI - 0.2F) * f3) * 5.0F, 1.0F, 0.0F, 0.0F);
-//            GlStateManager.rotate(f4, 1.0F, 0.0F, 0.0F);
-
-            Vec3d vec = new Vec3d(MathHelper.sin(f2 * (float)Math.PI) * f3 * 0.5F * F1,  -Math.abs(MathHelper.cos(f2 * (float)Math.PI) * f3) * F2, 0.0F);
-            vec = MathUtil.rotateVec3dAroundZ(vec, MathHelper.sin(f2 * (float)Math.PI) * f3 * 3.0F * (float)MathUtil.D2R);
-            return vec.rotatePitch(Math.abs(MathHelper.cos(f2 * (float)Math.PI - 0.2F) * f3) * 5.0F * (float)MathUtil.D2R).rotatePitch(f4 * (float)MathUtil.D2R);
-            		
-            		
-        }else {
-        	return new Vec3d(0,0,0);
-        }
-    }
-
 	@Override
 	public void setItemAttached() {
 		this.itemAttached=true;

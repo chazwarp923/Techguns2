@@ -1,29 +1,26 @@
 package techguns.client.render.entities.projectiles;
 
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.util.ResourceLocation;
-import techguns.entities.projectiles.GenericProjectile;
+import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Entity;
 
-/**
- * Renders (or actually don't render) an invisible projectile
- *
- * @param <T>
- */
-public class RenderInvisibleProjectile <T extends GenericProjectile> extends Render<T>{
+/** Projectiles that are only visible through their particle trails. */
+public class RenderInvisibleProjectile<T extends Entity> extends EntityRenderer<T> {
 
-	public RenderInvisibleProjectile(RenderManager renderManager) {
-		super(renderManager);
+	public RenderInvisibleProjectile(EntityRendererProvider.Context ctx) {
+		super(ctx);
 	}
 
 	@Override
-	protected ResourceLocation getEntityTexture(T entity) {
-		return null;
+	public boolean shouldRender(T entity, Frustum frustum, double x, double y, double z) {
+		return false;
 	}
 
 	@Override
-	public void doRender(T entity, double x, double y, double z, float entityYaw, float partialTicks) {
-		//DO NOTHING
+	public ResourceLocation getTextureLocation(T entity) {
+		return MissingTextureAtlasSprite.getLocation();
 	}
-
 }

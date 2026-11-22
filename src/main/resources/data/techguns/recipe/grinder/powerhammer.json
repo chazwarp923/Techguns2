@@ -1,0 +1,15 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:powerhammer"
+  },
+  "results": [
+    {
+      "id": "minecraft:iron_ingot",
+      "count": 4
+    },
+    {
+      "id": "minecraft:flint"
+    }
+  ]
+}

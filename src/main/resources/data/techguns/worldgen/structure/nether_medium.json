@@ -1,0 +1,21 @@
+{
+  "type": "techguns:legacy",
+  "biomes": "#minecraft:is_nether",
+  "step": "surface_structures",
+  "spawn_overrides": {},
+  "terrain_adaptation": "none",
+  "structures": [
+    {
+      "name": "nether_altar_medium",
+      "weight": 10
+    },
+    {
+      "name": "nether_ghast_spawner",
+      "weight": 10
+    },
+    {
+      "name": "nether_orecluster_castle",
+      "weight": 10
+    }
+  ]
+}

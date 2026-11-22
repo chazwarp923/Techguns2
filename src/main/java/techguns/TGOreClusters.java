@@ -1,266 +1,133 @@
 package techguns;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Supplier;
 
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.NonNullList;
-import net.minecraft.util.WeightedRandom;
-import net.minecraft.world.World;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fml.common.event.FMLInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.oredict.OreDictionary;
-import techguns.blocks.EnumOreClusterType;
-import techguns.blocks.EnumOreType;
-import techguns.blocks.IEnumOreClusterType;
-import techguns.init.ITGInitializer;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.material.Fluid;
+import net.neoforged.neoforge.fluids.FluidStack;
+import techguns.blocks.OreClusterType;
 import techguns.tileentities.operation.MachineOperation;
 
-public class TGOreClusters implements ITGInitializer{
-	protected HashMap<EnumOreClusterType, OreCluster> registry = new HashMap<>();
-	
-	public OreCluster getClusterForType(IEnumOreClusterType type) {
-		return registry.get(type);
-	}
-	
-	@Override
-	public void preInit(FMLPreInitializationEvent event) {
-		registry.put(EnumOreClusterType.COAL, new OreCluster(TGConfig.mininglevel_coal, TGConfig.oremult_coal, TGConfig.powermult_coal));
-		registry.put(EnumOreClusterType.COMMON_METAL, new OreCluster(TGConfig.mininglevel_common_metal, TGConfig.oremult_common_metal, TGConfig.powermult_common_metal));
-		registry.put(EnumOreClusterType.RARE_METAL, new OreCluster(TGConfig.mininglevel_rare_metal, TGConfig.oremult_rare_metal, TGConfig.powermult_rare_metal));
-		registry.put(EnumOreClusterType.SHINY_METAL, new OreCluster(TGConfig.mininglevel_shiny_metal, TGConfig.oremult_shiny_metal, TGConfig.powermult_shiny_metal));
-		registry.put(EnumOreClusterType.URANIUM, new OreCluster(TGConfig.mininglevel_uranium, TGConfig.oremult_uranium, TGConfig.powermult_uranium));
-		registry.put(EnumOreClusterType.COMMON_GEM, new OreCluster(TGConfig.mininglevel_common_gem, TGConfig.oremult_common_gem, TGConfig.powermult_common_gem));
-		registry.put(EnumOreClusterType.SHINY_GEM, new OreCluster(TGConfig.mininglevel_shiny_gem, TGConfig.oremult_shiny_gem, TGConfig.powermult_shiny_gem));
-		registry.put(EnumOreClusterType.NETHER_CRYSTAL, new OreCluster(TGConfig.mininglevel_nether_crystal, TGConfig.oremult_nether_crystal, TGConfig.powermult_nether_crystal));
-		registry.put(EnumOreClusterType.OIL, new OreCluster(TGConfig.mininglevel_oil, TGConfig.oremult_oil, TGConfig.powermult_oil));
+/**
+ * What ore drills get out of each ore cluster type (1.12 TGOreClusters). Entries are items, the first item of an item
+ * tag (other mods' ores) or the first source fluid of a fluid tag (oil). Entries that resolve to nothing are skipped.
+ */
+public final class TGOreClusters {
+
+	private TGOreClusters() {
 	}
 
-	public void RecipeInit() {
-		this.addOreToCluster(new ItemStack(Blocks.COAL_ORE), EnumOreClusterType.COAL, 99);
-		this.addOreToCluster(new ItemStack(Items.DIAMOND), EnumOreClusterType.COAL, 1);
-		
-		this.addOreToCluster(new ItemStack(Blocks.IRON_ORE), EnumOreClusterType.COMMON_METAL, 45);
-		this.addOreToCluster(new ItemStack(TGBlocks.TG_ORE,1,EnumOreType.ORE_COPPER.ordinal()), EnumOreClusterType.COMMON_METAL, 30);
-		this.addOreToCluster(new ItemStack(TGBlocks.TG_ORE,1,EnumOreType.ORE_TIN.ordinal()), EnumOreClusterType.COMMON_METAL, 25);
-		
-		this.addOreToCluster(new ItemStack(TGBlocks.TG_ORE, 1, EnumOreType.ORE_LEAD.ordinal()), EnumOreClusterType.RARE_METAL, 50);
-		
-		this.addOreToCluster(new ItemStack(TGBlocks.TG_ORE, 1, EnumOreType.ORE_TITANIUM.ordinal()), EnumOreClusterType.SHINY_METAL, 20);
-		this.addOreToCluster(new ItemStack(Blocks.GOLD_ORE), EnumOreClusterType.SHINY_METAL, 40);
-		
-		this.addOreToCluster(new ItemStack(Blocks.REDSTONE_ORE), EnumOreClusterType.COMMON_GEM, 40);
-		this.addOreToCluster(new ItemStack(Blocks.LAPIS_ORE), EnumOreClusterType.COMMON_GEM, 20);
-		
-		this.addOreToCluster(new ItemStack(Blocks.DIAMOND_ORE), EnumOreClusterType.SHINY_GEM, 40);
-		this.addOreToCluster(new ItemStack(Blocks.EMERALD_ORE), EnumOreClusterType.SHINY_GEM, 20);
-		
-		this.addOreToCluster(new ItemStack(TGBlocks.TG_ORE,1,EnumOreType.ORE_URANIUM.ordinal()), EnumOreClusterType.URANIUM, 50);
-		
-		this.addOreToCluster(new ItemStack(Blocks.QUARTZ_ORE), EnumOreClusterType.NETHER_CRYSTAL, 50);
-		this.addOreToCluster(new ItemStack(Blocks.GLOWSTONE), EnumOreClusterType.NETHER_CRYSTAL, 40);
-		this.addOreToCluster(new ItemStack(Items.BLAZE_ROD), EnumOreClusterType.NETHER_CRYSTAL, 10);
-		
-		if(!TGFluids.worldspawn_oils.isEmpty()) {
-			//prefer oil which has a block implementation
-			if(TGFluids.OIL_WORLDSPAWN!=null) {
-				this.addOreToCluster(new FluidStack(TGFluids.OIL_WORLDSPAWN,1000), EnumOreClusterType.OIL, 10);
-			//otherwise use first oil
-			} else {
-				this.addOreToCluster(new FluidStack(TGFluids.worldspawn_oils.get(0),1000), EnumOreClusterType.OIL, 10);
-			}
-		}	
-		
-		//add modded ores from oreDict
-		this.addOreToCluster("oreSilver", EnumOreClusterType.SHINY_METAL, 40);
-		
-		this.addOreToCluster("oreOsmium", EnumOreClusterType.RARE_METAL, 50);
-		this.addOreToCluster("oreAluminium", EnumOreClusterType.RARE_METAL, 50);
-		
-		this.addOreToCluster("oreCertusQuartz", EnumOreClusterType.COMMON_GEM, 40);
-		this.addOreToCluster("oreChargedCertusQuartz", EnumOreClusterType.COMMON_GEM, 5);
-	}
-	
-	@Override
-	public void init(FMLInitializationEvent event) {
-
-	}
-
-	@Override
-	public void postInit(FMLPostInitializationEvent event) {
-		
-	}
-
-	public boolean removeOreFromCluster(ItemStack ore, EnumOreClusterType type) {
-		OreCluster c = this.registry.get(type);
-		if(c!=null) {
-			OreClusterWeightedEntry entry = new OreClusterWeightedEntry(ore, 1);
-			if(c.oreEntries.contains(entry)) {
-				return c.oreEntries.remove(entry);
-			}
-		}
-		return false;
-	}
-	
-	public boolean removeOreFromCluster(FluidStack fluid, EnumOreClusterType type) {
-		OreCluster c = this.registry.get(type);
-		if(c!=null) {
-			OreClusterWeightedEntry entry = new OreClusterWeightedEntry(fluid, 1);
-			if(c.oreEntries.contains(entry)) {
-				return c.oreEntries.remove(entry);
-			}
-		}
-		return false;
-	}
-	
-	public void addOreToCluster(ItemStack ore, EnumOreClusterType type, int weight) {
-		OreCluster c = this.registry.get(type);
-		if(c!=null) {
-			ItemStack ore2=ore.copy();
-			ore2.setCount(1);
-			OreClusterWeightedEntry entry = new OreClusterWeightedEntry(ore2, weight);
-			if(!c.oreEntries.contains(entry)) {
-				c.oreEntries.add(entry);
-			}
-		}
-	}
-	
-	public void addOreToCluster(FluidStack fluid, EnumOreClusterType type, int weight) {
-		OreCluster c = this.registry.get(type);
-		if(c!=null) {
-			FluidStack fluid2=fluid.copy();
-			fluid2.amount=Fluid.BUCKET_VOLUME;
-			OreClusterWeightedEntry entry = new OreClusterWeightedEntry(fluid2, weight);
-			if(!c.oreEntries.contains(entry)) {
-				c.oreEntries.add(entry);
-			}
-		}
-	}
-	
-	public void addOreToCluster(String oredict, EnumOreClusterType type, int weight) {
-		OreCluster c = this.registry.get(type);
-		if(c!=null) {
-			OreClusterWeightedEntry entry = new OreClusterWeightedEntry(oredict, weight);
-			if(!entry.isEmpty() && !c.oreEntries.contains(entry)) {
-				c.oreEntries.add(entry);
-			}
-		}
-	}
-	
-	public static class OreClusterWeightedEntry extends WeightedRandom.Item {
-		ItemStack ore = ItemStack.EMPTY;
-		FluidStack fluid= null;
-		String oredictname=null;
-		
-		public OreClusterWeightedEntry(ItemStack ore, int itemWeightIn) {
-			super(itemWeightIn);
-			this.ore=ore;
-		}
-		
-		public OreClusterWeightedEntry(FluidStack fluid, int itemWeightIn) {
-			super(itemWeightIn);
-			this.fluid=fluid;
-		}
-		
-		public OreClusterWeightedEntry(String oredictname, int itemWeightIn) {
-			super(itemWeightIn);
-			NonNullList<ItemStack> ores = OreDictionary.getOres(oredictname);
-			if(!ores.isEmpty()) {
-				this.ore = ores.get(0).copy();
-			}
-		}
-
-		public boolean isEmpty() {
-			return ore.isEmpty() && fluid==null;
-		}
-		
-		public ItemStack getOre() {
-			return ore;
+	public record Entry(Supplier<ItemStack> item, Supplier<FluidStack> fluid, int weight) {
+		public ItemStack getItem() {
+			return item.get();
 		}
 
 		public FluidStack getFluid() {
-			return fluid;
+			return fluid.get();
 		}
 
-		@Override
-		public boolean equals(Object obj) {
-			if(obj instanceof OreClusterWeightedEntry) {
-				OreClusterWeightedEntry other = (OreClusterWeightedEntry) obj;
-				if(this.oredictname!=null && other.oredictname!=null) {
-					return this.oredictname.equals(other.oredictname);
-					
-				} else if(!this.ore.isEmpty() && !other.ore.isEmpty()) {
-					return this.ore.getItem()==other.ore.getItem() && this.ore.getItemDamage()==other.ore.getItemDamage();
-					
-				} else if(this.fluid!=null && other.fluid !=null) {
-					return this.fluid.getFluid() == other.fluid.getFluid();
-				}
-			}
-			return this==obj;
+		public boolean isEmpty() {
+			return getItem().isEmpty() && getFluid().isEmpty();
 		}
-		
-		
 	}
-	
-	public static class OreCluster {
-		int mininglevel;
-		double multiplier_amount;
-		double multiplier_power;
-		
-		ArrayList<OreClusterWeightedEntry> oreEntries = new ArrayList<>();
-		
-		public OreCluster(int mininglevel, double multiplier_amount, double multiplier_power) {
-			super();
-			this.mininglevel = mininglevel;
-			this.multiplier_amount = multiplier_amount;
-			this.multiplier_power = multiplier_power;
-		}
 
-		public int getMininglevel() {
-			return mininglevel;
-		}
+	private static final Map<OreClusterType, List<Entry>> ENTRIES = new EnumMap<>(OreClusterType.class);
 
-		public double getMultiplier_amount() {
-			return multiplier_amount;
-		}
+	private static void add(OreClusterType type, Supplier<? extends Item> item, int weight) {
+		ENTRIES.computeIfAbsent(type, t -> new ArrayList<>()).add(new Entry(() -> new ItemStack(item.get()), () -> FluidStack.EMPTY, weight));
+	}
 
-		public double getMultiplier_power() {
-			return multiplier_power;
-		}
-		
-		public ArrayList<OreClusterWeightedEntry> getOreEntries() {
-			return oreEntries;
-		}
+	private static void addTag(OreClusterType type, String tag, int weight) {
+		TagKey<Item> key = TagKey.create(Registries.ITEM, ResourceLocation.parse(tag));
+		ENTRIES.computeIfAbsent(type, t -> new ArrayList<>()).add(new Entry(() -> BuiltInRegistries.ITEM.getTag(key)
+				.flatMap(set -> set.stream().findFirst()).map(h -> new ItemStack(h.value())).orElse(ItemStack.EMPTY), () -> FluidStack.EMPTY, weight));
+	}
 
-		public MachineOperation getNewOperation(World w, double orePerHour, int radius, double powerMult) {
-			if(!oreEntries.isEmpty()) {
-				OreClusterWeightedEntry entry = WeightedRandom.getRandomItem(w.rand, oreEntries);
-				
-				MachineOperation op=null;
-				
-				if(!entry.ore.isEmpty()) {
-					op= new MachineOperation(new ItemStack(entry.ore.getItem(),1,entry.ore.getItemDamage()), null, new ItemStack[0]);
-				} else if (entry.fluid!=null){
-					op= new MachineOperation(ItemStack.EMPTY, new FluidStack(entry.fluid.getFluid(),Fluid.BUCKET_VOLUME), new ItemStack[0]);
-				} 
-				if(op!=null) {
-					op.setPowerPerTick((int)(8*orePerHour* (1+ Math.max(radius-1,0)*0.2)*powerMult*TGConfig.oreDrillMultiplierPower));
+	private static void addFluidTag(OreClusterType type, TagKey<Fluid> key, int weight) {
+		ENTRIES.computeIfAbsent(type, t -> new ArrayList<>()).add(new Entry(() -> ItemStack.EMPTY, () -> {
+			Optional<Fluid> f = BuiltInRegistries.FLUID.getTag(key)
+					.flatMap(set -> set.stream().map(h -> h.value()).filter(fl -> fl.isSource(fl.defaultFluidState())).findFirst());
+			return f.map(fl -> new FluidStack(fl, 1000)).orElse(FluidStack.EMPTY);
+		}, weight));
+	}
+
+	public static final TagKey<Fluid> OIL = TagKey.create(Registries.FLUID, Techguns.rl("oil"));
+
+	static {
+		add(OreClusterType.COAL, () -> Items.COAL_ORE, 99);
+		add(OreClusterType.COAL, () -> Items.DIAMOND, 1);
+		add(OreClusterType.COMMON_METAL, () -> Items.IRON_ORE, 45);
+		add(OreClusterType.COMMON_METAL, () -> Items.COPPER_ORE, 30);
+		add(OreClusterType.COMMON_METAL, TGBlocks.ORE_TIN::asItem, 25);
+		add(OreClusterType.RARE_METAL, TGBlocks.ORE_LEAD::asItem, 50);
+		addTag(OreClusterType.RARE_METAL, "c:ores/osmium", 50);
+		addTag(OreClusterType.RARE_METAL, "c:ores/aluminum", 50);
+		add(OreClusterType.SHINY_METAL, TGBlocks.ORE_TITANIUM::asItem, 20);
+		add(OreClusterType.SHINY_METAL, () -> Items.GOLD_ORE, 40);
+		addTag(OreClusterType.SHINY_METAL, "c:ores/silver", 40);
+		add(OreClusterType.COMMON_GEM, () -> Items.REDSTONE_ORE, 40);
+		add(OreClusterType.COMMON_GEM, () -> Items.LAPIS_ORE, 20);
+		addTag(OreClusterType.COMMON_GEM, "c:ores/certus_quartz", 40);
+		add(OreClusterType.SHINY_GEM, () -> Items.DIAMOND_ORE, 40);
+		add(OreClusterType.SHINY_GEM, () -> Items.EMERALD_ORE, 20);
+		add(OreClusterType.URANIUM, TGBlocks.ORE_URANIUM::asItem, 50);
+		add(OreClusterType.NETHER_CRYSTAL, () -> Items.NETHER_QUARTZ_ORE, 50);
+		add(OreClusterType.NETHER_CRYSTAL, () -> Items.GLOWSTONE, 40);
+		add(OreClusterType.NETHER_CRYSTAL, () -> Items.BLAZE_ROD, 10);
+		addFluidTag(OreClusterType.OIL, OIL, 10);
+	}
+
+	/** entries that currently resolve to an item or fluid */
+	public static List<Entry> getEntries(OreClusterType type) {
+		return ENTRIES.getOrDefault(type, List.of()).stream().filter(e -> !e.isEmpty()).toList();
+	}
+
+	/** random ore of the cluster, cobblestone if nothing is available */
+	public static MachineOperation getNewOperation(OreClusterType type, RandomSource rnd, double orePerHour, int radius) {
+		List<Entry> entries = getEntries(type);
+		int total = entries.stream().mapToInt(Entry::weight).sum();
+		if (total > 0) {
+			int r = rnd.nextInt(total);
+			for (Entry e : entries) {
+				r -= e.weight();
+				if (r < 0) {
+					MachineOperation op;
+					FluidStack fluid = e.getFluid();
+					if (!fluid.isEmpty()) {
+						op = new MachineOperation(ItemStack.EMPTY);
+						op.getFluidOutputs().add(fluid.copy());
+					} else {
+						op = new MachineOperation(e.getItem().copy());
+					}
+					op.setPowerPerTick((int) (8 * orePerHour * (1 + Math.max(radius - 1, 0) * 0.2) * type.getPowerMultiplier() * TGConfig.oreDrillMultiplierPower));
 					return op;
 				}
-			
 			}
-			return getCobbleStoneOperation();
 		}
-		
-		public MachineOperation getCobbleStoneOperation() {
-			MachineOperation op = new MachineOperation(new ItemStack(Blocks.COBBLESTONE), new ItemStack[0]);
-			op.setPowerPerTick((int) (24*TGConfig.oreDrillMultiplierPower));
-			return op;
-		}
+		return getCobbleStoneOperation();
+	}
+
+	public static MachineOperation getCobbleStoneOperation() {
+		MachineOperation op = new MachineOperation(new ItemStack(Items.COBBLESTONE));
+		op.setPowerPerTick((int) (24 * TGConfig.oreDrillMultiplierPower));
+		return op;
+	}
+
+	/** chance of an entry, for JEI */
+	public static float getChance(OreClusterType type, Entry entry) {
+		int total = getEntries(type).stream().mapToInt(Entry::weight).sum();
+		return total > 0 ? (float) entry.weight() / total : 0f;
 	}
 }

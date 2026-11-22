@@ -1,229 +1,221 @@
 package techguns.tileentities;
 
-import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.HashSet;
+import java.util.Set;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntityFurnace;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TextComponentTranslation;
-import net.minecraft.world.World;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidTank;
-import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
-import net.minecraftforge.fluids.capability.FluidTankPropertiesWrapper;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fluids.capability.IFluidHandlerItem;
-import net.minecraftforge.fluids.capability.IFluidTankProperties;
-import net.minecraftforge.fml.common.network.NetworkRegistry.TargetPoint;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import javax.annotation.Nullable;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.Containers;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.Fluid;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.FluidUtil;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+import techguns.TGBlockEntities;
 import techguns.TGConfig;
-import techguns.TGFluids;
 import techguns.TGItems;
-import techguns.TGPackets;
+import techguns.TGOreClusters;
 import techguns.TGSounds;
-import techguns.TGOreClusters.OreCluster;
 import techguns.Techguns;
-import techguns.api.tginventory.ITGSpecialSlot;
-import techguns.api.tginventory.TGSlotType;
 import techguns.blocks.BlockOreCluster;
-import techguns.blocks.EnumOreClusterType;
-import techguns.blocks.machines.multiblocks.OreDrillDefinition;
-import techguns.client.audio.TGSoundCategory;
-import techguns.tileentities.ChemLabTileEnt.ChemLabFluidHandler;
-import techguns.tileentities.operation.FluidTankPlus;
-import techguns.tileentities.operation.ITileEntityFluidTanks;
+import techguns.blocks.OreClusterType;
+import techguns.gui.containers.OreDrillMenu;
 import techguns.tileentities.operation.ItemStackHandlerPlus;
 import techguns.tileentities.operation.MachineOperation;
-import techguns.util.InventoryUtil;
-import techguns.items.GenericItemShared;
-import techguns.packets.PacketPlaySound;
 
-public class OreDrillTileEntMaster extends MultiBlockMachineTileEntMaster implements ITileEntityFluidTanks{
+/**
+ * Ore drill controller (1.12 OreDrillTileEntMaster). Mines the ore cluster at the end of the rods. Runs on furnace
+ * fuel, fuel fluids / lava in the input tank or energy; oil clusters fill the output tank.
+ */
+public class OreDrillTileEntMaster extends MultiBlockMachineTileEntMaster implements IFluidTankTile {
 
-	protected static final float SOUND_VOLUME=0.5f;
-	
+	protected static final float SOUND_VOLUME = 0.5f;
+
+	public static final int CAPACITY_INPUT_TANK = 16 * 1000;
+	public static final int CAPACITY_OUTPUT_TANK = 32 * 1000;
+
+	public static final int SLOT_DRILL = 0;
+	public static final int SLOT_FURNACE = 1;
+	public static final int SLOT_OUTPUT1 = 2;
+	public static final int SLOT_OUTPUT_COUNT = 9;
+
+	public static final TagKey<Fluid> FUEL = TagKey.create(net.minecraft.core.registries.Registries.FLUID, Techguns.rl("fuel"));
+
 	protected int engines;
 	protected int rods;
 	protected int radius;
-	protected EnumFacing drill_direction;
-	protected boolean hasPower=false;
-	protected boolean hasDrill=false;
-	protected int drillType=0;
-	
-	//amount of internalFuel
-	protected int currentFuelBufferMax=0;
-	protected int fuelBuffer=0;
-	
-	protected int soundLoopDelay=0;
-	
-	public ItemStack lastDrill=ItemStack.EMPTY;
-	
-	protected static final int useRangeSquared=144;
-	
-	public static final int CAPACITY_INPUT_TANK=16*Fluid.BUCKET_VOLUME;
-	public static final int CAPACITY_OUTPUT_TANK=32*Fluid.BUCKET_VOLUME;
-	
-	public FluidTank inputTank;
-	public FluidTank outputTank;
+	@Nullable
+	protected Direction drillDirection;
+	protected boolean hasPower = false;
+	protected boolean hasDrill = false;
+	/** 0 none, 1 steel, 2 obsidian steel, 3 carbon */
+	protected int drillType = 0;
+	protected int currentFuelBufferMax = 0;
+	protected int fuelBuffer = 0;
+	protected int soundLoopDelay = 0;
+	protected ItemStack lastDrill = ItemStack.EMPTY;
 
-	protected OreDrillFluidHandler fluidHandler;
-	
-	public static final int SLOT_DRILL=0;
-	public static final int SLOT_FURNACE=1;
-	public static final int SLOT_OUTPUT1=2;
-	public static final int SLOT_OUTPUT_COUNT=9;
-	
-	public OreDrillTileEntMaster() {
-		super(11, 500000);
-		
-		this.inventory = new ItemStackHandlerPlus(11) {
+	public final FluidTank inputTank = new FluidTank(CAPACITY_INPUT_TANK) {
+		@Override
+		protected void onContentsChanged() {
+			onTankChanged();
+		}
+	};
+	public final FluidTank outputTank = new FluidTank(CAPACITY_OUTPUT_TANK) {
+		@Override
+		protected void onContentsChanged() {
+			onTankChanged();
+		}
+	};
+	public final IFluidHandler fluidHandler = new OreDrillFluidHandler();
 
+	public OreDrillTileEntMaster(BlockPos pos, BlockState state) {
+		super(TGBlockEntities.ORE_DRILL.get(), pos, state, 2 + SLOT_OUTPUT_COUNT, 500000);
+	}
+
+	@Override
+	protected ItemStackHandlerPlus createInventory(int size) {
+		return new ItemStackHandlerPlus(size) {
 			@Override
 			protected void onContentsChanged(int slot) {
-				super.onContentsChanged(slot);
-				setContentsChanged(true);
+				onInventoryChanged(slot);
 			}
 
 			@Override
 			protected boolean allowItemInSlot(int slot, ItemStack stack) {
-				if(slot<=SLOT_FURNACE) {
-					return isItemValidForSlot(slot, stack);
-				} else {
-					return false; //no inputing to output slots
-				}
+				return slot <= SLOT_FURNACE && isItemValidForSlot(slot, stack);
 			}
-			
+
 			@Override
 			protected boolean allowExtractFromSlot(int slot, int amount) {
-				return slot >= SLOT_OUTPUT1 && slot < SLOT_OUTPUT1+SLOT_OUTPUT_COUNT;
+				return slot >= SLOT_OUTPUT1 && slot < SLOT_OUTPUT1 + SLOT_OUTPUT_COUNT;
+			}
+
+			@Override
+			public int getSlotLimit(int slot) {
+				return slot == SLOT_DRILL ? 1 : super.getSlotLimit(slot);
 			}
 		};
-		
-		
-		this.hasDrill=false;
-		
-		this.inputTank = new FluidTankPlus(this,CAPACITY_INPUT_TANK);
-		this.inputTank.setTileEntity(this);
-		
-		this.outputTank = new FluidTankPlus(this,CAPACITY_OUTPUT_TANK);
-		this.outputTank.setTileEntity(this);
-		
-		this.fluidHandler= new OreDrillFluidHandler(this);
 	}
 
-	protected boolean isItemValidForSlot(int slot, ItemStack stack) {
-		if(stack.isEmpty()) return false;
-		if (slot==SLOT_DRILL && stack.getItem() instanceof ITGSpecialSlot) {
-			TGSlotType slotType = ((ITGSpecialSlot)stack.getItem()).getSlot(stack);
-			return slotType == TGSlotType.DRILL_SMALL || slotType == TGSlotType.DRILL_MEDIUM || slotType == TGSlotType.DRILL_LARGE;
-		} else if (slot==SLOT_FURNACE) {
-			return TileEntityFurnace.getItemBurnTime(stack)>0;
+	protected void onTankChanged() {
+		this.setContentsChanged(true);
+		this.setChanged();
+	}
+
+	@Override
+	public AbstractContainerMenu createMenu(int id, Inventory inv, Player player) {
+		return new OreDrillMenu(id, inv, this);
+	}
+
+	@Override
+	public Component getDisplayName() {
+		return Component.translatable("techguns.container.oredrill");
+	}
+
+	@Override
+	protected int getUseRangeSquared() {
+		return 144;
+	}
+
+	/* ---- drill heads ---- */
+
+	/** drill head size class: 0 small, 1 medium, 2 large */
+	public static int getDrillSize(int drillRadius) {
+		return drillRadius == 0 ? 0 : drillRadius <= 2 ? 1 : 2;
+	}
+
+	/** [size class, mining level] of a drill head item, null if none */
+	@Nullable
+	public static int[] getDrillHead(ItemStack stack) {
+		if (stack.isEmpty()) {
+			return null;
+		}
+		Item i = stack.getItem();
+		if (i == TGItems.OREDRILLHEAD_STEEL.get()) return new int[] { 0, 1 };
+		if (i == TGItems.OREDRILLHEAD_OBSIDIANSTEEL.get()) return new int[] { 0, 2 };
+		if (i == TGItems.OREDRILLHEAD_CARBON.get()) return new int[] { 0, 3 };
+		if (i == TGItems.OREDRILLHEAD_MEDIUM_STEEL.get()) return new int[] { 1, 1 };
+		if (i == TGItems.OREDRILLHEAD_MEDIUM_OBSIDIANSTEEL.get()) return new int[] { 1, 2 };
+		if (i == TGItems.OREDRILLHEAD_MEDIUM_CARBON.get()) return new int[] { 1, 3 };
+		if (i == TGItems.OREDRILLHEAD_LARGE_STEEL.get()) return new int[] { 2, 1 };
+		if (i == TGItems.OREDRILLHEAD_LARGE_OBSIDIANSTEEL.get()) return new int[] { 2, 2 };
+		if (i == TGItems.OREDRILLHEAD_LARGE_CARBON.get()) return new int[] { 2, 3 };
+		return null;
+	}
+
+	public boolean isItemValidForSlot(int slot, ItemStack stack) {
+		if (stack.isEmpty()) {
+			return false;
+		}
+		if (slot == SLOT_DRILL) {
+			// 1.12 SlotDrill: only the drill size that fits the formed drill
+			int[] head = getDrillHead(stack);
+			return head != null && isFormed() && head[0] == getDrillSize(getDrillRadius());
+		} else if (slot == SLOT_FURNACE) {
+			return stack.getBurnTime(RecipeType.SMELTING) > 0;
 		}
 		return false;
 	}
 
-	public void formOreDrill(EnumFacing direction, int engines, int rods, int radius, EnumFacing drill_direction ) {
-		this.engines= engines;
-		this.rods=rods;
-		this.radius=radius;
-		this.drill_direction=drill_direction;
-		
-		super.form(direction);
-	}
-	
-	public void setFuelBuffer(int fuelBuffer) {
-		this.fuelBuffer = fuelBuffer;
-	}
-
-	@Override
-	public ITextComponent getDisplayName() {
-		return new TextComponentTranslation(Techguns.MODID+".container.oredrill", new Object[0]);
-	}
-	
-	@Override
-	public AxisAlignedBB getRenderBoundingBox() {
-		if(this.isFormed()) {
-			BlockPos p = this.getPos();
-			BlockPos rod_end = this.getPos().offset(drill_direction, rods+engines+1);
-			
-			BlockPos other = rod_end.offset(OreDrillDefinition.getSide1(drill_direction), +(radius+2)).offset(OreDrillDefinition.getSide2(drill_direction), +(radius+1));
-			BlockPos first = p.offset(OreDrillDefinition.getSide1(drill_direction), -(radius+2)).offset(OreDrillDefinition.getSide2(drill_direction), -(radius+1));
-			//System.out.println("BB:"+first.toString()+"->"+other.toString());
-			return new AxisAlignedBB(first,other);
-			//return super.getRenderBoundingBox().expand(50, 50, 50);*/
-		} else {
-			return super.getRenderBoundingBox();
+	public int getValidSlotForItemInMachine(ItemStack stack) {
+		if (getDrillHead(stack) != null) {
+			return SLOT_DRILL;
 		}
-	}
-	
-	/**
-	 * If currently a drill item is in the slot
-	 * @return
-	 */
-	public boolean hasDrill() {
-		return hasDrill;
-	}
-	
-	/**
-	 * Equipped Drilltype
-	 * 0-no drill
-	 * 1-steel
-	 * 2-obsidian
-	 * 3-carbon
-	 * @return
-	 */
-	protected int getDrillHeadType() {
-		int mininglevel = this.getDrillItemMiningLevel();
-		if(mininglevel<0) return 0;
-		return mininglevel;
-	}
-	
-	public int getDrillType() {
-		return drillType;
+		if (isItemValidForSlot(SLOT_FURNACE, stack)) {
+			return SLOT_FURNACE;
+		}
+		return -1;
 	}
 
-	public boolean hasPower() {
-		return hasPower;
+	/** mining level of the drill head, -1 if none or the wrong size */
+	public int getDrillItemMiningLevel() {
+		int[] head = getDrillHead(this.inventory.getStackInSlot(SLOT_DRILL));
+		if (head != null && isFormed() && head[0] == getDrillSize(getDrillRadius())) {
+			return head[1];
+		}
+		return -1;
 	}
 
-	/**
-	 * Not used for ore drills
-	 */
-	@Deprecated
-	@Override
-	public EnumFacing getMultiblockDirection() {
-		return EnumFacing.NORTH;
+	/* ---- multiblock ---- */
+
+	public void formOreDrill(int engines, int rods, int radius, Direction drillDirection) {
+		this.engines = engines;
+		this.rods = rods;
+		this.radius = radius;
+		this.drillDirection = drillDirection;
+		this.setFormed(true, getMultiblockDirection());
 	}
 
-	/**
-	 * use formOreDrill to form an ore drill
-	 */
-	@Deprecated
-	@Override
-	public void form(EnumFacing facing) {
-		super.form(facing);
-	}
-
-	@Override
-	public void unform() {
-		super.unform();
-		this.engines=0;
-		this.rods=0;
-		this.radius=0;
-		this.drill_direction=null;
+	public void unformOreDrill() {
+		this.engines = 0;
+		this.rods = 0;
+		this.radius = 0;
+		this.drillDirection = null;
+		this.currentOperation = null;
+		this.progress = 0;
+		this.totaltime = 0;
+		this.hasDrill = false;
+		this.hasPower = false;
+		this.setFormed(false, getMultiblockDirection());
 	}
 
 	public int getEngines() {
@@ -237,554 +229,392 @@ public class OreDrillTileEntMaster extends MultiBlockMachineTileEntMaster implem
 	public int getRadius() {
 		return radius;
 	}
-	
-	/**
-	 * The "radius" of the drill including the middle block, so 1 for 1x1xN, 2 for 3x3xN. 3 for 5x5xN and 4 for 7x7xN
-	 * 1x1x1 drill with only controller has radius 0
-	 * @return
-	 */
+
+	@Nullable
+	public Direction getDrillDirection() {
+		return drillDirection;
+	}
+
+	/** radius including the middle block: 0 for the controller + 1 rod drill, else engine radius + 1 */
 	public int getDrillRadius() {
-		if(this.engines==0) return 0;
-		return radius+1;
+		return engines == 0 ? 0 : radius + 1;
 	}
 
-	public EnumFacing getDrill_direction() {
-		return drill_direction;
+	public int getTotalDrillLength() {
+		return engines + rods;
 	}
 
-	
-	@Override
-	public void readClientDataFromNBT(NBTTagCompound tags) {
-		super.readClientDataFromNBT(tags);
-		if(this.formed) {
-			this.drill_direction=EnumFacing.getFront(tags.getByte("drill_direction"));
-			this.engines= tags.getByte("engines");
-			this.rods =tags.getByte("rods");
-			this.radius = tags.getByte("radius");
-			this.hasPower=tags.getBoolean("haspower");
-			this.hasDrill=tags.getBoolean("hasDrill");
-			this.drillType=tags.getByte("drillType");
-		}
-		
-		this.fuelBuffer=tags.getInteger("fuelBuffer");
-		this.currentFuelBufferMax = tags.getInteger("fuelBufferMax");
-		
-		this.loadTanksFromNBT(tags);
+	public boolean hasDrill() {
+		return hasDrill;
 	}
 
-	@Override
-	public void writeClientDataToNBT(NBTTagCompound tags) {
-		super.writeClientDataToNBT(tags);
-		if (this.formed) {
-			tags.setByte("drill_direction", (byte) this.drill_direction.getIndex());
-			tags.setByte("engines", (byte) engines);
-			tags.setByte("rods", (byte) rods);
-			tags.setByte("radius", (byte) radius);
-			tags.setBoolean("haspower", this.hasPower);
-			tags.setBoolean("hasDrill", this.hasDrill);
-			tags.setByte("drillType", (byte)this.drillType);
-		}
-		
-		tags.setInteger("fuelBuffer", this.fuelBuffer);
-		tags.setInteger("fuelBufferMax", this.currentFuelBufferMax);
-		
-		this.saveTanksToNBT(tags);
+	public boolean hasPower() {
+		return hasPower;
 	}
 
-	@Override
-	public AxisAlignedBB getBBforSlave(BlockPos slavePos) {
-		return Block.FULL_BLOCK_AABB;
+	public int getDrillType() {
+		return drillType;
 	}
 
-	@Override
-	protected int getNeededPower() {
-		if(this.currentOperation!=null) {
-			return this.currentOperation.getPowerPerTick();
-		}
-		return 0;
-	}
+	/* ---- fuel / power ---- */
 
-	
-	
-	@Override
-	protected boolean consumePower(int amount) {
-		if ( TGConfig.machinesNeedNoPower){
-			return true;
-		}
-		
-		float FACTOR=TGConfig.oreDrillMultiplierFuel;
-		
-		//check fuel buffer
-		if (this.fuelBuffer*FACTOR>=amount){
-			this.fuelBuffer -= Math.max(amount/FACTOR,1);
-			return true;
-		} else {
-			amount -=this.fuelBuffer*FACTOR;
-			this.fuelBuffer=0;
-			this.currentFuelBufferMax=0;
-			//check fuelBuffer refill;
-			
-			int fuelValue = 0;
-			if (!this.inventory.getStackInSlot(SLOT_FURNACE).isEmpty()){
-				fuelValue = TileEntityFurnace.getItemBurnTime(this.inventory.getStackInSlot(SLOT_FURNACE));
-			}
-			
-			//	if (FluidContainerRegistry.isContainer(this.content[10])){
-			if (fuelValue > 0){
-				ItemStack container = this.inventory.getStackInSlot(SLOT_FURNACE).getItem().getContainerItem(this.inventory.getStackInSlot(SLOT_FURNACE));//FluidContainerRegistry.drainFluidContainer(this.content[10]);
-			
-				if (!container.isEmpty()){
-					//int leftover = Techguns.addItemToInventory(this.content,container, 1, 10);
-					int leftover = InventoryUtil.addItemToInventory(inventory, container, SLOT_OUTPUT1, SLOT_OUTPUT1+SLOT_OUTPUT_COUNT);
-					//if (!this.worldObj.isRemote){
-					if (leftover >0 && !this.world.isRemote){
-						ItemStack entityItem = container.copy();
-						entityItem.setCount(leftover);
-						this.world.spawnEntity(new EntityItem(this.world, this.pos.getX()+0.5, this.pos.getY()+0.5, this.pos.getZ()+0.5, entityItem));
-					}
-				}
-				
-				//consume 1 fuel
-				this.inventory.extractWithoutCheck(SLOT_FURNACE, 1, false);
-				
-				this.fuelBuffer=fuelValue;
-				this.currentFuelBufferMax=fuelValue;
-			//System.out.println("Fuel Value:"+fuelValue);
-			} else {
-				
-				//check input tank
-				float fuelvalue = this.getFuelValueFromInputTank();
-				if (fuelvalue >0){
-					
-					FluidStack drainedFluid = this.inputTank.drain(Fluid.BUCKET_VOLUME, true);
-					this.fuelBuffer=(int) (drainedFluid.amount*fuelvalue);					
-					this.currentFuelBufferMax = (int) (drainedFluid.amount*fuelvalue);
-					
-				}
-			}
-		}
-		
-		if (this.fuelBuffer*FACTOR>=amount){
-			this.fuelBuffer -= Math.max(amount/FACTOR,1);
-			return true;
-		}
-		
-		if (amount >0 && this.energy.getEnergyStored()>=amount){
-			this.energy.extractEnergy(amount, false);
-			return true;
-		} else if (amount==0){
-				return true;
-		} else {
-			return false;
-		}
-	}
-
-	protected float getFuelValueFromInputTank(){
-		if (this.inputTank.getFluid()!=null){
-			
-			if (this.inputTank.getFluid().getFluid() == TGFluids.LAVA){
-				return 20F; //Same as LAVA BUCKET /1000
-			} /*else if (this.inputTank.getFluid().getFluid() == TGFluids.FUEL){
-				return TGConfig.oreDrillFuelValueFuel;
-			} else if (this.inputTank.getFluid().getFluid() == TGFluids.BIOFUEL){
-				return TGConfig.oreDrillFuelValueBioFuel;
-			} */
-			else if (TGFluids.fuels.contains(this.inputTank.getFluid().getFluid())){
-				return TGConfig.oreDrillFuelValueFuel;
-			}
-		}
-		
-		return 0F;
-	}
-	
-	protected boolean checkDrill(){
-		if(this.world.getTotalWorldTime()%20==0){
-			//System.out.println("CheckDrill Last:"+this.lastDrill+" Current:"+this.inventory.getStackInSlot(SLOT_DRILL));
-			if (this.lastDrill.isEmpty() && this.inventory.getStackInSlot(SLOT_DRILL).isEmpty()) {
-				//this.complete=false;
-				this.hasDrill=false;
-				this.needUpdate();
-				return false;
-			} else if (this.lastDrill.isEmpty()){
-				this.lastDrill=this.inventory.getStackInSlot(SLOT_DRILL);
-				return true;
-			} else {
-				if(this.inventory.getStackInSlot(SLOT_DRILL).isEmpty() || !this.lastDrill.isItemEqual(this.inventory.getStackInSlot(SLOT_DRILL))){
-					//System.out.println("Drill no longer matches");
-					this.lastDrill=this.inventory.getStackInSlot(SLOT_DRILL).copy();
-					this.currentOperation=null;
-					this.progress=0;
-					this.totaltime=0;
-					this.needUpdate();
-					return false;
-				}
-				
-			}
-		}
-		return true;
-	}
-	
-	@Override
-	public void update() {
-		if (this.isRedstoneEnabled()){
-			if (this.currentOperation != null) {
-
-				if (this.world.isRemote||this.checkDrill()) { //check drill on server
-					if(this.consumePower(this.getNeededPower()*this.currentOperation.getStackMultiplier())) {
-						this.progress++;
-	
-						playAmbientSound();
-	
-						if(!this.world.isRemote && !this.hasPower) {
-							this.hasPower=true;
-							this.needUpdate();
-						}
-						
-						if (progress >= totaltime) {
-	
-							if (!this.world.isRemote) {
-								this.finishedOperation();
-							}
-							this.progress = 0;
-							this.totaltime = 0;
-							this.currentOperation = null;
-	
-							if (!this.world.isRemote){
-								checkAndStartOperation();
-								this.needUpdate();
-							}
-						}
-					} else {
-						//power consume failed
-						if(!this.world.isRemote && this.hasPower) {
-							this.hasPower=false;
-							this.needUpdate();
-						}
-					}
-				}
-
-			}  else {
-
-				if(!this.world.isRemote && this.contentsChanged) {
-					//System.out.println("CHECK AND START OPERATION");
-					checkAndStartOperation();
-				}
-
-			}
-		}
-		
-	}
-	
-
-	@Override
-	protected void checkAndStartOperation() {
-		if (this.isFormed()) {
-			this.contentsChanged=false;
-			//look for cluster
-					int distance = this.rods+this.engines+1;
-					BlockPos targetPos = this.getPos().offset(drill_direction, distance);
-	
-					if (OreDrillDefinition.isOreCluster(this.world, targetPos))
-					{
-						
-						//TODO unhardcorde to more than 1 ore cluster block type
-						IBlockState bs = this.world.getBlockState(targetPos);
-						BlockOreCluster clusterblock = (BlockOreCluster) bs.getBlock();
-						EnumOreClusterType type = (EnumOreClusterType) bs.getValue(clusterblock.TYPE);
-						
-						OreCluster cluster = Techguns.orecluster.getClusterForType(type);
-						
-						int drillheadmininglevel = this.getDrillItemMiningLevel();
-						if (drillheadmininglevel >0){
-							this.hasDrill=true;
-							int effectivemininglevel = drillheadmininglevel+this.getDrillRadius()-cluster.getMininglevel();
-							this.drillType = this.getDrillHeadType();
-							
-							if (effectivemininglevel >=0){
-	
-								int clustersize = this.getClusterSize(0, targetPos, new ArrayList<BlockPos>(), cluster, bs);
-								int effectiveclustersize = Math.min(clustersize, this.getTotalDrillLength());
-						
-								double orePerHour = ((effectiveclustersize*3)+(effectiveclustersize*effectivemininglevel*0.5))*TGConfig.oreDrillMultiplierOres*cluster.getMultiplier_amount();
-								
-								this.currentOperation= cluster.getNewOperation(this.world, orePerHour,this.getDrillRadius(),cluster.getMultiplier_power());
-								this.progress=0;
-								
-								
-								this.totaltime=(int)(60.0/orePerHour*1200.0);
-								//moved to operation
-								//this.currentRFperTick=(int)(80*orePerHour*Math.max(this.radius, 1)*TGConfig.oreDrillMultiplierPower*cluster.getMultiplier_power());
-							} else {
-								this.currentOperation=cluster.getCobbleStoneOperation();
-	
-								this.progress=0;
-								this.totaltime=20*20;
-								//this.currentRFperTick=(int) (240*TGConfig.oreDrillMultiplierPower); moved to operation
-								
-							}
-						} else {
-							//no drillhead, broken
-							this.hasDrill=false;
-							this.drillType = 0;
-						}
-						this.needUpdate();
-						
-						
-						
-					} else {
-						//System.out.println("There is no ore Cluster at drill point, multiblock broken");
-						this.unform();
-						this.formed=false;
-						this.needUpdate();
-					}
-		}
-	}
-
-	public int getTotalDrillLength(){
-		return this.engines+this.rods;
-	}
-	
-	public int getDrillItemMiningLevel() {
-		ItemStack drill = this.inventory.getStackInSlot(SLOT_DRILL);
-		if(!drill.isEmpty() && this.isFormed()){
-			
-			//ugly code
-			
-			int mininglevel=-1;
-			if(this.getDrillRadius()==0){
-				if (drill.getItem()==TGItems.SHARED_ITEM){
-				
-					if(drill.getItemDamage()==TGItems.OREDRILLHEAD_STEEL.getItemDamage()){
-						mininglevel=1;
-					} else if (drill.getItemDamage()==TGItems.OREDRILLHEAD_OBSIDIANSTEEL.getItemDamage()){
-						mininglevel=2;
-					} else if (drill.getItemDamage()==TGItems.OREDRILLHEAD_CARBON.getItemDamage()){
-						mininglevel=3;
-					}	
-				}
-			} else if (this.getDrillRadius()==1 || this.getDrillRadius()==2){
-				if (drill.getItem()==TGItems.SHARED_ITEM){
-					
-					if(drill.getItemDamage()==TGItems.OREDRILLHEAD_MEDIUM_STEEL.getItemDamage()){
-						mininglevel=1;
-					} else if (drill.getItemDamage()==TGItems.OREDRILLHEAD_MEDIUM_OBSIDIANSTEEL.getItemDamage()){
-						mininglevel=2;
-					} else if (drill.getItemDamage()==TGItems.OREDRILLHEAD_MEDIUM_CARBON.getItemDamage()){
-						mininglevel=3;
-					}	
-				}
-			} else if (this.getDrillRadius()==3 || this.getDrillRadius()==4){
-				if (drill.getItem()==TGItems.SHARED_ITEM){
-					
-					if(drill.getItemDamage()==TGItems.OREDRILLHEAD_LARGE_STEEL.getItemDamage()){
-						mininglevel=1;
-					} else if (drill.getItemDamage()==TGItems.OREDRILLHEAD_LARGE_OBSIDIANSTEEL.getItemDamage()){
-						mininglevel=2;
-					} else if (drill.getItemDamage()==TGItems.OREDRILLHEAD_LARGE_CARBON.getItemDamage()){
-						mininglevel=3;
-					}	
-				}
-			}
-			
-			return mininglevel;
-		}
-		
-		return -1;
-	}
-
-	@Override
-	protected void finishedOperation() {
-		ItemStack output = this.currentOperation.getItemOutput0();
-		if (!output.isEmpty()) {
-			
-			int leftover = output.getCount();
-			int s  =SLOT_OUTPUT1;
-			ItemStack out = ItemStack.EMPTY;
-			while(leftover>0&& s<SLOT_OUTPUT1+SLOT_OUTPUT_COUNT) {
-				out = this.inventory.insertItemNoCheck(s, output, false);
-				if(!out.isEmpty()) {
-					leftover=out.getCount();
-					if(leftover>0) {
-						output=out;
-						s++;
-					}
-				} else {
-					leftover=0;
-				}
-			}
-			
-			if(leftover>0) {
-				this.world.spawnEntity(new EntityItem(this.world, this.pos.getX()+0.5d, this.pos.getY()+0.5d, this.pos.getZ()+0.5d, out));
-			}
-			
-		}
-		
-		FluidStack fluidOut = this.currentOperation.getFluidOutput0();
-		if(fluidOut!=null) {
-			this.outputTank.fillInternal(fluidOut, true);
-		}
-
-	}
-
-	@Override
-	protected void playAmbientSound() {
-		//System.out.println("Ambient Sound:"+soundLoopDelay);
-		BlockPos soundPos=this.getPos().offset(drill_direction, engines).offset(drill_direction, (int)(rods*0.5));
-		if (!this.world.isRemote && soundLoopDelay-- <= 0) {
-			if (this.radius == 0) {
-				//world.playSound(this.getPos().getX(), this.getPos().getY(), this.getPos().getZ(), TGSounds.ORE_DRILL_WORK_SMALL, SoundCategory.BLOCKS, SOUND_VOLUME, 1.0F, true );		
-				//worldplaySound(this.xCoord, this.yCoord, this.zCoord, "techguns:machines.oredrillSmallWork", 1.5F, 1.0F, true );
-				TGPackets.network.sendToAllTracking(new PacketPlaySound(TGSounds.ORE_DRILL_WORK_SMALL, soundPos.getX(), soundPos.getY(), soundPos.getZ(), SOUND_VOLUME, 1.0f, false, TGSoundCategory.MACHINE), new TargetPoint(this.world.provider.getDimension(),soundPos.getX()+0.5,soundPos.getY()+0.5,soundPos.getZ()+0.5,32.0f));
-				soundLoopDelay = 61; //62 ticks = 3.1 sec
-				
-			}else if (this.radius <= 2) {
-				//world.playSound(this.xCoord, this.yCoord, this.zCoord, "techguns:machines.oredrillMediumWork", 2.25F, 1.0F, true );
-				//world.playSound(this.getPos().getX(), this.getPos().getY(), this.getPos().getZ(), TGSounds.ORE_DRILL_WORK_MEDIUM, SoundCategory.BLOCKS, SOUND_VOLUME, 1.0F, true );
-				
-				TGPackets.network.sendToAllTracking(new PacketPlaySound(TGSounds.ORE_DRILL_WORK_MEDIUM, soundPos.getX(), soundPos.getY(), soundPos.getZ(), SOUND_VOLUME, 1.0f, false, TGSoundCategory.MACHINE), new TargetPoint(this.world.provider.getDimension(),soundPos.getX()+0.5,soundPos.getY()+0.5,soundPos.getZ()+0.5,32.0f));
-				soundLoopDelay = 61; //62 ticks = 3.1 sec
-			}else {
-				//world.playSound(this.xCoord, this.yCoord, this.zCoord, "techguns:machines.oredrillLargeWork", 3.0F, 1.0F, true );
-				//world.playSound(this.getPos().getX(), this.getPos().getY(), this.getPos().getZ(), TGSounds.ORE_DRILL_WORK_LARGE, SoundCategory.BLOCKS, SOUND_VOLUME, 1.0F, true );		
-	
-				TGPackets.network.sendToAllTracking(new PacketPlaySound(TGSounds.ORE_DRILL_WORK_LARGE, soundPos.getX(), soundPos.getY(), soundPos.getZ(), SOUND_VOLUME, 1.0f, false, TGSoundCategory.MACHINE), new TargetPoint(this.world.provider.getDimension(),soundPos.getX()+0.5,soundPos.getY()+0.5,soundPos.getZ()+0.5,32.0f));
-				soundLoopDelay = 61; //62 ticks = 3.1 sec
-			}
-		}
-	}
-	
-	@Override
-	public void onMultiBlockBreak() {
-		super.onMultiBlockBreak();
-		this.currentOperation=null;
-		this.progress=0;
-		this.totaltime=0;
-		this.needUpdate();
-	}
-
-	public int getClusterSize(int count,BlockPos startPos, ArrayList<BlockPos> visited, OreCluster clusterType, IBlockState clusterMeta){
-
-		IBlockState targetState = this.world.getBlockState(startPos);
-
-		if (targetState==clusterMeta && !visited.contains(startPos)){
-			count++;
-			visited.add(startPos);
-			
-			count=getClusterSize(count,startPos.add(1, 0, 0), visited,clusterType,clusterMeta);
-			count=getClusterSize(count,startPos.add(-1, 0, 0), visited,clusterType,clusterMeta);
-			count=getClusterSize(count,startPos.add(0, 1, 0), visited,clusterType,clusterMeta);
-			count=getClusterSize(count,startPos.add(0, -1, 0), visited,clusterType,clusterMeta);
-			count=getClusterSize(count,startPos.add(0, 0, 1), visited,clusterType,clusterMeta);
-			count=getClusterSize(count,startPos.add(0, 0, -1), visited,clusterType,clusterMeta);
-			
-			return count;
-
-		} else {
-			return count;
-		}
-	}
-	
-	public int getCurrentFuelBufferMax() {
-		return currentFuelBufferMax;
-	}
-
-	public void setCurrentFuelBufferMax(int currentFuelBufferMax) {
-		this.currentFuelBufferMax = currentFuelBufferMax;
-	}
-	
-    @SideOnly(Side.CLIENT)
-    public int getFuelBufferScaled(int limit)
-    {
-    	if (this.currentFuelBufferMax>0){
-    		return this.fuelBuffer * limit / this.currentFuelBufferMax;
-    	} else {
-    		return 0;
-    	}
-    }
-    
 	public int getFuelBuffer() {
 		return fuelBuffer;
 	}
 
-	@Override
-	public void saveTanksToNBT(NBTTagCompound tags) {
-		NBTTagCompound inputTankTags = new NBTTagCompound();
-		this.inputTank.writeToNBT(inputTankTags);
-		tags.setTag("inputTank", inputTankTags);
-		
-		NBTTagCompound outputTankTags = new NBTTagCompound();
-		this.outputTank.writeToNBT(outputTankTags);
-		tags.setTag("outputTank", outputTankTags);
+	public void setFuelBuffer(int fuelBuffer) {
+		this.fuelBuffer = fuelBuffer;
 	}
 
-	@Override
-	public void loadTanksFromNBT(NBTTagCompound tags) {
-		NBTTagCompound inputTank = tags.getCompoundTag("inputTank");
-		this.inputTank.readFromNBT(inputTank);
-		
-		NBTTagCompound outputTank = tags.getCompoundTag("outputTank");
-		this.outputTank.readFromNBT(outputTank);
+	public int getCurrentFuelBufferMax() {
+		return currentFuelBufferMax;
+	}
+
+	public void setCurrentFuelBufferMax(int max) {
+		this.currentFuelBufferMax = max;
+	}
+
+	public int getFuelBufferScaled(int limit) {
+		return currentFuelBufferMax > 0 ? fuelBuffer * limit / currentFuelBufferMax : 0;
 	}
 
 	public int getPowerPerTick() {
-		if(this.currentOperation!=null) {
-			return this.currentOperation.getPowerPerTick();
+		return currentOperation != null ? currentOperation.getPowerPerTick() : 0;
+	}
+
+	@Override
+	protected int getNeededPower() {
+		return getPowerPerTick();
+	}
+
+	/** fuel value per mB of the input tank fluid */
+	protected float getFuelValueFromInputTank() {
+		FluidStack f = inputTank.getFluid();
+		if (f.isEmpty()) {
+			return 0f;
 		}
-		return 0;
-	}
-
-	public int getValidSlotForItemInMachine(ItemStack stack) {
-		if(this.isItemValidForSlot(SLOT_DRILL, stack)) return SLOT_DRILL;
-		if(this.isItemValidForSlot(SLOT_FURNACE, stack)) return SLOT_FURNACE;
-		return -1;
-	}
-
-	@Override
-	protected int getUseRangeSquared() {
-		return this.useRangeSquared;
-	}
-
-	@Override
-	public boolean hasCapability(Capability<?> capability, EnumFacing facing) {
-		return capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY || super.hasCapability(capability, facing);
-	}
-	
-	@Override
-	public <T> T getCapability(Capability<T> capability, EnumFacing facing) {
-		return capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY ? (T)fluidHandler : super.getCapability(capability, facing);
-	}
-	
-	public static class OreDrillFluidHandler implements IFluidHandler {
-
-		private OreDrillTileEntMaster tile;
-		protected IFluidTankProperties[] tankProperties;
-		
-		public OreDrillFluidHandler(OreDrillTileEntMaster tile) {
-			super();
-			this.tile = tile;
+		if (f.is(FluidTags.LAVA)) {
+			// same as a lava bucket / 1000
+			return 20f;
 		}
+		if (f.is(FUEL)) {
+			return TGConfig.oreDrillFuelValueFuel;
+		}
+		return 0f;
+	}
 
-		@Override
-		public IFluidTankProperties[] getTankProperties() {
-			if ( tankProperties == null) {
-				this.tankProperties =  new IFluidTankProperties[]{new FluidTankPropertiesWrapper(tile.inputTank), new FluidTankPropertiesWrapper(tile.outputTank)};
+	private boolean useBuffer(int amount, float factor) {
+		if (this.fuelBuffer * factor >= amount) {
+			this.fuelBuffer -= Math.max((int) (amount / factor), 1);
+			return true;
+		}
+		return false;
+	}
+
+	/** fuel buffer first, refilled from the fuel slot or the input tank, then energy (1.12 consumePower) */
+	@Override
+	protected boolean consumePower(int amount) {
+		if (TGConfig.machinesNeedNoPower || amount <= 0) {
+			return true;
+		}
+		float factor = TGConfig.oreDrillMultiplierFuel;
+		if (useBuffer(amount, factor)) {
+			return true;
+		}
+		amount -= (int) (this.fuelBuffer * factor);
+		this.fuelBuffer = 0;
+		this.currentFuelBufferMax = 0;
+		ItemStack fuel = this.inventory.getStackInSlot(SLOT_FURNACE);
+		int fuelValue = fuel.isEmpty() ? 0 : fuel.getBurnTime(RecipeType.SMELTING);
+		if (fuelValue > 0) {
+			ItemStack container = fuel.getCraftingRemainingItem();
+			this.inventory.extractWithoutCheck(SLOT_FURNACE, 1, false);
+			if (!container.isEmpty()) {
+				ItemStack rest = container.copy();
+				if (this.inventory.getStackInSlot(SLOT_FURNACE).isEmpty()) {
+					// bucket back into the fuel slot
+					this.inventory.setStackInSlot(SLOT_FURNACE, rest);
+					rest = ItemStack.EMPTY;
+				}
+				for (int s = SLOT_OUTPUT1; s < SLOT_OUTPUT1 + SLOT_OUTPUT_COUNT && !rest.isEmpty(); s++) {
+					rest = this.inventory.insertItemNoCheck(s, rest, false);
+				}
+				if (!rest.isEmpty()) {
+					Containers.dropItemStack(level, worldPosition.getX() + 0.5d, worldPosition.getY() + 0.5d, worldPosition.getZ() + 0.5d, rest);
+				}
 			}
-			return tankProperties;
+			this.fuelBuffer = fuelValue;
+			this.currentFuelBufferMax = fuelValue;
+		} else {
+			float fluidValue = getFuelValueFromInputTank();
+			if (fluidValue > 0) {
+				FluidStack drained = this.inputTank.drain(1000, IFluidHandler.FluidAction.EXECUTE);
+				this.fuelBuffer = (int) (drained.getAmount() * fluidValue);
+				this.currentFuelBufferMax = this.fuelBuffer;
+			}
+		}
+		if (useBuffer(amount, factor)) {
+			return true;
+		}
+		if (this.energy.getEnergyStored() >= amount) {
+			this.energy.extractEnergy(amount, false);
+			return true;
+		}
+		return false;
+	}
+
+	/* ---- operation ---- */
+
+	/** every second: a changed drill head stops the operation */
+	protected boolean checkDrill() {
+		if (level.getGameTime() % 20 == 0) {
+			ItemStack drill = this.inventory.getStackInSlot(SLOT_DRILL);
+			if (this.lastDrill.isEmpty() && drill.isEmpty()) {
+				this.hasDrill = false;
+				this.needUpdate();
+				return false;
+			} else if (this.lastDrill.isEmpty()) {
+				this.lastDrill = drill.copy();
+			} else if (drill.isEmpty() || !ItemStack.isSameItem(this.lastDrill, drill)) {
+				this.lastDrill = drill.copy();
+				this.currentOperation = null;
+				this.progress = 0;
+				this.totaltime = 0;
+				this.setContentsChanged(true);
+				this.needUpdate();
+				return false;
+			}
+		}
+		return true;
+	}
+
+	@Override
+	protected void tick() {
+		if (this.level == null || !this.isRedstoneEnabled() || !this.isFormed()) {
+			return;
+		}
+		if (this.level.isClientSide) {
+			// animation and sound only, the server decides
+			if (this.currentOperation != null && this.hasPower) {
+				this.progress = Math.min(this.progress + 1, this.totaltime);
+				this.playAmbientSound();
+			}
+			return;
+		}
+		if (this.currentOperation != null) {
+			if (!this.checkDrill()) {
+				return;
+			}
+			if (this.consumePower(this.getNeededPower() * this.currentOperation.getStackMultiplier())) {
+				this.progress++;
+				if (!this.hasPower) {
+					this.hasPower = true;
+					this.needUpdate();
+				}
+				if (this.progress >= this.totaltime) {
+					this.finishedOperation();
+					this.progress = 0;
+					this.totaltime = 0;
+					this.currentOperation = null;
+					this.checkAndStartOperation();
+					this.needUpdate();
+				}
+			} else if (this.hasPower) {
+				this.hasPower = false;
+				this.needUpdate();
+			}
+		} else if (this.contentsChanged) {
+			this.checkAndStartOperation();
+		}
+	}
+
+	@Override
+	protected void checkAndStartOperation() {
+		if (!this.isFormed() || this.drillDirection == null) {
+			return;
+		}
+		this.setContentsChanged(false);
+		BlockPos targetPos = worldPosition.relative(drillDirection, rods + engines + 1);
+		BlockState bs = level.getBlockState(targetPos);
+		if (!(bs.getBlock() instanceof BlockOreCluster cluster)) {
+			// cluster gone
+			this.onMultiBlockBreak();
+			this.needUpdate();
+			return;
+		}
+		OreClusterType type = cluster.getType();
+		int drillLevel = this.getDrillItemMiningLevel();
+		this.lastDrill = this.inventory.getStackInSlot(SLOT_DRILL).copy();
+		if (drillLevel > 0) {
+			this.hasDrill = true;
+			this.drillType = drillLevel;
+			int effectiveLevel = drillLevel + this.getDrillRadius() - type.getMiningLevel();
+			if (effectiveLevel >= 0) {
+				int clusterSize = getClusterSize(targetPos, bs, this.getTotalDrillLength());
+				int effectiveSize = Math.min(clusterSize, this.getTotalDrillLength());
+				double orePerHour = ((effectiveSize * 3) + (effectiveSize * effectiveLevel * 0.5)) * TGConfig.oreDrillMultiplierOres * type.getAmountMultiplier();
+				this.currentOperation = TGOreClusters.getNewOperation(type, level.random, orePerHour, this.getDrillRadius());
+				this.totaltime = Math.max(1, (int) (60.0 / orePerHour * 1200.0));
+			} else {
+				this.currentOperation = TGOreClusters.getCobbleStoneOperation();
+				this.totaltime = 20 * 20;
+			}
+			this.progress = 0;
+		} else {
+			this.hasDrill = false;
+			this.drillType = 0;
+		}
+		this.needUpdate();
+	}
+
+	/** connected blocks of the same cluster, counted up to max */
+	protected int getClusterSize(BlockPos start, BlockState cluster, int max) {
+		Set<BlockPos> visited = new HashSet<>();
+		ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+		visited.add(start);
+		queue.add(start);
+		while (!queue.isEmpty() && visited.size() < max) {
+			BlockPos p = queue.poll();
+			for (Direction d : Direction.values()) {
+				BlockPos n = p.relative(d);
+				if (!visited.contains(n) && level.isLoaded(n) && level.getBlockState(n) == cluster) {
+					visited.add(n);
+					queue.add(n);
+				}
+			}
+		}
+		return visited.size();
+	}
+
+	@Override
+	protected void finishedOperation() {
+		ItemStack rest = this.currentOperation.getItemOutput0();
+		for (int s = SLOT_OUTPUT1; s < SLOT_OUTPUT1 + SLOT_OUTPUT_COUNT && !rest.isEmpty(); s++) {
+			rest = this.inventory.insertItemNoCheck(s, rest, false);
+		}
+		if (!rest.isEmpty()) {
+			Containers.dropItemStack(level, worldPosition.getX() + 0.5d, worldPosition.getY() + 0.5d, worldPosition.getZ() + 0.5d, rest);
+		}
+		FluidStack fluidOut = this.currentOperation.getFluidOutput0();
+		if (!fluidOut.isEmpty()) {
+			this.outputTank.fill(fluidOut, IFluidHandler.FluidAction.EXECUTE);
+		}
+	}
+
+	/** client: work sound loop in the middle of the rods */
+	@Override
+	protected void playAmbientSound() {
+		if (drillDirection == null || soundLoopDelay-- > 0) {
+			return;
+		}
+		BlockPos p = worldPosition.relative(drillDirection, engines + rods / 2);
+		SoundEvent sound = radius == 0 ? TGSounds.ORE_DRILL_WORK_SMALL.get()
+				: radius <= 2 ? TGSounds.ORE_DRILL_WORK_MEDIUM.get() : TGSounds.ORE_DRILL_WORK_LARGE.get();
+		level.playLocalSound(p.getX() + 0.5d, p.getY() + 0.5d, p.getZ() + 0.5d, sound, SoundSource.BLOCKS, SOUND_VOLUME, 1.0f, false);
+		// 62 ticks = 3.1 sec sound
+		soundLoopDelay = 61;
+	}
+
+	/* ---- tanks ---- */
+
+	@Override
+	public IFluidHandler getFluidHandler() {
+		return fluidHandler;
+	}
+
+	@Override
+	public boolean onFluidContainerInteract(Player player, InteractionHand hand) {
+		if (!this.isUseableByPlayer(player)) {
+			return false;
+		}
+		return FluidUtil.interactWithFluidHandler(player, hand, this.fluidHandler);
+	}
+
+	/** pipes fill the input tank and drain the output tank */
+	private class OreDrillFluidHandler implements IFluidHandler {
+		@Override
+		public int getTanks() {
+			return 2;
 		}
 
 		@Override
-		public int fill(FluidStack resource, boolean doFill) {
-			return tile.inputTank.fill(resource, doFill);
+		public FluidStack getFluidInTank(int tank) {
+			return tank == 0 ? inputTank.getFluid() : outputTank.getFluid();
 		}
 
 		@Override
-		public FluidStack drain(FluidStack resource, boolean doDrain) {
-			return tile.outputTank.drain(resource, doDrain);
+		public int getTankCapacity(int tank) {
+			return tank == 0 ? CAPACITY_INPUT_TANK : CAPACITY_OUTPUT_TANK;
 		}
 
 		@Override
-		public FluidStack drain(int maxDrain, boolean doDrain) {
-			return tile.outputTank.drain(maxDrain, doDrain);
+		public boolean isFluidValid(int tank, FluidStack stack) {
+			return tank == 0;
 		}
+
+		@Override
+		public int fill(FluidStack resource, FluidAction action) {
+			return inputTank.fill(resource, action);
+		}
+
+		@Override
+		public FluidStack drain(FluidStack resource, FluidAction action) {
+			return outputTank.drain(resource, action);
+		}
+
+		@Override
+		public FluidStack drain(int maxDrain, FluidAction action) {
+			return outputTank.drain(maxDrain, action);
+		}
+	}
+
+	/* ---- save / sync ---- */
+
+	@Override
+	protected MachineOperation createEmptyOperation() {
+		return new MachineOperation();
+	}
+
+	@Override
+	public void readClientData(CompoundTag tags, HolderLookup.Provider registries) {
+		super.readClientData(tags, registries);
+		if (tags.contains("drillDirection")) {
+			this.drillDirection = Direction.from3DDataValue(tags.getByte("drillDirection"));
+			this.engines = tags.getByte("engines");
+			this.rods = tags.getByte("rods");
+			this.radius = tags.getByte("radius");
+		} else {
+			this.drillDirection = null;
+			this.engines = 0;
+			this.rods = 0;
+			this.radius = 0;
+		}
+		this.hasPower = tags.getBoolean("hasPower");
+		this.hasDrill = tags.getBoolean("hasDrill");
+		this.drillType = tags.getByte("drillType");
+		this.fuelBuffer = tags.getInt("fuelBuffer");
+		this.currentFuelBufferMax = tags.getInt("fuelBufferMax");
+		this.inputTank.setFluid(FluidStack.EMPTY);
+		this.outputTank.setFluid(FluidStack.EMPTY);
+		this.inputTank.readFromNBT(registries, tags.getCompound("inputTank"));
+		this.outputTank.readFromNBT(registries, tags.getCompound("outputTank"));
+	}
+
+	@Override
+	public void writeClientData(CompoundTag tags, HolderLookup.Provider registries) {
+		super.writeClientData(tags, registries);
+		if (this.drillDirection != null) {
+			tags.putByte("drillDirection", (byte) this.drillDirection.get3DDataValue());
+			tags.putByte("engines", (byte) engines);
+			tags.putByte("rods", (byte) rods);
+			tags.putByte("radius", (byte) radius);
+		}
+		tags.putBoolean("hasPower", hasPower);
+		tags.putBoolean("hasDrill", hasDrill);
+		tags.putByte("drillType", (byte) drillType);
+		tags.putInt("fuelBuffer", fuelBuffer);
+		tags.putInt("fuelBufferMax", currentFuelBufferMax);
+		tags.put("inputTank", this.inputTank.writeToNBT(registries, new CompoundTag()));
+		tags.put("outputTank", this.outputTank.writeToNBT(registries, new CompoundTag()));
 	}
 }

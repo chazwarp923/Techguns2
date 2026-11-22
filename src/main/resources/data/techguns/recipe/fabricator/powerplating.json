@@ -1,0 +1,22 @@
+{
+  "type": "techguns:fabricator",
+  "input": {
+    "tag": "c:ingots/titanium",
+    "count": 2
+  },
+  "wires": {
+    "tag": "c:circuits/basic",
+    "count": 4
+  },
+  "powder": {
+    "item": "techguns:mechanicalpartscarbon"
+  },
+  "plate": {
+    "tag": "c:plates/carbon",
+    "count": 4
+  },
+  "result": {
+    "id": "techguns:powerplating",
+    "count": 2
+  }
+}

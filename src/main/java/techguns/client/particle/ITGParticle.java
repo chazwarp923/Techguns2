@@ -1,27 +1,24 @@
 package techguns.client.particle;
 
-import net.minecraft.client.renderer.BufferBuilder;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.phys.Vec3;
 
 public interface ITGParticle {
 
-	public Vec3d getPos();
-	
-	public boolean shouldRemove();
-	public void updateTick();
-	
-	public void doRender(BufferBuilder buffer, Entity entityIn, float partialTickTime, float rotX, float rotZ, float rotYZ, float rotXY, float rotXZ);
-	   
-	public AxisAlignedBB getRenderBoundingBox(float ptt, Entity viewEnt);
-	
-	public default boolean doNotSort() {
+	Vec3 getPos();
+
+	boolean shouldRemove();
+
+	void updateTick();
+
+	void doRender(TGParticleBuffers buffers, float partialTickTime, float rotX, float rotZ, float rotYZ, float rotXY, float rotXZ);
+
+	default boolean doNotSort() {
 		return false;
 	}
-	
-	public double getDepth();
-	
-	public void setDepth(double depth);
-	public void setItemAttached();
+
+	double getDepth();
+
+	void setDepth(double depth);
+
+	void setItemAttached();
 }

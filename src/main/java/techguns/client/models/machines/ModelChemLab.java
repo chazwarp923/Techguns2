@@ -1,10 +1,10 @@
 package techguns.client.models.machines;
 
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.GlStateManager.DestFactor;
-import net.minecraft.client.renderer.GlStateManager.SourceFactor;
-import net.minecraft.entity.Entity;
+import techguns.client.models.ModelRenderer;
+import techguns.client.render.gl.GlStateManager;
+import techguns.client.render.gl.GlStateManager.DestFactor;
+import techguns.client.render.gl.GlStateManager.SourceFactor;
+import net.minecraft.world.entity.Entity;
 
 public class ModelChemLab extends ModelMachine{
 

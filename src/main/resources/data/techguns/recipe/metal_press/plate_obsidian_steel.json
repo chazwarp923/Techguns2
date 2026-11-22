@@ -1,0 +1,14 @@
+{
+  "type": "techguns:metal_press",
+  "input1": {
+    "tag": "c:ingots/obsidian_steel"
+  },
+  "input2": {
+    "tag": "c:ingots/obsidian_steel"
+  },
+  "allow_swap": true,
+  "result": {
+    "id": "techguns:plateobsidiansteel",
+    "count": 2
+  }
+}

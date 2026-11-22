@@ -1,87 +1,57 @@
 package techguns.entities.npcs;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.init.SoundEvents;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
 import techguns.TGArmors;
 import techguns.TGuns;
-import techguns.Techguns;
 import techguns.items.armors.GenericArmorMultiCamo;
 
+/** 1.12 PsychoSteve */
 public class PsychoSteve extends GenericNPC {
 
-	public static final ResourceLocation LOOT = new ResourceLocation(Techguns.MODID, "entities/psychosteve");
-	
-	public PsychoSteve(World world) {
-		super(world);
-		setTGArmorStats(5.0f, 0f);
+	public PsychoSteve(EntityType<? extends PsychoSteve> type, Level level) {
+		super(type, level);
+		setTGArmorStats(5f, 0f);
+		this.xpReward = 25;
 	}
 
-	@Override
-	protected void applyEntityAttributes() {
-		super.applyEntityAttributes();
-		this.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).setBaseValue(0.60D);
-		this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(75);
-		this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).setBaseValue(7);
-		this.getEntityAttribute(SharedMonsterAttributes.FOLLOW_RANGE).setBaseValue(60.0D);
-		this.getEntityAttribute(SharedMonsterAttributes.ARMOR_TOUGHNESS).setBaseValue(1D);
-		this.experienceValue = 25;
+	public static AttributeSupplier.Builder createAttributes() {
+		return GenericNPC.createAttributes(0.6D, 75D, 7D, 60D).add(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR_TOUGHNESS, 1D);
 	}
 
 	@Override
 	protected void addRandomArmor(int difficulty) {
-
-		// Armors
-		
-		int camo = GenericArmorMultiCamo.getRandomCamoIndexFor((GenericArmorMultiCamo) TGArmors.t1_miner_Chestplate);
-			
-			this.setItemStackToSlot(EntityEquipmentSlot.HEAD, GenericArmorMultiCamo.getNewWithCamo(
-				TGArmors.t1_miner_Helmet,camo));
-			this.setItemStackToSlot(EntityEquipmentSlot.CHEST, GenericArmorMultiCamo.getNewWithCamo(
-					TGArmors.t1_miner_Chestplate,camo));
-			this.setItemStackToSlot(EntityEquipmentSlot.LEGS, GenericArmorMultiCamo.getNewWithCamo(
-					TGArmors.t1_miner_Leggings,camo));
-			this.setItemStackToSlot(EntityEquipmentSlot.FEET, GenericArmorMultiCamo.getNewWithCamo(
-					TGArmors.t1_miner_Boots,camo));
-			
-			this.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, new ItemStack(TGuns.chainsaw));
-
-	}
-	
-	@Override
-	public SoundEvent getAmbientSound() {
-		return SoundEvents.ENTITY_VILLAGER_AMBIENT;
+		int camo = GenericArmorMultiCamo.getRandomCamoIndexFor((GenericArmorMultiCamo) TGArmors.T1_MINER_CHESTPLATE.get());
+		this.setItemSlot(EquipmentSlot.HEAD, GenericArmorMultiCamo.getNewWithCamo(TGArmors.T1_MINER_HELMET.get(), camo));
+		this.setItemSlot(EquipmentSlot.CHEST, GenericArmorMultiCamo.getNewWithCamo(TGArmors.T1_MINER_CHESTPLATE.get(), camo));
+		this.setItemSlot(EquipmentSlot.LEGS, GenericArmorMultiCamo.getNewWithCamo(TGArmors.T1_MINER_LEGGINGS.get(), camo));
+		this.setItemSlot(EquipmentSlot.FEET, GenericArmorMultiCamo.getNewWithCamo(TGArmors.T1_MINER_BOOTS.get(), camo));
+		equip(EquipmentSlot.MAINHAND, TGuns.CHAINSAW.get());
 	}
 
 	@Override
-	public SoundEvent getHurtSound(DamageSource damageSourceIn) {
-		return SoundEvents.ENTITY_VILLAGER_HURT;
+	protected SoundEvent getAmbientSound() {
+		return SoundEvents.VILLAGER_AMBIENT;
 	}
 
 	@Override
-	public SoundEvent getDeathSound() {
-		return SoundEvents.ENTITY_VILLAGER_DEATH;
+	protected SoundEvent getHurtSound(DamageSource src) {
+		return SoundEvents.VILLAGER_HURT;
 	}
 
-	public SoundEvent getStepSound() {
-		return SoundEvents.ENTITY_ZOMBIE_STEP;
+	@Override
+	protected SoundEvent getDeathSound() {
+		return SoundEvents.VILLAGER_DEATH;
 	}
-	
+
 	@Override
-    protected void playStepSound(BlockPos pos, Block blockIn)
-    {
-        this.playSound(this.getStepSound(), 0.15F, 1.0F);
-    }
-	
-	@Override
-	protected ResourceLocation getLootTable() {
-		return LOOT;
+	protected SoundEvent getStepSound() {
+		return SoundEvents.ZOMBIE_STEP;
 	}
 }

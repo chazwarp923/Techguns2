@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "vertical_direction=up": {
+      "model": "techguns:block/basicmachine"
+    },
+    "vertical_direction=down": {
+      "model": "techguns:block/basicmachine"
+    }
+  }
+}

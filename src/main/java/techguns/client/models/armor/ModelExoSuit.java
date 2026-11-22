@@ -1,9 +1,9 @@
 package techguns.client.models.armor;
 
-import net.minecraft.client.model.ModelBiped;
-import net.minecraft.client.model.ModelRenderer;
 
-public class ModelExoSuit extends ModelBiped {
+import techguns.client.models.ModelRenderer;
+
+public class ModelExoSuit extends ModelBipedTG {
 
 	ModelRenderer RA4;
 	ModelRenderer RA6;

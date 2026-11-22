@@ -1,59 +1,46 @@
 package techguns.tileentities;
 
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.EnumFacing;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.energy.CapabilityEnergy;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
 import techguns.TGConfig;
 
+/** Block entity with a Forge Energy storage (1.12 BasicPoweredTileEnt). */
 public abstract class BasicPoweredTileEnt extends BasicRedstoneTileEnt {
-	
-	protected EnergyStoragePlus energy;
-	
-	public BasicPoweredTileEnt(int inventorySize, boolean hasRotation, int maximumPower) {
-		super(inventorySize, hasRotation);
-		energy = new EnergyStoragePlus(maximumPower);
+
+	protected final EnergyStoragePlus energy;
+
+	public BasicPoweredTileEnt(BlockEntityType<?> type, BlockPos pos, BlockState state, int inventorySize, boolean hasRotation, int maximumPower) {
+		super(type, pos, state, inventorySize, hasRotation);
+		this.energy = new EnergyStoragePlus(maximumPower).onChange(this::setChanged);
 	}
-	
+
 	public EnergyStoragePlus getEnergyStorage() {
 		return energy;
 	}
 
-	/**
-	 * Drain amount power from internal storage, return if enough power left
-	 * @param amount
-	 * @return
-	 */
-	protected boolean consumePower(int amount){
-		if ( TGConfig.machinesNeedNoPower){
+	/** drain amount from the storage, returns if there was enough */
+	protected boolean consumePower(int amount) {
+		if (TGConfig.machinesNeedNoPower) {
 			return true;
 		}
-		if (this.energy.extractEnergy(amount, true)>=amount){
-			return this.energy.extractEnergy(amount, false)>=amount;
-		} else {
-			return false;
+		if (this.energy.extractEnergy(amount, true) >= amount) {
+			return this.energy.extractEnergy(amount, false) >= amount;
 		}
-	}
-	
-	@Override
-	public void readClientDataFromNBT(NBTTagCompound tags) {
-		super.readClientDataFromNBT(tags);
-		this.energy.setEnergyStored(tags.getInteger("powerStored"));
+		return false;
 	}
 
 	@Override
-	public void writeClientDataToNBT(NBTTagCompound tags) {
-		super.writeClientDataToNBT(tags);
-		tags.setInteger("powerStored", this.energy.getEnergyStored());
+	public void readClientData(CompoundTag tags, HolderLookup.Provider registries) {
+		super.readClientData(tags, registries);
+		this.energy.setEnergyStored(tags.getInt("powerStored"));
 	}
 
 	@Override
-	public boolean hasCapability(Capability<?> capability, EnumFacing facing) {
-		return capability == CapabilityEnergy.ENERGY || super.hasCapability(capability, facing);
-	}
-	
-	@Override
-	public <T> T getCapability(Capability<T> capability, EnumFacing facing) {
-		return capability == CapabilityEnergy.ENERGY ? (T)energy : super.getCapability(capability, facing);
+	public void writeClientData(CompoundTag tags, HolderLookup.Provider registries) {
+		super.writeClientData(tags, registries);
+		tags.putInt("powerStored", this.energy.getEnergyStored());
 	}
 }

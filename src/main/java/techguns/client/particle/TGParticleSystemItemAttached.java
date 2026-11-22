@@ -1,34 +1,39 @@
 package techguns.client.particle;
 
+
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
-import net.minecraft.util.EnumHand;
-import net.minecraft.world.World;
-import techguns.api.npc.INPCTechgunsShooter;
-import techguns.capabilities.TGExtendedPlayerClient;
-import techguns.capabilities.TGShooterValues;
-import techguns.debug.Keybinds;
-
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import techguns.client.render.TGRenderHelper;
+import techguns.client.render.TGRenderHelper.RenderType;
+import techguns.util.EntityCondition;
+import techguns.util.MathUtil;
 public class TGParticleSystemItemAttached extends TGParticleSystem {
 
-	protected EnumHand hand;
+	protected InteractionHand hand;
 	
-	protected EntityLivingBase elb;
-	protected EntityPlayer ply;
+	protected LivingEntity elb;
+	protected Player ply;
 	
-	public TGParticleSystemItemAttached(Entity entity, EnumHand hand, TGParticleSystemType type) {
+	public TGParticleSystemItemAttached(Entity entity, InteractionHand hand, TGParticleSystemType type) {
 		super(entity, type);
 		this.hand=hand;
-		if(this.entity instanceof EntityPlayer) {
-			this.ply = (EntityPlayer) this.entity;
+		if(this.entity instanceof Player) {
+			this.ply = (Player) this.entity;
 			this.elb=null;
 		} else {
-			this.elb= (EntityLivingBase) this.entity;
+			this.elb= (LivingEntity) this.entity;
 			this.ply=null;
 		}
 		this.itemAttached=true;
@@ -44,13 +49,7 @@ public class TGParticleSystemItemAttached extends TGParticleSystem {
 		List<ITGParticle> list = new ArrayList<>();
 		s.setItemAttached();
 		list.add(s);
-		if(this.ply!=null) {
-			TGExtendedPlayerClient props = TGExtendedPlayerClient.get(this.ply);
-			props.addEffectHand(hand, list);
-		} else if (this.elb!=null) {
-			TGShooterValues props = TGShooterValues.get(this.elb);
-			props.addEffectHand(hand, list);
-		}
+		TGEntityParticles.get(this.entity).addEffectHand(hand, list);
 	}
 	
 	

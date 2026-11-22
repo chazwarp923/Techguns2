@@ -1,9 +1,11 @@
 package techguns.client.models.guns;
 
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
-import net.minecraft.entity.Entity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.ItemDisplayContext;
 import techguns.client.models.ModelMultipart;
+import techguns.client.models.ModelRenderer;
+
+
 
 public class ModelM4 extends ModelMultipart {
 
@@ -312,7 +314,7 @@ public class ModelM4 extends ModelMultipart {
   
 	@Override
 	public void render(Entity entity, float f, float f1, float f2, float f3,
-			float f4, float f5, int ammoLeft, float reloadProgress, TransformType transformType, int part,
+			float f4, float f5, int ammoLeft, float reloadProgress, ItemDisplayContext transformType, int part,
 			float fireProgress, float chargeProgress) {
     //super.render(entity, f, f1, f2, f3, f4, f5);
     setRotationAngles(f, f1, f2, f3, f4, f5, entity);

@@ -1,172 +1,143 @@
 package techguns.entities.projectiles;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Predicate;
 
 import javax.annotation.Nullable;
 
-import com.google.common.base.Predicate;
-import com.google.common.base.Predicates;
-
-import io.netty.buffer.ByteBuf;
-import net.minecraft.block.SoundType;
-import net.minecraft.block.material.Material;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.IProjectile;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.EntitySelectors;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumParticleTypes;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.RayTraceResult.Type;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.common.network.NetworkRegistry.TargetPoint;
-import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySelector;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.entity.IEntityWithComplexSpawn;
+import net.neoforged.neoforge.network.PacketDistributor;
 import techguns.TGEntities;
-import techguns.TGPackets;
-import techguns.TGSounds;
-import techguns.Techguns;
 import techguns.api.damagesystem.DamageType;
 import techguns.api.npc.INPCTechgunsShooter;
-import techguns.api.npc.factions.ITGNpcTeam;
 import techguns.damagesystem.DamageSystem;
 import techguns.damagesystem.TGDamageSource;
-import techguns.deatheffects.EntityDeathUtils.DeathType;
-import techguns.factions.TGNpcFactions;
+import techguns.deatheffects.DeathType;
 import techguns.items.guns.GenericGun;
 import techguns.items.guns.IProjectileFactory;
 import techguns.packets.PacketGunImpactFX;
 
-public class GenericProjectile extends Entity implements IProjectile, IEntityAdditionalSpawnData {
+/**
+ * Base bullet entity. Moves in a straight line (plus optional gravity), ray traces blocks and
+ * entities each tick. The client simulates the flight from the initial motion sent in the spawn data.
+ */
+public class GenericProjectile extends Entity implements IEntityWithComplexSpawn {
 
-	public static final Predicate<Entity> BULLET_TARGETS = Predicates.and(EntitySelectors.CAN_AI_TARGET,
-			EntitySelectors.IS_ALIVE, new Predicate<Entity>() {
-				public boolean apply(@Nullable Entity ent) {
-					return ent.canBeCollidedWith();
-				}
-			});
+	public static final Predicate<Entity> BULLET_TARGETS = EntitySelector.NO_SPECTATORS.and(Entity::isAlive).and(Entity::isPickable);
 
-	float damage;
+	protected float damage;
 	public float speed = 1.0f; // speed in blocks per tick
 
 	protected int ticksToLive = 100;
 	protected int lifetime = 100; // TTL but not reduced per tick
 
 	// DMG drop stats
-	float damageDropStart;
-	float damageDropEnd;
-	float damageMin;
-	protected EntityLivingBase shooter;
+	protected float damageDropStart;
+	protected float damageDropEnd;
+	protected float damageMin;
+	@Nullable
+	protected LivingEntity shooter;
 
-	float penetration = 0.0f;
+	protected float penetration = 0.0f;
 
-	boolean silenced = false;
+	protected boolean silenced = false;
 	protected boolean blockdamage = false;
 
-	boolean posInitialized = false;
-	double startX;
-	double startY;
-	double startZ;
+	protected boolean posInitialized = false;
+	protected double startX;
+	protected double startY;
+	protected double startZ;
 
-	float radius=0.0f;
-	double gravity=0.0f;
-	
-	public GenericProjectile(World worldIn) {
-		super(worldIn);
-		this.isImmuneToFire = true;
+	protected float radius = 0.0f;
+	/** beams keep existing after a hit (they are only visual afterwards) */
+	protected boolean discardOnHit = true;
+	protected double gravity = 0.0f;
+
+	public GenericProjectile(EntityType<? extends GenericProjectile> type, Level level) {
+		super(type, level);
 		this.setNoGravity(true);
-		this.height=0.5f;
-		this.setSize(0.25F, 0.25F);
 	}
 
-//	private static EnumBulletFirePos getLeftHand(EntityLivingBase elb, EnumBulletFirePos firePos){
-//		if (elb instanceof EntityPlayer){
-//			EntityPlayer p = (EntityPlayer) elb;
-//			if(p.getPrimaryHand() == EnumHandSide.LEFT){
-//				if(firePos==EnumBulletFirePos.LEFT) {
-//					return EnumBulletFirePos.RIGHT;
-//				} else if (firePos==EnumBulletFirePos.RIGHT) {
-//					return EnumBulletFirePos.LEFT;
-//				}
-//			}
-//		}
-//		return firePos;
-//	}
-	
-	public GenericProjectile(World par2World, EntityLivingBase p, float damage, float speed, int TTL, float spread,
-			float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos) {
-		/*this(par2World, p.posX, p.posY + p.getEyeHeight(), p.posZ, p.rotationYawHead, p.rotationPitch, damage, speed,
-				TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, getLeftHand(p,firePos));*/
-		this(par2World);
+	public GenericProjectile(EntityType<? extends GenericProjectile> type, Level level, LivingEntity p, float damage, float speed, int TTL,
+			float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos) {
+		this(type, level);
 		this.shooter = p;
-		this.initProjectile(par2World, p.posX, p.posY + p.getEyeHeight(), p.posZ, p.rotationYawHead, p.rotationPitch, damage, speed,
-				TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos);
+		this.initProjectile(p.getX(), p.getEyeY(), p.getZ(), p.getYHeadRot(), p.getXRot(), damage, speed, TTL, spread, dmgDropStart, dmgDropEnd,
+				dmgMin, penetration, blockdamage, firePos);
 	}
 
-	public GenericProjectile(World worldIn, double posX, double posY, double posZ, float yaw, float pitch, float damage,
-			float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration,
+	public GenericProjectile(Level level, LivingEntity p, float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd,
+			float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos) {
+		this(TGEntities.GENERIC_PROJECTILE.get(), level, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage,
+				firePos);
+	}
+
+	public GenericProjectile(EntityType<? extends GenericProjectile> type, Level level, double posX, double posY, double posZ, float yaw, float pitch,
+			float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration,
 			boolean blockdamage, EnumBulletFirePos firePos) {
-		this(worldIn);
+		this(type, level);
 		this.shooter = null;
-		this.initProjectile(worldIn, posX, posY, posZ, yaw, pitch, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos);
+		this.initProjectile(posX, posY, posZ, yaw, pitch, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage,
+				firePos);
 	}
 
-	private void initProjectile(World worldIn, double posX, double posY, double posZ, float yaw, float pitch, float damage,
-			float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration,
-			boolean blockdamage, EnumBulletFirePos firePos) {
+	protected void initProjectile(double posX, double posY, double posZ, float yaw, float pitch, float damage, float speed, int TTL, float spread,
+			float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos) {
 
-		float offsetSide=0.16F;
-		float offsetHeight=0f;
-		if(this.shooter!=null && shooter instanceof INPCTechgunsShooter) {
-			INPCTechgunsShooter tgshooter = (INPCTechgunsShooter) this.shooter;
+		float offsetSide = 0.16F;
+		float offsetHeight = 0f;
+		if (this.shooter instanceof INPCTechgunsShooter tgshooter) {
 			offsetSide += tgshooter.getBulletOffsetSide();
 			offsetHeight += tgshooter.getBulletOffsetHeight();
 		}
-		
-		this.setLocationAndAngles(posX, posY, posZ, yaw + (float) (spread - (2 * Math.random() * spread)) * 40.0f,
-				pitch + (float) (spread - (2 * Math.random() * spread)) * 40.0f);
 
-		if (firePos==EnumBulletFirePos.RIGHT) {
-			this.posX -= (double) (MathHelper.cos(this.rotationYaw / 180.0F * (float) Math.PI) * offsetSide);
-			//this.posY -= 0.10000000149011612D;
-			this.posZ -= (double) (MathHelper.sin(this.rotationYaw / 180.0F * (float) Math.PI) * offsetSide);
-		} else if(firePos==EnumBulletFirePos.LEFT) {
-			this.posX += (double) (MathHelper.cos(this.rotationYaw / 180.0F * (float) Math.PI) * offsetSide);
-			//this.posY -= 0.10000000149011612D;
-			this.posZ += (double) (MathHelper.sin(this.rotationYaw / 180.0F * (float) Math.PI) * offsetSide);
-		} 
-		this.posY += (-0.10000000149011612D+offsetHeight);
-		
-		this.setPosition(this.posX, this.posY, this.posZ);
-		// this.yOffset = 0.0F;
+		float yRot = yaw + (float) (spread - (2 * Math.random() * spread)) * 40.0f;
+		float xRot = pitch + (float) (spread - (2 * Math.random() * spread)) * 40.0f;
+		this.moveTo(posX, posY, posZ, yRot, xRot);
+
+		double x = posX, y = posY, z = posZ;
+		if (firePos == EnumBulletFirePos.RIGHT) {
+			x -= Mth.cos(yRot / 180.0F * (float) Math.PI) * offsetSide;
+			z -= Mth.sin(yRot / 180.0F * (float) Math.PI) * offsetSide;
+		} else if (firePos == EnumBulletFirePos.LEFT) {
+			x += Mth.cos(yRot / 180.0F * (float) Math.PI) * offsetSide;
+			z += Mth.sin(yRot / 180.0F * (float) Math.PI) * offsetSide;
+		}
+		y += (-0.10000000149011612D + offsetHeight);
+		this.setPos(x, y, z);
+
 		float f = 0.4F;
-		this.motionX = (double) (-MathHelper.sin(this.rotationYaw / 180.0F * (float) Math.PI)
-				* MathHelper.cos(this.rotationPitch / 180.0F * (float) Math.PI) * f);
-		this.motionZ = (double) (MathHelper.cos(this.rotationYaw / 180.0F * (float) Math.PI)
-				* MathHelper.cos(this.rotationPitch / 180.0F * (float) Math.PI) * f);
-		this.motionY = (double) (-MathHelper.sin((this.rotationPitch) / 180.0F * (float) Math.PI) * f);
-		this.shoot(this.motionX, this.motionY, this.motionZ, 1.5f, 1.0F);
+		double mx = -Mth.sin(yRot / 180.0F * (float) Math.PI) * Mth.cos(xRot / 180.0F * (float) Math.PI) * f;
+		double mz = Mth.cos(yRot / 180.0F * (float) Math.PI) * Mth.cos(xRot / 180.0F * (float) Math.PI) * f;
+		double my = -Mth.sin(xRot / 180.0F * (float) Math.PI) * f;
+		this.shoot(mx, my, mz, 1.5f, 1.0F);
 
-		Vec3d motion = new Vec3d(this.motionX, this.motionY, this.motionZ);
-		motion.normalize();
-		this.motionX = motion.x;
-		this.motionY = motion.y;
-		this.motionZ = motion.z;
-
-		this.motionX *= speed;
-		this.motionY *= speed;
-		this.motionZ *= speed;
+		// legacy quirk: the normalized vector was discarded, motion stays at velocity 1.5 * speed
+		this.setDeltaMovement(this.getDeltaMovement().scale(speed));
 		this.damage = damage;
 		this.speed = speed;
 		this.ticksToLive = TTL;
@@ -178,443 +149,244 @@ public class GenericProjectile extends Entity implements IProjectile, IEntityAdd
 		this.damageDropEnd = dmgDropEnd;
 		this.blockdamage = blockdamage;
 	}
-	
-	
-	/**
-	 * Similar to setArrowHeading, it's point the throwable entity to a x, y, z
-	 * direction.
-	 */
-	@Override
+
+	/** Points the projectile into the x, y, z direction. */
 	public void shoot(double x, double y, double z, float velocity, float inaccuracy) {
-		float f = MathHelper.sqrt(x * x + y * y + z * z);
-		x = x / (double) f;
-		y = y / (double) f;
-		z = z / (double) f;
-		x = x + this.rand.nextGaussian() * 0.007499999832361937D * (double) inaccuracy;
-		y = y + this.rand.nextGaussian() * 0.007499999832361937D * (double) inaccuracy;
-		z = z + this.rand.nextGaussian() * 0.007499999832361937D * (double) inaccuracy;
-		x = x * (double) velocity;
-		y = y * (double) velocity;
-		z = z * (double) velocity;
-		this.motionX = x;
-		this.motionY = y;
-		this.motionZ = z;
-		float f1 = MathHelper.sqrt(x * x + z * z);
-		this.rotationYaw = (float) (MathHelper.atan2(x, z) * (180D / Math.PI));
-		this.rotationPitch = (float) (MathHelper.atan2(y, (double) f1) * (180D / Math.PI));
-		this.prevRotationYaw = this.rotationYaw;
-		this.prevRotationPitch = this.rotationPitch;
+		Vec3 v = new Vec3(x, y, z).normalize().add(this.random.nextGaussian() * 0.007499999832361937D * inaccuracy,
+				this.random.nextGaussian() * 0.007499999832361937D * inaccuracy, this.random.nextGaussian() * 0.007499999832361937D * inaccuracy)
+				.scale(velocity);
+		this.setDeltaMovement(v);
+		double f1 = v.horizontalDistance();
+		this.setYRot((float) (Mth.atan2(v.x, v.z) * (180D / Math.PI)));
+		this.setXRot((float) (Mth.atan2(v.y, f1) * (180D / Math.PI)));
+		this.yRotO = this.getYRot();
+		this.xRotO = this.getXRot();
 	}
 
 	@Override
-	public void onUpdate() {
-		if (!this.posInitialized && !this.world.isRemote) {
+	protected void defineSynchedData(SynchedEntityData.Builder builder) {
+	}
+
+	@Override
+	public void tick() {
+		if (!this.posInitialized && !this.level().isClientSide) {
 			this.initStartPos();
 		}
-		this.lastTickPosX = this.posX;
-		this.lastTickPosY = this.posY;
-		this.lastTickPosZ = this.posZ;
+		super.tick();
 
-		super.onUpdate();
-
-		if (this.prevRotationPitch == 0.0F && this.prevRotationYaw == 0.0F) {
-			float f = MathHelper.sqrt(this.motionX * this.motionX + this.motionZ * this.motionZ);
-			this.rotationYaw = (float) (MathHelper.atan2(this.motionX, this.motionZ) * (180D / Math.PI));
-			this.rotationPitch = (float) (MathHelper.atan2(this.motionY, (double) f) * (180D / Math.PI));
-			this.prevRotationYaw = this.rotationYaw;
-			this.prevRotationPitch = this.rotationPitch;
+		Vec3 motion = this.getDeltaMovement();
+		if (this.xRotO == 0.0F && this.yRotO == 0.0F) {
+			double f = motion.horizontalDistance();
+			this.setYRot((float) (Mth.atan2(motion.x, motion.z) * (180D / Math.PI)));
+			this.setXRot((float) (Mth.atan2(motion.y, f) * (180D / Math.PI)));
+			this.yRotO = this.getYRot();
+			this.xRotO = this.getXRot();
 		}
 
 		--this.ticksToLive;
-		Vec3d vec3d1 = new Vec3d(this.posX, this.posY, this.posZ);
-		Vec3d vec3d = new Vec3d(this.posX + this.motionX, this.posY + this.motionY, this.posZ + this.motionZ);
-		RayTraceResult raytraceresult = this.world.rayTraceBlocks(vec3d1, vec3d, false, true, false);
-		vec3d1 = new Vec3d(this.posX, this.posY, this.posZ);
-		vec3d = new Vec3d(this.posX + this.motionX, this.posY + this.motionY, this.posZ + this.motionZ);
-
-		if (raytraceresult != null) {
-			vec3d = new Vec3d(raytraceresult.hitVec.x, raytraceresult.hitVec.y, raytraceresult.hitVec.z);
+		Vec3 start = this.position();
+		Vec3 end = start.add(motion);
+		HitResult hit = this.level().clip(new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
+		if (hit.getType() != HitResult.Type.MISS) {
+			end = hit.getLocation();
+		} else {
+			hit = null;
 		}
 
-		//Entity entity = this.findEntityOnPath(vec3d1, vec3d);
-
-		/*if (entity != null) {
-			raytraceresult = new RayTraceResult(entity);
-		}*/
-
-		RayTraceResult raytraceresultEntity = this.findEntityOnPath(vec3d1, vec3d);
-		if(raytraceresultEntity!=null) {
-			raytraceresult=raytraceresultEntity;
+		EntityHitResult entityHit = this.findEntityOnPath(start, end);
+		if (entityHit != null) {
+			hit = entityHit;
 		}
-		
-		if (raytraceresult != null && raytraceresult.entityHit!=null && raytraceresult.entityHit instanceof EntityPlayer) {
-			EntityPlayer entityplayer = (EntityPlayer) raytraceresult.entityHit;
 
-			if (this.shooter instanceof EntityPlayer && !((EntityPlayer) this.shooter).canAttackPlayer(entityplayer)) {
-				raytraceresult = null;
+		if (hit instanceof EntityHitResult ehr && ehr.getEntity() instanceof Player target) {
+			if (this.shooter instanceof Player sp && !sp.canHarmPlayer(target)) {
+				hit = null;
 			}
 		}
 
-		if (raytraceresult != null) {
-			this.onHit(raytraceresult);
+		if (hit != null && !this.isRemoved()) {
+			this.onHit(hit);
 		}
 
-		/*
-		 * if (this.getIsCritical()) { for (int k = 0; k < 4; ++k) {
-		 * this.world.spawnParticle(EnumParticleTypes.CRIT, this.posX +
-		 * this.motionX * (double) k / 4.0D, this.posY + this.motionY * (double)
-		 * k / 4.0D, this.posZ + this.motionZ * (double) k / 4.0D,
-		 * -this.motionX, -this.motionY + 0.2D, -this.motionZ); } }
-		 */
-
-		this.posX += this.motionX;
-		this.posY += this.motionY;
-		this.posZ += this.motionZ;
-		float f4 = MathHelper.sqrt(this.motionX * this.motionX + this.motionZ * this.motionZ);
-		this.rotationYaw = (float) (MathHelper.atan2(this.motionX, this.motionZ) * (180D / Math.PI));
-
-		/*for (this.rotationPitch = (float) (MathHelper.atan2(this.motionY, (double) f4) * (180D / Math.PI)); this.rotationPitch - this.prevRotationPitch < -180.0F; this.prevRotationPitch -= 360.0F) {
-			;
-		}*/
-		
-		this.rotationPitch = (float) (MathHelper.atan2(this.motionY, (double) f4) * (180D / Math.PI));
-		if (this.rotationPitch - this.prevRotationPitch < -180.0F) {
-			this.prevRotationPitch -= 360.0F;
-		}
-		
-		
-		/*while (this.rotationPitch - this.prevRotationPitch >= 180.0F) {
-			this.prevRotationPitch += 360.0F;
+		if (this.isRemoved()) {
+			return;
 		}
 
-		while (this.rotationYaw - this.prevRotationYaw < -180.0F) {
-			this.prevRotationYaw -= 360.0F;
-		}
+		double nx = this.getX() + motion.x;
+		double ny = this.getY() + motion.y;
+		double nz = this.getZ() + motion.z;
+		this.updateRotationFromMotion(motion);
 
-		while (this.rotationYaw - this.prevRotationYaw >= 180.0F) {
-			this.prevRotationYaw += 360.0F;
-		}*/
-		if (this.rotationPitch - this.prevRotationPitch >= 180.0F) {
-			this.prevRotationPitch += 360.0F;
-		}
-
-		if (this.rotationYaw - this.prevRotationYaw < -180.0F) {
-			this.prevRotationYaw -= 360.0F;
-		}
-
-		if (this.rotationYaw - this.prevRotationYaw >= 180.0F) {
-			this.prevRotationYaw += 360.0F;
-		}
-		
-
-		this.rotationPitch = this.prevRotationPitch + (this.rotationPitch - this.prevRotationPitch) * 0.2F;
-		this.rotationYaw = this.prevRotationYaw + (this.rotationYaw - this.prevRotationYaw) * 0.2F;
-		float f1 = 0.99F;
-		//float f2 = 0.05F;
-
-		f1 = this.inWaterUpdateBehaviour(f1);
-
-		this.motionX *= (double) f1;
-		this.motionY *= (double) f1;
-		this.motionZ *= (double) f1;
-
-		/*if (!this.hasNoGravity()) {
-			this.motionY -= 0.05000000074505806D;
-		}*/
+		float f1 = this.inWaterUpdateBehaviour(0.99F);
+		motion = motion.scale(f1);
 		if (this.gravity != 0) {
-			this.motionY -= this.gravity;
+			motion = motion.subtract(0, this.gravity, 0);
 		}
+		this.setDeltaMovement(motion);
+		this.setPos(nx, ny, nz);
+		this.checkInsideBlocks();
 
-		this.setPosition(this.posX, this.posY, this.posZ);
-		this.doBlockCollisions();
-		
-		if (this.ticksToLive<=0){
-			this.setDead();
+		if (this.ticksToLive <= 0) {
+			this.discard();
 		}
+	}
+
+	protected void updateRotationFromMotion(Vec3 motion) {
+		double f4 = motion.horizontalDistance();
+		this.setYRot((float) (Mth.atan2(motion.x, motion.z) * (180D / Math.PI)));
+		this.setXRot((float) (Mth.atan2(motion.y, f4) * (180D / Math.PI)));
+		while (this.getXRot() - this.xRotO < -180.0F) this.xRotO -= 360.0F;
+		while (this.getXRot() - this.xRotO >= 180.0F) this.xRotO += 360.0F;
+		while (this.getYRot() - this.yRotO < -180.0F) this.yRotO -= 360.0F;
+		while (this.getYRot() - this.yRotO >= 180.0F) this.yRotO += 360.0F;
+		this.setXRot(Mth.lerp(0.2F, this.xRotO, this.getXRot()));
+		this.setYRot(Mth.lerp(0.2F, this.yRotO, this.getYRot()));
 	}
 
 	protected float inWaterUpdateBehaviour(float f1) {
 		if (this.isInWater()) {
+			Vec3 m = this.getDeltaMovement();
 			for (int i = 0; i < 4; ++i) {
-				float f3 = 0.25F;
-				this.world.spawnParticle(EnumParticleTypes.WATER_BUBBLE, this.posX - this.motionX * 0.25D,
-						this.posY - this.motionY * 0.25D, this.posZ - this.motionZ * 0.25D, this.motionX, this.motionY,
-						this.motionZ);
+				this.level().addParticle(ParticleTypes.BUBBLE, this.getX() - m.x * 0.25D, this.getY() - m.y * 0.25D, this.getZ() - m.z * 0.25D, m.x,
+						m.y, m.z);
 			}
-
 			f1 = 0.85F;
 		}
-
-		if (this.isWet()) {
-			this.extinguish();
+		if (this.isInWaterRainOrBubble()) {
+			this.clearFire();
 		}
 		return f1;
 	}
-	
-    protected void initStartPos(){
-    	this.startX=this.posX;
-    	this.startY=this.posY;
-    	this.startZ=this.posZ;
-    	this.posInitialized=true;
-    }
-    
+
+	protected void initStartPos() {
+		this.startX = this.getX();
+		this.startY = this.getY();
+		this.startZ = this.getZ();
+		this.posInitialized = true;
+	}
+
 	@Nullable
-	protected RayTraceResult findEntityOnPath(Vec3d start, Vec3d end) {
+	protected EntityHitResult findEntityOnPath(Vec3 start, Vec3 end) {
 		Entity entity = null;
-		List<Entity> list = this.world.getEntitiesInAABBexcluding(this,
-				this.getEntityBoundingBox().expand(this.motionX, this.motionY, this.motionZ).grow(1.0D),
-				BULLET_TARGETS);
+		Vec3 hitPos = null;
 		double d0 = 0.0D;
-
-		Vec3d hitPos = null;
-		
-		for (int i = 0; i < list.size(); ++i) {
-			Entity entity1 = list.get(i);
-
-			if (entity1 != this.shooter ) {
-				AxisAlignedBB axisalignedbb = entity1.getEntityBoundingBox().grow(0.30000001192092896D);
-				RayTraceResult raytraceresult = axisalignedbb.calculateIntercept(start, end);
-
-				if (raytraceresult != null) {
-					double d1 = start.squareDistanceTo(raytraceresult.hitVec);
-
-					if (d1 < d0 || d0 == 0.0D) {
-						entity = entity1;
-						d0 = d1;
-						hitPos = raytraceresult.hitVec;
-					}
+		List<Entity> list = this.level().getEntities(this, this.getBoundingBox().expandTowards(this.getDeltaMovement()).inflate(1.0D), BULLET_TARGETS);
+		for (Entity e : list) {
+			if (e == this.shooter) {
+				continue;
+			}
+			AABB box = e.getBoundingBox().inflate(0.30000001192092896D);
+			Optional<Vec3> clip = box.clip(start, end);
+			if (clip.isPresent()) {
+				double d1 = start.distanceToSqr(clip.get());
+				if (d1 < d0 || d0 == 0.0D) {
+					entity = e;
+					d0 = d1;
+					hitPos = clip.get();
 				}
 			}
 		}
-		
-		if(entity!=null) {
-			return new RayTraceResult(entity, hitPos);
-		} else {
-			return null;
-		}
+		return entity != null ? new EntityHitResult(entity, hitPos) : null;
 	}
 
-	@Override
-	public float getEyeHeight() {
-		return 0.25f;
-	}
-
-	/**
-	 * Called when the arrow hits a block or an entity
-	 */
-	protected void onHit(RayTraceResult raytraceResultIn) {
-		
-		if (raytraceResultIn.entityHit != null && !this.world.isRemote) {
-
-			TGDamageSource src = getProjectileDamageSource();
-
-			if (raytraceResultIn.entityHit instanceof EntityLivingBase) {
-				EntityLivingBase ent = (EntityLivingBase) raytraceResultIn.entityHit;
-
-				// Check for Headshot
-
-				/*
-				 * double heightDiff = this.posY-ent.posY;
-				 * //System.out.println("HeightDiff:"+heightDiff); if
-				 * (this.isHeadshot(ent, heightDiff)){
-				 * this.worldObj.playSoundAtEntity(ent,
-				 * "techguns:effects.bulletimpact", 1.0F, 1.0F ); dmg=dmg*2.0f;
-				 * }
-				 */
-
-				float dmg = DamageSystem.getDamageFactor(this.shooter, ent) * this.getDamage();
-
-				if (dmg > 0.0f) {
-					
-					if (src.knockbackMultiplier==0.0f){
-	                	TGDamageSource knockback = TGDamageSource.getKnockbackDummyDmgSrc(this, this.shooter);
-		        		ent.attackEntityFrom(knockback, 0.01f);
-        			}
-					
-					ent.attackEntityFrom(src, dmg);
-					if (src.wasSuccessful()) {
-						
-						if (ent instanceof EntityLiving) {
-							this.setAIRevengeTarget(((EntityLiving) ent));
+	/** Called when the bullet hits a block or an entity. */
+	protected void onHit(HitResult hit) {
+		if (hit instanceof EntityHitResult ehr) {
+			if (!this.level().isClientSide) {
+				Entity target = ehr.getEntity();
+				TGDamageSource src = getProjectileDamageSource();
+				if (target instanceof LivingEntity ent) {
+					float dmg = DamageSystem.getDamageFactor(this.shooter, ent) * this.getDamage();
+					if (dmg > 0.0f) {
+						if (src.knockbackMultiplier == 0.0f) {
+							TGDamageSource knockback = TGDamageSource.getKnockbackDummyDmgSrc(this, this.shooter);
+							ent.hurt(knockback, 0.01f);
 						}
-	
-						this.onHitEffect(ent,raytraceResultIn);
+						if (ent.hurt(src, dmg)) {
+							this.onHitEffect(ent, ehr);
+						}
 					}
-				}
-
-			} else {
-				raytraceResultIn.entityHit.attackEntityFrom(src, this.getDamage());
-
-			}
-
-			this.setDead();
-		}
-
-		if (raytraceResultIn.typeOfHit == raytraceResultIn.typeOfHit.BLOCK) {
-
-			this.hitBlock(raytraceResultIn);
-
-			this.setDead();
-
-		}
-
-
-	}
-
-	protected void setAIRevengeTarget(EntityLiving ent) {
-		boolean shootBack = false;
-		if (this.shooter != null) {
-			if (shooter instanceof ITGNpcTeam && ent instanceof ITGNpcTeam) {
-				shootBack = TGNpcFactions.isHostile(((ITGNpcTeam) shooter).getTGFaction(),
-						((ITGNpcTeam) ent).getTGFaction());
-				// System.out.println("Shoot Back?:"+shootBack);
-			} else {
-
-				if (!(shooter instanceof EntityPlayer)) {
-					shootBack = true;
-					// System.out.println("Shoot Back!:"+shooter.toString());
+				} else {
+					target.hurt(src, this.getDamage());
 				}
 			}
-		}
-
-		if (shootBack) {
-			// System.out.println("shooting back against:"+shooter+" from:
-			// "+ent);
-			ent.setRevengeTarget(shooter);
-			// ent.setLastAttacker(shooter);
+			if (this.discardOnHit) this.discard();
+		} else if (hit instanceof BlockHitResult bhr) {
+			this.hitBlock(bhr);
+			if (this.discardOnHit) this.discard();
 		}
 	}
 
 	public void shiftForward(float factor) {
-		this.posX += this.motionX * factor;
-		this.posY += this.motionY * factor;
-		this.posZ += this.motionZ * factor;
+		Vec3 m = this.getDeltaMovement();
+		this.setPos(this.getX() + m.x * factor, this.getY() + m.y * factor, this.getZ() + m.z * factor);
 	}
 
-	
-	/**
-	 * Override in subclass for entity hit effect (potion effects etc)
-	 * @param ent
-	 */
-	protected void onHitEffect(EntityLivingBase ent, RayTraceResult rayTraceResultIn) {
+	/** Override in subclass for entity hit effect (potion effects etc). */
+	protected void onHitEffect(LivingEntity ent, EntityHitResult hit) {
 	}
 
-	/**
-	 * Override for block hit effect
-	 * @param raytraceResultIn
-	 */
-	protected void hitBlock(RayTraceResult raytraceResultIn) {
-		BlockPos targetPos = raytraceResultIn.getBlockPos();
-		IBlockState target = this.world.getBlockState(targetPos);
-		Material mat = target.getMaterial();
-		SoundType sound = target.getBlock().getSoundType(target, world, targetPos, this);
-		this.doImpactEffects(mat, raytraceResultIn, sound);
+	/** Override for block hit effect. */
+	protected void hitBlock(BlockHitResult hit) {
+		BlockPos targetPos = hit.getBlockPos();
+		BlockState target = this.level().getBlockState(targetPos);
+		SoundType sound = target.getSoundType(this.level(), targetPos, this);
+		this.doImpactEffects(target, hit, sound);
 	}
 
-    protected void doImpactEffects(Material mat, RayTraceResult rayTraceResult, SoundType sound) {
-    	double x = rayTraceResult.hitVec.x;
-    	double y = rayTraceResult.hitVec.y;
-    	double z = rayTraceResult.hitVec.z;
-    	boolean distdelay=true;
-    	
-    	float pitch = 0.0f;
-    	float yaw = 0.0f;
-    	if (rayTraceResult.typeOfHit == Type.BLOCK) {
-    		if (rayTraceResult.sideHit == EnumFacing.UP) {
-    			pitch = -90.0f;
-    		}else if (rayTraceResult.sideHit == EnumFacing.DOWN) {
-    			pitch = 90.0f;
-    		}else {
-    			yaw = rayTraceResult.sideHit.getHorizontalAngle();
-    		}
-    	}else {
-    		pitch = -this.rotationPitch;
-    		yaw = -this.rotationYaw;
-    	}
-    	
-    	/*if(sound==SoundType.STONE) {
-			this.world.playSound(x, y, z, TGSounds.BULLET_IMPACT_STONE, SoundCategory.AMBIENT, 1.0f, 1.0f, distdelay);
-			Techguns.proxy.createFX("Impact_BulletRock", world, x, y, z, 0.0D, 0.0D, 0.0D, pitch, yaw);
-			
-		} else if(sound==SoundType.WOOD || sound==SoundType.LADDER) {
-			this.world.playSound(x, y, z, TGSounds.BULLET_IMPACT_WOOD, SoundCategory.AMBIENT, 1.0f, 1.0f, distdelay);
-			Techguns.proxy.createFX("Impact_BulletWood", world, x, y, z, 0.0D, 0.0D, 0.0D, pitch, yaw);
-			
-		} else if(sound==SoundType.GLASS) {
-			this.world.playSound(x, y, z, TGSounds.BULLET_IMPACT_GLASS, SoundCategory.AMBIENT, 1.0f, 1.0f, distdelay);
-			Techguns.proxy.createFX("Impact_BulletGlass", world, x, y, z, 0.0D, 0.0D, 0.0D, pitch, yaw);
-			
-		} else if(sound==SoundType.METAL || sound==SoundType.ANVIL) {
-			this.world.playSound(x, y, z, TGSounds.BULLET_IMPACT_METAL, SoundCategory.AMBIENT, 1.0f, 1.0f, distdelay);
-			Techguns.proxy.createFX("Impact_BulletMetal", world, x, y, z, 0.0D, 0.0D, 0.0D, pitch, yaw);
-			
-		} else if(sound ==SoundType.GROUND || sound == SoundType.SAND) {
-			this.world.playSound(x, y, z, TGSounds.BULLET_IMPACT_DIRT, SoundCategory.AMBIENT, 1.0f, 1.0f, distdelay);
-	    	Techguns.proxy.createFX("Impact_BulletDirt", world, x, y, z, 0.0D, 0.0D, 0.0D, pitch, yaw);
-	    	
+	protected void doImpactEffects(BlockState state, HitResult hit, SoundType sound) {
+		Vec3 loc = hit.getLocation();
+		float pitch = 0.0f;
+		float yaw = 0.0f;
+		if (hit instanceof BlockHitResult bhr) {
+			if (bhr.getDirection() == Direction.UP) {
+				pitch = -90.0f;
+			} else if (bhr.getDirection() == Direction.DOWN) {
+				pitch = 90.0f;
+			} else {
+				yaw = bhr.getDirection().toYRot();
+			}
 		} else {
-			this.world.playSound(x, y, z, TGSounds.BULLET_IMPACT_DIRT, SoundCategory.AMBIENT, 1.0f, 1.0f, distdelay);
-	    	Techguns.proxy.createFX("Impact_BulletDefault", world, x, y, z, 0.0D, 0.0D, 0.0D, pitch, yaw);
-			//this.world.spawnParticle(EnumParticleTypes.SMOKE_NORMAL, x, y, z, 0.0D, 0.0D, 0.0D);
-		}*/
-    	
-    	int type =-1;
-    	if(sound==SoundType.STONE) {
-			type=0;
-			
-		} else if(sound==SoundType.WOOD || sound==SoundType.LADDER) {
-			type=1;
-			
-		} else if(sound==SoundType.GLASS) {
-			type=2;
-			
-		} else if(sound==SoundType.METAL || sound==SoundType.ANVIL) {
-			type=3;
-			
-		} else if(sound ==SoundType.GROUND || sound == SoundType.SAND) {
-			type=4;
-			
-		} 
-    	this.sendImpactFX(x, y, z, pitch, yaw, type);
+			pitch = -this.getXRot();
+			yaw = -this.getYRot();
+		}
+		this.sendImpactFX(loc.x, loc.y, loc.z, pitch, yaw, getImpactType(sound));
 	}
 
-    protected void sendImpactFX(double x, double y, double z, float pitch, float yaw, int type) {
-    	sendImpactFX(x, y, z, pitch, yaw, type, false);
-    }
-    
-    protected void sendImpactFX(double x, double y, double z, float pitch, float yaw, int type, boolean incendiary) {
-    	if(!this.world.isRemote) {
-    		TGPackets.network.sendToAllAround(new PacketGunImpactFX((short) type,x,y,z,pitch,yaw, incendiary), new TargetPoint(this.world.provider.getDimension(), x,y,z, TGEntities.bulletTrackRange));
-    	}
-    }
-    
-	/**
-     * Updates the entity motion clientside, called by packets from the server
-     */
-    @SideOnly(Side.CLIENT)
-    @Override
-    public void setVelocity(double x, double y, double z)
-    {
-       /* this.motionX = x;
-        this.motionY = y;
-        this.motionZ = z;
+	public static int getImpactType(SoundType sound) {
+		if (sound == SoundType.STONE || sound == SoundType.DEEPSLATE || sound == SoundType.TUFF || sound == SoundType.NETHERRACK) {
+			return 0;
+		} else if (sound == SoundType.WOOD || sound == SoundType.LADDER || sound == SoundType.CHERRY_WOOD || sound == SoundType.BAMBOO_WOOD
+				|| sound == SoundType.NETHER_WOOD) {
+			return 1;
+		} else if (sound == SoundType.GLASS) {
+			return 2;
+		} else if (sound == SoundType.METAL || sound == SoundType.ANVIL || sound == SoundType.COPPER || sound == SoundType.CHAIN) {
+			return 3;
+		} else if (sound == SoundType.GRAVEL || sound == SoundType.SAND || sound == SoundType.GRASS || sound == SoundType.ROOTED_DIRT
+				|| sound == SoundType.MUD) {
+			return 4;
+		}
+		return -1;
+	}
 
-        if (this.prevRotationPitch == 0.0F && this.prevRotationYaw == 0.0F)
-        {
-            float f = MathHelper.sqrt(x * x + z * z);
-            this.rotationPitch = (float)(MathHelper.atan2(y, (double)f) * (180D / Math.PI));
-            this.rotationYaw = (float)(MathHelper.atan2(x, z) * (180D / Math.PI));
-            this.prevRotationPitch = this.rotationPitch;
-            this.prevRotationYaw = this.rotationYaw;
-            this.setLocationAndAngles(this.posX, this.posY, this.posZ, this.rotationYaw, this.rotationPitch);
-        }*/
-    }
-	
-	/**
-	 * Override to change damage type etc
-	 * 
-	 * @return
-	 */
+	/** use the "Impact_Bullet*_Blue" FX variants */
+	protected boolean hasBlueImpactFX() {
+		return false;
+	}
+
+	protected void sendImpactFX(double x, double y, double z, float pitch, float yaw, int type) {
+		sendImpactFX(x, y, z, pitch, yaw, type, false);
+	}
+
+	protected void sendImpactFX(double x, double y, double z, float pitch, float yaw, int type, boolean incendiary) {
+		if (this.level() instanceof ServerLevel sl) {
+			PacketDistributor.sendToPlayersNear(sl, null, x, y, z, TGEntities.BULLET_TRACK_RANGE,
+					new PacketGunImpactFX((short) type, x, y, z, pitch, yaw, incendiary, this.hasBlueImpactFX()));
+		}
+	}
+
+	/** Override to change damage type etc. */
 	protected TGDamageSource getProjectileDamageSource() {
 		TGDamageSource src = TGDamageSource.causeBulletDamage(this, this.shooter, DeathType.GORE);
 		src.armorPenetration = this.penetration;
@@ -622,35 +394,21 @@ public class GenericProjectile extends Entity implements IProjectile, IEntityAdd
 		return src;
 	}
 
-	/**
-	 * Return the travelled distance
-	 * 
-	 * @return
-	 */
 	protected double getDistanceTravelled() {
-		Vec3d start = new Vec3d(this.startX, this.startY, this.startZ);
-		Vec3d end = new Vec3d(this.posX, this.posY, this.posZ);
-		return start.distanceTo(end);
+		return new Vec3(this.startX, this.startY, this.startZ).distanceTo(this.position());
 	}
 
-    public GenericProjectile setSilenced(){
-    	this.silenced=true;
-    	return this;
-    }
-	
-	/**
-	 * Get Damage for distance
-	 * 
-	 * @return
-	 */
-    protected float getDamage() {
+	public GenericProjectile setSilenced() {
+		this.silenced = true;
+		return this;
+	}
 
-		if (this.damageDropEnd==0f) { //not having damage drop
+	/** Damage for the travelled distance. */
+	protected float getDamage() {
+		if (this.damageDropEnd == 0f) {
 			return this.damage;
 		}
-		
 		double distance = this.getDistanceTravelled();
-
 		if (distance <= this.damageDropStart) {
 			return this.damage;
 		} else if (distance > this.damageDropEnd) {
@@ -661,127 +419,139 @@ public class GenericProjectile extends Entity implements IProjectile, IEntityAdd
 		}
 	}
 
-	@Override
-	protected void entityInit() {
+	@Nullable
+	public LivingEntity getShooter() {
+		return shooter;
+	}
+
+	public int getLifetime() {
+		return lifetime;
+	}
+
+	public int getTicksToLive() {
+		return ticksToLive;
+	}
+
+	public void setGravity(double gravity) {
+		this.gravity = gravity;
+	}
+
+	public void setRadiusAndGravity(float radius, double gravity) {
+		this.radius = radius;
+		this.gravity = gravity;
 	}
 
 	@Override
-	protected void readEntityFromNBT(NBTTagCompound tags) {
-		
+	public boolean shouldRenderAtSqrDistance(double distance) {
+		double d0 = this.getBoundingBox().getSize() * 10.0D;
+		if (Double.isNaN(d0)) {
+			d0 = 1.0D;
+		}
+		d0 *= 64.0D * getViewScale();
+		return distance < d0 * d0;
+	}
+
+	@Override
+	protected void readAdditionalSaveData(CompoundTag tags) {
 		this.damage = tags.getFloat("damage");
 		this.speed = tags.getFloat("speed");
-
 		this.ticksToLive = tags.getShort("ticksToLive");
 		this.lifetime = tags.getShort("lifetime");
-
 		this.damageDropStart = tags.getShort("damageDropStart");
 		this.damageDropEnd = tags.getShort("damageDropEnd");
 		this.damageMin = tags.getFloat("damageMin");
-		
 		this.gravity = tags.getFloat("gravity");
 	}
 
 	@Override
-	protected void writeEntityToNBT(NBTTagCompound tags) {
-		
-		
-		tags.setFloat("damage", this.damage);
-		tags.setFloat("speed", this.speed);
-
-		tags.setShort("ticksToLive", (short) this.ticksToLive);
-		tags.setShort("lifetime", (short) this.lifetime);
-
-		tags.setShort("damageDropStart", (short) this.damageDropStart);
-		tags.setShort("damageDropEnd", (short) this.damageDropEnd);
-		tags.setFloat("damageMin", this.damageMin);
-		
-		if(this.gravity!=0d) {
-			tags.setFloat("gravity", (float)this.gravity);
+	protected void addAdditionalSaveData(CompoundTag tags) {
+		tags.putFloat("damage", this.damage);
+		tags.putFloat("speed", this.speed);
+		tags.putShort("ticksToLive", (short) this.ticksToLive);
+		tags.putShort("lifetime", (short) this.lifetime);
+		tags.putShort("damageDropStart", (short) this.damageDropStart);
+		tags.putShort("damageDropEnd", (short) this.damageDropEnd);
+		tags.putFloat("damageMin", this.damageMin);
+		if (this.gravity != 0d) {
+			tags.putFloat("gravity", (float) this.gravity);
 		}
 	}
 
 	@Override
-	public void writeSpawnData(ByteBuf buffer) {
+	public void writeSpawnData(RegistryFriendlyByteBuf buffer) {
+		Vec3 m = this.getDeltaMovement();
 		buffer.writeFloat(this.speed);
-		buffer.writeDouble(this.motionX);
-		buffer.writeDouble(this.motionY);
-		buffer.writeDouble(this.motionZ);
+		buffer.writeDouble(m.x);
+		buffer.writeDouble(m.y);
+		buffer.writeDouble(m.z);
+		buffer.writeShort(this.ticksToLive);
+		buffer.writeFloat((float) this.gravity);
+		buffer.writeInt(this.shooter != null ? this.shooter.getId() : -1);
 	}
 
 	@Override
-	public void readSpawnData(ByteBuf additionalData) {
-		this.speed=additionalData.readFloat();
-		this.motionX=additionalData.readDouble();
-		this.motionY=additionalData.readDouble();
-		this.motionZ=additionalData.readDouble();
+	public void readSpawnData(RegistryFriendlyByteBuf buffer) {
+		this.speed = buffer.readFloat();
+		this.setDeltaMovement(buffer.readDouble(), buffer.readDouble(), buffer.readDouble());
+		this.ticksToLive = buffer.readShort();
+		this.lifetime = this.ticksToLive;
+		this.gravity = buffer.readFloat();
+		int id = buffer.readInt();
+		if (id >= 0 && this.level().getEntity(id) instanceof LivingEntity le) {
+			this.shooter = le;
+		}
+		this.updateRotationFromMotion(this.getDeltaMovement());
+		this.yRotO = this.getYRot();
+		this.xRotO = this.getXRot();
 	}
-	
-	public static void burnBlocks(World world, RayTraceResult mop, double chanceToIgnite) {
-		if(world.isRemote) return;
-		
-		if (Math.random() <= chanceToIgnite) {
-			BlockPos hit = mop.getBlockPos();
 
-			switch (mop.sideHit) {
-				case DOWN:
-					if (world.isAirBlock(hit.down())) world.setBlockState(hit.down(), Blocks.FIRE.getDefaultState());
-					break;
-				case UP:
-					if (world.isAirBlock(hit.up())) {
-						if (world.getBlockState(hit) == Blocks.FARMLAND) world.setBlockState(hit, Blocks.DIRT.getDefaultState());
-						world.setBlockState(hit.up(), Blocks.FIRE.getDefaultState());
-					}
-					break;
-				/*case NORTH:	
-					if (this.worldObj.isAirBlock(x, y, z-1)) this.worldObj.setBlock(x, y, z-1, Blocks.FIRE);
-					break;
-				case SOUTH:
-	    			if (this.worldObj.isAirBlock(x, y, z+1)) this.worldObj.setBlock(x, y, z+1, Blocks.FIRE);
-	    			break;
-				case WEST:
-					if (this.worldObj.isAirBlock(x-1, y, z)) this.worldObj.setBlock(x-1, y, z, Blocks.FIRE);
-					break;
-				case EAST:
-	    			if (this.worldObj.isAirBlock(x+1, y, z)) this.worldObj.setBlock(x+1, y, z, Blocks.FIRE);
-	    			break;*/
-				default:
-					BlockPos p = hit.offset(mop.sideHit);
-					if(world.isAirBlock(p)) {
-						world.setBlockState(p, Blocks.FIRE.getDefaultState());
-					}
-			}
-			//TODO: burn blocks ?
-    		//Burn special blocks
-    	/*	Block b = this.worldObj.getBlock(x, y, z);
-    		if (b ==TGBlocks.camoNetRoof || b == TGBlocks.camoNetPane) {
-    			// || b == Blocks.wheat || b == Blocks.pumpkin_stem || b == Blocks.melon_stem || b == Blocks.carrots || b == Blocks.potatoes) {
-    			this.worldObj.spawnParticle("lava", this.posX, this.posY, this.posZ, 0.0D, 0.0D, 0.0D);
-    			this.worldObj.setBlock(x, y, z, Blocks.FIRE);
-    		//}else if (b == Blocks.farmland) {
-    		//	this.worldObj.setBlock(x, y, z, Blocks.dirt);
-    		//	this.worldObj.setBlock(x, y+1, z, Blocks.fire);
-    		}else if (this.worldObj.getBlock(x, y-1, z) == Blocks.FARMLAND) {
-    			this.worldObj.setBlock(x, y-1, z, Blocks.DIRT);
-    			this.worldObj.setBlock(x, y, z, Blocks.FIRE);
-    		}
-        }*/
-		
+	@Override
+	public void onAddedToLevel() {
+		super.onAddedToLevel();
+		if (this.level().isClientSide) {
+			this.onClientSpawn();
 		}
 	}
-	
-	
-	public static class Factory implements IProjectileFactory<GenericProjectile> {
 
+	/** Client: called when added to the client level (spawn data was read). Used for trail FX. */
+	protected void onClientSpawn() {
+	}
+
+	/** Client: the server only sends position corrections; keep simulating locally. */
+	@Override
+	public void lerpMotion(double x, double y, double z) {
+	}
+
+	public static void burnBlocks(Level level, BlockHitResult hit, double chanceToIgnite) {
+		if (level.isClientSide) {
+			return;
+		}
+		if (Math.random() <= chanceToIgnite) {
+			BlockPos pos = hit.getBlockPos();
+			BlockPos p = pos.relative(hit.getDirection());
+			if (hit.getDirection() == Direction.UP && level.getBlockState(pos).is(Blocks.FARMLAND)) {
+				level.setBlockAndUpdate(pos, Blocks.DIRT.defaultBlockState());
+			}
+			if (level.isEmptyBlock(p)) {
+				level.setBlockAndUpdate(p, Blocks.FIRE.defaultBlockState());
+			}
+		}
+	}
+
+	public static class Factory implements IProjectileFactory<GenericProjectile> {
 		@Override
-		public GenericProjectile createProjectile(GenericGun gun, World world, EntityLivingBase p, float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd,
-				float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, float radius, double gravity) {
-			return new GenericProjectile(world,p,damage,speed,TTL,spread,dmgDropStart,dmgDropEnd,dmgMin,penetration,blockdamage,firePos);
+		public GenericProjectile createProjectile(GenericGun gun, Level level, LivingEntity p, float damage, float speed, int TTL, float spread,
+				float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, float radius,
+				double gravity) {
+			GenericProjectile proj = new GenericProjectile(level, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration,
+					blockdamage, firePos);
+			proj.setRadiusAndGravity(radius, gravity);
+			return proj;
 		}
 
 		@Override
 		public DamageType getDamageType() {
 			return DamageType.PROJECTILE;
 		}
-		
 	}
 }

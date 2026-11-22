@@ -1,0 +1,32 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "gpg",
+    "wwm",
+    "rri"
+  ],
+  "key": {
+    "p": {
+      "tag": "c:plates/steel"
+    },
+    "r": {
+      "tag": "c:dusts/redstone"
+    },
+    "g": {
+      "tag": "c:glass_blocks"
+    },
+    "w": {
+      "tag": "minecraft:wool"
+    },
+    "i": {
+      "tag": "c:ingots/steel"
+    },
+    "m": {
+      "item": "techguns:m4"
+    }
+  },
+  "result": {
+    "id": "techguns:m4_infiltrator"
+  }
+}

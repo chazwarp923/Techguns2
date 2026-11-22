@@ -5,6 +5,7 @@ import techguns.items.guns.ammo.AmmoType;
 
 public class ChargedProjectileSelector<T extends GenericProjectile> extends ProjectileSelector<T> {
 
+	@SafeVarargs
 	public ChargedProjectileSelector(AmmoType type, IChargedProjectileFactory<T>... factories) {
 		super(type, factories);
 	}
@@ -13,6 +14,4 @@ public class ChargedProjectileSelector<T extends GenericProjectile> extends Proj
 	public IChargedProjectileFactory<T> getFactoryForType(String key) {
 		return (IChargedProjectileFactory<T>) super.getFactoryForType(key);
 	}
-	
-	
 }

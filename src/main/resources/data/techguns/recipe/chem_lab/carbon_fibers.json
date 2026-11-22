@@ -1,0 +1,19 @@
+{
+  "type": "techguns:chem_lab",
+  "input1": {
+    "tag": "c:gems/diamond"
+  },
+  "input2": {
+    "item": "minecraft:blaze_powder"
+  },
+  "fluid_input": {
+    "tag": "minecraft:lava",
+    "amount": 1000
+  },
+  "result": {
+    "id": "techguns:carbonfibers",
+    "count": 2
+  },
+  "allow_swap": true,
+  "power_per_tick": 25
+}

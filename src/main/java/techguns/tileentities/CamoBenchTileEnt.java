@@ -1,116 +1,93 @@
 package techguns.tileentities;
 
-import static techguns.gui.ButtonConstants.BUTTON_ID_SECURITY;
-import net.minecraft.block.Block;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.play.server.SPacketSetSlot;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TextComponentTranslation;
-import techguns.Techguns;
-import techguns.capabilities.TGExtendedPlayer;
-import techguns.gui.player.TGPlayerInventory;
-import techguns.items.armors.ICamoChangeable;
-import techguns.tileentities.operation.CamoBenchRecipes;
-import techguns.tileentities.operation.CamoBenchRecipes.CamoBenchRecipe;
+import java.util.Optional;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
+import techguns.TGBlockEntities;
+import techguns.gui.containers.CamoBenchMenu;
+import techguns.items.armors.ICamoChangeable;
+import techguns.recipes.CamoBenchRecipe;
+import techguns.tileentities.operation.ItemStackHandlerPlus;
+
+/**
+ * Camo bench (1.12 CamoBenchTileEnt): switches the camo of the item in the bench and of the worn armor. Blocks cycle
+ * through their techguns:camo_bench recipe.
+ */
 public class CamoBenchTileEnt extends BasicOwnedTileEnt {
 
-	public CamoBenchTileEnt() {
-		super(1, false);
-	}
-	
-	@Override
-	public ITextComponent getDisplayName() {
-		return new TextComponentTranslation(Techguns.MODID+".container.camobench", new Object[0]);
-	}
-	
-	/**
-	 * Returns current ItemStack if it has changeable camo or null
-	 * @return
-	 */
-	public ItemStack getItem(){
-		if(!this.inventory.getStackInSlot(0).isEmpty()){
-			if(this.inventory.getStackInSlot(0).getItem() instanceof ICamoChangeable){
-				return this.inventory.getStackInSlot(0);
-			} else if (this.inventory.getStackInSlot(0).getItem() instanceof ItemBlock) {
-				Block b = ((ItemBlock) this.inventory.getStackInSlot(0).getItem()).getBlock();
-        		CamoBenchRecipe r = CamoBenchRecipes.getRecipeFor(b);
-        		if(r!=null) {
-        			return this.inventory.getStackInSlot(0);
-        		}
-			}
-		}
-		return ItemStack.EMPTY;
+	public static final int BUTTON_ID_NEXT = 10;
+	public static final int BUTTON_ID_PREV = 11;
+	/** + / - for helmet, chest, legs, boots: BUTTON_ID_ARMOR + 2 * i (+1 for back) */
+	public static final int BUTTON_ID_ARMOR = 12;
+
+	public CamoBenchTileEnt(BlockPos pos, BlockState state) {
+		super(TGBlockEntities.CAMO_BENCH.get(), pos, state, 1, false);
 	}
 
-	
 	@Override
-	public void buttonClicked(int id, EntityPlayer ply, String data) {
-		if(this.isUseableByPlayer(ply)){
-			
-			if(id<=BUTTON_ID_SECURITY) {
-				super.buttonClicked(id, ply, data);
+	protected ItemStackHandlerPlus createInventory(int size) {
+		return new ItemStackHandlerPlus(size) {
+			@Override
+			protected void onContentsChanged(int slot) {
+				onInventoryChanged(slot);
+				needUpdate();
+			}
+		};
+	}
+
+	@Override
+	public AbstractContainerMenu createMenu(int id, Inventory inv, Player player) {
+		return new CamoBenchMenu(id, inv, this);
+	}
+
+	@Override
+	public Component getDisplayName() {
+		return Component.translatable("techguns.container.camobench");
+	}
+
+	public ItemStack getItem() {
+		return this.inventory.getStackInSlot(0);
+	}
+
+	public Optional<CamoBenchRecipe> getBlockRecipe() {
+		ItemStack s = getItem();
+		if (s.isEmpty() || s.getItem() instanceof ICamoChangeable) {
+			return Optional.empty();
+		}
+		return CamoBenchRecipe.find(level, s).map(h -> h.value());
+	}
+
+	@Override
+	public void buttonClicked(int id, Player ply) {
+		if (id < BUTTON_ID_NEXT) {
+			super.buttonClicked(id, ply);
+			return;
+		}
+		if (!this.isUseableByPlayer(ply)) {
+			return;
+		}
+		if (id == BUTTON_ID_NEXT || id == BUTTON_ID_PREV) {
+			boolean back = id == BUTTON_ID_PREV;
+			ItemStack item = getItem();
+			if (item.getItem() instanceof ICamoChangeable camo) {
+				camo.switchCamo(item, back);
+				this.inventory.setStackInSlot(0, item);
 			} else {
-			
-				int odd_even = BUTTON_ID_SECURITY%2;
-				
-				if (id<BUTTON_ID_SECURITY+3){
-					ItemStack item = this.getItem();
-					if(item!=null && item.getItem() instanceof ICamoChangeable){
-						ICamoChangeable camoitem = (ICamoChangeable) item.getItem();
-						camoitem.switchCamo(item, id==BUTTON_ID_SECURITY+2);
-						this.needUpdate();
-					} else if (item.getItem() instanceof ItemBlock) {
-						Block b = ((ItemBlock)item.getItem()).getBlock();
-						CamoBenchRecipe r = CamoBenchRecipes.getRecipeFor(b);
-						if(b!=null) {
-							r.switchCamo(item, id==BUTTON_ID_SECURITY+2);
-							this.needUpdate();
-						}
-					}
-				} else if (id<BUTTON_ID_SECURITY+11) {
-					
-					int slotid = 3-(((int) (Math.ceil((id-(BUTTON_ID_SECURITY+2))*0.5)))-1);
-					
-					ItemStack item = ply.inventory.armorInventory.get(slotid);//this.content[slotid];
-					if(!item.isEmpty() && item.getItem() instanceof ICamoChangeable){
-						boolean back = id%2 == odd_even;
-						
-						ICamoChangeable camoitem = (ICamoChangeable) item.getItem();
-						camoitem.switchCamo(item, back);
-						//this.needUpdate();
-						((EntityPlayerMP) ply).connection.sendPacket(new SPacketSetSlot(ply.openContainer.windowId, 37+(3-slotid), item));
-					}
-					
-				} else if (id<BUTTON_ID_SECURITY+13) {
-					boolean back = id %2==odd_even;
-					TGExtendedPlayer props = TGExtendedPlayer.get(ply);
-					if (props!=null){
-						ItemStack item = props.tg_inventory.inventory.get(TGPlayerInventory.SLOT_BACK);
-						if(item!=null && item.getItem() instanceof ICamoChangeable) {
-							ICamoChangeable camoitem = (ICamoChangeable) item.getItem();
-							camoitem.switchCamo(item, back);
-							//TGPackets.network.sendTo(new PacketTGExtendedPlayerSync(ply, props, false), (EntityPlayerMP) ply);
-						}				
-					}
-				} else if (id<BUTTON_ID_SECURITY+15) {
-					boolean back = id %2==odd_even;
-					TGExtendedPlayer props = TGExtendedPlayer.get(ply);
-					if (props!=null){
-						ItemStack item = props.tg_inventory.inventory.get(TGPlayerInventory.SLOT_FACE);
-						if(item!=null && item.getItem() instanceof ICamoChangeable) {
-							ICamoChangeable camoitem = (ICamoChangeable) item.getItem();
-							camoitem.switchCamo(item, back);
-							//TGPackets.network.sendTo(new PacketTGExtendedPlayerSync(ply, props, false), (EntityPlayerMP) ply);
-						}				
-					}
-				}
+				getBlockRecipe().ifPresent(r -> this.inventory.setStackInSlot(0, r.cycle(item, back)));
+			}
+		} else if (id < BUTTON_ID_ARMOR + 8) {
+			int i = (id - BUTTON_ID_ARMOR) / 2;
+			boolean back = (id - BUTTON_ID_ARMOR) % 2 == 1;
+			ItemStack armor = ply.getItemBySlot(RepairBenchTileEnt.ARMOR_SLOTS[i]);
+			if (armor.getItem() instanceof ICamoChangeable camo) {
+				camo.switchCamo(armor, back);
 			}
 		}
 	}
-
-	
 }

@@ -2,9 +2,9 @@ package techguns.client.models.armor;
 
 import java.util.ArrayList;
 
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
+import techguns.client.models.ModelRenderer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import techguns.capabilities.TGExtendedPlayer;
 
 public class ModelGlider extends ModelAdditionalSlotBase {
@@ -154,8 +154,8 @@ public class ModelGlider extends ModelAdditionalSlotBase {
 	@Override
 	public void render(float scale, Entity entityIn) {
 		boolean isGliding = false;
-		if (entityIn instanceof EntityPlayer) {
-			TGExtendedPlayer props = TGExtendedPlayer.get((EntityPlayer) entityIn);
+		if (entityIn instanceof Player) {
+			TGExtendedPlayer props = TGExtendedPlayer.get((Player) entityIn);
 			isGliding = props.isGliding;
 		}
 		BackBack.render(scale);

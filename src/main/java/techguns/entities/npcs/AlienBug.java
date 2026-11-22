@@ -1,189 +1,130 @@
 package techguns.entities.npcs;
 
-import javax.annotation.Nullable;
-
-import net.minecraft.block.Block;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.EnumCreatureAttribute;
-import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.entity.ai.EntityAIAttackMelee;
-import net.minecraft.entity.ai.EntityAIHurtByTarget;
-import net.minecraft.entity.ai.EntityAILeapAtTarget;
-import net.minecraft.entity.ai.EntityAILookIdle;
-import net.minecraft.entity.ai.EntityAINearestAttackableTarget;
-import net.minecraft.entity.ai.EntityAISwimming;
-import net.minecraft.entity.ai.EntityAIWanderAvoidWater;
-import net.minecraft.entity.ai.EntityAIWatchClosest;
-import net.minecraft.entity.monster.EntityIronGolem;
-import net.minecraft.entity.monster.EntitySpider;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
-import techguns.TGPackets;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.FloatGoal;
+import net.minecraft.world.entity.ai.goal.LeapAtTargetGoal;
+import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
+import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
+import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
+import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
+import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
+import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
+import net.minecraft.world.entity.ai.navigation.PathNavigation;
+import net.minecraft.world.entity.ai.navigation.WallClimberNavigation;
+import net.minecraft.world.entity.animal.IronGolem;
+import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.loot.BuiltInLootTables;
+import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.core.BlockPos;
 import techguns.TGSounds;
 import techguns.api.npc.INpcTGDamageSystem;
 import techguns.api.npc.factions.ITGNpcTeam;
 import techguns.api.npc.factions.TGNpcFaction;
-import techguns.capabilities.TGSpawnerNPCData;
-import techguns.client.audio.TGSoundCategory;
 import techguns.damagesystem.TGDamageSource;
-import techguns.packets.PacketPlaySound;
 
-public class AlienBug extends EntitySpider implements ITGNpcTeam, INpcTGDamageSystem, ITGSpawnerNPC {
+/**
+ * 1.12 AlienBug: wall climbing melee bug (was an EntitySpider; the climbing is copied so no spider jockeys / spider
+ * spawn effects apply). Drops nothing.
+ */
+public class AlienBug extends Monster implements ITGNpcTeam, INpcTGDamageSystem {
 
-	 protected int attackTimer;
-	
-	 protected static final ResourceLocation LOOT = null; //TODO //new ResourceLocation(Techguns.MODID, "entities/alienbug");
-	 
-	 protected boolean tryLink=true;
-	
-	@Override
-    @Nullable
-    protected ResourceLocation getLootTable()
-    {
-        return LOOT;
-    }
-	
-	@Override
-   protected void applyEntityAttributes()
-   {
-       super.applyEntityAttributes();
-       this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).setBaseValue(4.0D);
-       this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(20.0D);
-       this.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).setBaseValue(1.0D);
-   }
-	
-	public AlienBug(World w) {
-		super(w);
-		this.setSize(1.1F, 1.2F);
-	}
-	
-	
-	 /**
-     * Get this Entity's EnumCreatureAttribute
-     */
-	@Override
-    public EnumCreatureAttribute getCreatureAttribute()
-    {
-        return EnumCreatureAttribute.ARTHROPOD;
-    }
-	
-	 @Override
-	protected SoundEvent getAmbientSound() {
-		return TGSounds.ALIENBUG_IDLE;
+	private static final EntityDataAccessor<Boolean> CLIMBING = SynchedEntityData.defineId(AlienBug.class, EntityDataSerializers.BOOLEAN);
+	private static final byte EVENT_BITE = 4;
+
+	/** jaw animation, client */
+	protected int attackTimer;
+
+	public AlienBug(EntityType<? extends AlienBug> type, Level level) {
+		super(type, level);
 	}
 
-
-	@Override
-	protected SoundEvent getHurtSound(DamageSource damageSourceIn) {
-		return TGSounds.ALIENBUG_HURT;
-	}
-
-
-	@Override
-	protected void playStepSound(BlockPos pos, Block blockIn) {
-		this.playSound(TGSounds.ALIENBUG_STEP, 0.15F, 1.0F);
+	public static AttributeSupplier.Builder createAttributes() {
+		return Monster.createMonsterAttributes().add(Attributes.ATTACK_DAMAGE, 4D).add(Attributes.MAX_HEALTH, 20D).add(Attributes.MOVEMENT_SPEED, 1.0D);
 	}
 
 	@Override
-	protected SoundEvent getDeathSound() {
-		return TGSounds.ALIENBUG_DEATH;
-	}
-
-
-	@Override
-	protected boolean isValidLightLevel() {
-		return true;
-	}
-
-
-	@SideOnly(Side.CLIENT)
-   public int getAttackTimer()
-   {
-       return this.attackTimer;
-   }
-	
-	@Override
-	public void onLivingUpdate() {
-		super.onLivingUpdate();
-		if (this.attackTimer > 0)
-       {
-           --this.attackTimer;
-       }
+	protected void registerGoals() {
+		this.goalSelector.addGoal(1, new FloatGoal(this));
+		this.goalSelector.addGoal(3, new LeapAtTargetGoal(this, 0.4F));
+		this.goalSelector.addGoal(4, new BugAttackGoal(this));
+		this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 0.8D));
+		this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 8.0F));
+		this.goalSelector.addGoal(6, new RandomLookAroundGoal(this));
+		this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
+		this.targetSelector.addGoal(2, new BugTargetGoal<>(this, Player.class));
+		this.targetSelector.addGoal(3, new BugTargetGoal<>(this, IronGolem.class));
 	}
 
 	@Override
-	protected void initEntityAI() {
-		this.tasks.addTask(1, new EntityAISwimming(this));
-		this.tasks.addTask(3, new EntityAILeapAtTarget(this, 0.4F));
-		this.tasks.addTask(4, new AlienBug.AISpiderAttack(this));
-		this.tasks.addTask(5, new EntityAIWanderAvoidWater(this, 0.8D));
-		this.tasks.addTask(6, new EntityAIWatchClosest(this, EntityPlayer.class, 8.0F));
-		this.tasks.addTask(6, new EntityAILookIdle(this));
-		this.targetTasks.addTask(1, new EntityAIHurtByTarget(this, false, new Class[0]));
-		this.targetTasks.addTask(2, new AlienBug.AIAlienBugTarget(this, EntityPlayer.class));
-		this.targetTasks.addTask(3, new AlienBug.AIAlienBugTarget(this, EntityIronGolem.class));
-	}
-	
-	static class AIAlienBugTarget<T extends EntityLivingBase> extends EntityAINearestAttackableTarget<T> {
-		public AIAlienBugTarget(AlienBug bug, Class<T> classTarget) {
-			super(bug, classTarget, true);
-		}
-
-		@Override
-		public void startExecuting() {
-			super.startExecuting();
-			if(!this.taskOwner.world.isRemote) {
-				TGPackets.network.sendToAllAround(new PacketPlaySound(TGSounds.ALIENBUG_AGGRO, this.taskOwner, 1.0f, 1.0f,
-						false, false, TGSoundCategory.HOSTILE), TGPackets.targetPointAroundEnt(taskOwner, 24.0f));
-			}
-		}
-
+	protected void defineSynchedData(SynchedEntityData.Builder builder) {
+		super.defineSynchedData(builder);
+		builder.define(CLIMBING, false);
 	}
 
-	static class AISpiderAttack extends EntityAIAttackMelee {
-		public AISpiderAttack(EntitySpider spider) {
-			super(spider, 1.0D, true);
-		}
+	@Override
+	protected PathNavigation createNavigation(Level level) {
+		return new WallClimberNavigation(this, level);
+	}
 
-		/**
-		 * Returns whether an in-progress EntityAIBase should continue executing
-		 */
-		public boolean shouldContinueExecuting() {
-			float f = this.attacker.getBrightness();
-
-			if (f >= 0.5F && this.attacker.getRNG().nextInt(100) == 0) {
-				this.attacker.setAttackTarget((EntityLivingBase) null);
-				return false;
-			} else {
-				return super.shouldContinueExecuting();
-			}
-		}
-
-		protected double getAttackReachSqr(EntityLivingBase attackTarget) {
-			return (double) (4.0F + attackTarget.width);
+	@Override
+	public void tick() {
+		super.tick();
+		if (!this.level().isClientSide) {
+			this.entityData.set(CLIMBING, this.horizontalCollision);
 		}
 	}
-	 
+
 	@Override
-	public boolean attackEntityAsMob(Entity ent) {
-	   boolean b =super.attackEntityAsMob(ent);
-       this.attackTimer = 10;
+	public boolean onClimbable() {
+		return this.entityData.get(CLIMBING);
+	}
 
-       if(!this.world.isRemote) {
-    	   TGPackets.network.sendToAllAround(new PacketPlaySound(TGSounds.ALIENBUG_BITE, this, 2.0f, 1.0f,false,false, TGSoundCategory.HOSTILE), TGPackets.targetPointAroundEnt(this, 24.0f));
-       }
+	@Override
+	public void aiStep() {
+		super.aiStep();
+		if (this.attackTimer > 0) {
+			--this.attackTimer;
+		}
+	}
 
-       this.world.setEntityState(this, (byte)4);
-          
-       return b;
+	public int getAttackTimer() {
+		return this.attackTimer;
+	}
+
+	@Override
+	public boolean doHurtTarget(Entity target) {
+		boolean b = super.doHurtTarget(target);
+		this.attackTimer = 10;
+		this.level().playSound(null, getX(), getY(), getZ(), TGSounds.ALIENBUG_BITE.get(), SoundSource.HOSTILE, 2.0f, 1.0f);
+		this.level().broadcastEntityEvent(this, EVENT_BITE);
+		return b;
+	}
+
+	@Override
+	public void handleEntityEvent(byte id) {
+		if (id == EVENT_BITE) {
+			this.attackTimer = 10;
+		} else {
+			super.handleEntityEvent(id);
+		}
+	}
+
+	@Override
+	protected ResourceKey<LootTable> getDefaultLootTable() {
+		return BuiltInLootTables.EMPTY;
 	}
 
 	@Override
@@ -192,66 +133,62 @@ public class AlienBug extends EntitySpider implements ITGNpcTeam, INpcTGDamageSy
 	}
 
 	@Override
-	public void handleStatusUpdate(byte id) {
-		if (id == 4) {
-			this.attackTimer = 10;
-		} else {
-			super.handleStatusUpdate(id);
-		}
-	}
-
-	@Override
 	public float getTotalArmorAgainstType(TGDamageSource dmgsrc) {
-		switch( dmgsrc.damageType){
-			case ENERGY:
-			case EXPLOSION:
-			case ICE:
-			case LIGHTNING:
-				return 5.0f;
-			case PHYSICAL:
-				return 10.0f;
-			case POISON:
-				return 20.0f;
-			case PROJECTILE:
-				return 10.0f;
-			case RADIATION:
-				return 20.0f;
-			case FIRE:
-			case UNRESISTABLE:
-			default:
-				return 0;
+		return switch (dmgsrc.damageType) {
+			case ENERGY, EXPLOSION, ICE, LIGHTNING -> 5f;
+			case PHYSICAL, PROJECTILE -> 10f;
+			case POISON, RADIATION -> 20f;
+			default -> 0f;
+		};
+	}
+
+	@Override
+	protected SoundEvent getAmbientSound() {
+		return TGSounds.ALIENBUG_IDLE.get();
+	}
+
+	@Override
+	protected SoundEvent getHurtSound(DamageSource src) {
+		return TGSounds.ALIENBUG_HURT.get();
+	}
+
+	@Override
+	protected SoundEvent getDeathSound() {
+		return TGSounds.ALIENBUG_DEATH.get();
+	}
+
+	@Override
+	protected void playStepSound(BlockPos pos, BlockState state) {
+		this.playSound(TGSounds.ALIENBUG_STEP.get(), 0.15F, 1.0F);
+	}
+
+	/** plays the aggro sound when it picks a target */
+	static class BugTargetGoal<T extends net.minecraft.world.entity.LivingEntity> extends NearestAttackableTargetGoal<T> {
+		BugTargetGoal(AlienBug bug, Class<T> target) {
+			super(bug, target, true);
+		}
+
+		@Override
+		public void start() {
+			super.start();
+			this.mob.level().playSound(null, this.mob.getX(), this.mob.getY(), this.mob.getZ(), TGSounds.ALIENBUG_AGGRO.get(), SoundSource.HOSTILE, 1.0f,
+					1.0f);
 		}
 	}
 
-	@Override
-	public float getPenetrationResistance(TGDamageSource dmgsrc) {
-		return 0.0f;
-	}
+	/** spider attack: may give up in bright light, longer reach */
+	static class BugAttackGoal extends MeleeAttackGoal {
+		BugAttackGoal(AlienBug bug) {
+			super(bug, 1.0D, true);
+		}
 
-	@Override
-	public boolean getTryLink() {
-		return this.tryLink;
-	}
-
-	@Override
-	public void setTryLink(boolean value) {
-		this.tryLink=value;
-	}
-
-	@Override
-	public TGSpawnerNPCData getCapability(Capability<TGSpawnerNPCData> tgGenericnpcData) {
-		return this.getCapability(tgGenericnpcData, null);
-	}
-	
-	@Override
-	protected void despawnEntity() {
-		super.despawnEntity();
-		this.despawnEntitySpawner(world, dead);
-	}
-
-	@Override
-	public void onDeath(DamageSource cause) {
-		super.onDeath(cause);
-		this.onDeathSpawner(world, dead);
+		@Override
+		public boolean canContinueToUse() {
+			if (this.mob.getLightLevelDependentMagicValue() >= 0.5F && this.mob.getRandom().nextInt(100) == 0) {
+				this.mob.setTarget(null);
+				return false;
+			}
+			return super.canContinueToUse();
+		}
 	}
 }

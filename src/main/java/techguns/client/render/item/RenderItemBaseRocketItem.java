@@ -1,9 +1,11 @@
 package techguns.client.render.item;
 
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemDisplayContext;
 import techguns.client.models.ModelMultipart;
+import techguns.client.render.gl.GlStateManager;
+
+
 
 public class RenderItemBaseRocketItem extends RenderItemBase {
 
@@ -12,7 +14,7 @@ public class RenderItemBaseRocketItem extends RenderItemBase {
 	}
 
 	@Override
-	protected void setBaseRotation(TransformType transform) {
+	protected void setBaseRotation(ItemDisplayContext transform) {
 		GlStateManager.rotate(-180.0f, 1.0f, 0, 0);
 		GlStateManager.rotate(-90.0f, 0f, 1.0f, 0);
 		GlStateManager.rotate(-90.0f, 0f, 0f, 1);

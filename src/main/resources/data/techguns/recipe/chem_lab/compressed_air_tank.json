@@ -1,0 +1,18 @@
+{
+  "type": "techguns:chem_lab",
+  "input1": {
+    "tag": "minecraft:coals"
+  },
+  "bottle": {
+    "item": "techguns:compressedairtankempty"
+  },
+  "fluid_input": {
+    "tag": "minecraft:water",
+    "amount": 250
+  },
+  "result": {
+    "id": "techguns:compressedairtank"
+  },
+  "allow_swap": true,
+  "power_per_tick": 5
+}

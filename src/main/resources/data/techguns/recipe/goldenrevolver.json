@@ -1,0 +1,20 @@
+{
+  "type": "techguns:copy_nbt",
+  "category": "misc",
+  "pattern": [
+    "ggg",
+    "grg",
+    "ggg"
+  ],
+  "key": {
+    "r": {
+      "item": "techguns:revolver"
+    },
+    "g": {
+      "tag": "c:ingots/gold"
+    }
+  },
+  "result": {
+    "id": "techguns:goldenrevolver"
+  }
+}

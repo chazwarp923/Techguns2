@@ -1,0 +1,25 @@
+{
+  "type": "techguns:legacy",
+  "biomes": "#minecraft:is_overworld",
+  "step": "surface_structures",
+  "spawn_overrides": {},
+  "terrain_adaptation": "none",
+  "structures": [
+    {
+      "name": "police_station",
+      "weight": 10
+    },
+    {
+      "name": "survivor_hideout",
+      "weight": 10
+    },
+    {
+      "name": "orecluster_spike",
+      "weight": 10
+    },
+    {
+      "name": "orecluster_meteorbase",
+      "weight": 5
+    }
+  ]
+}

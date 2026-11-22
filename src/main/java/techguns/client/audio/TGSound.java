@@ -1,125 +1,62 @@
 package techguns.client.audio;
 
-import net.minecraft.client.audio.MovingSound;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.Vec2f;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
+import net.minecraft.client.resources.sounds.SoundInstance;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import techguns.util.EntityCondition;
 import techguns.util.MathUtil;
 
-@SideOnly(Side.CLIENT)
-public class TGSound extends MovingSound {
+/**
+ * 1.12 TGSound: a sound on an entity. Moving sounds follow the entity (and stop when it is gone), gun position sounds sit
+ * one block beside the head, and the sound stops as soon as its condition is no longer met (e.g. charging ended).
+ */
+public class TGSound extends AbstractTickableSoundInstance {
 
-	Entity entity;
+	private final Entity entity;
+	private final boolean moving;
+	private final boolean gunPosition;
+	private final EntityCondition condition;
 
-	boolean gunPosition;
-	boolean moving;
-	TGSoundCategory tgcategory=null;
-	EntityCondition condition = EntityCondition.NONE;
-	
-	public TGSound(SoundEvent soundname, Entity entity, float volume, float pitch, boolean repeat, boolean moving, boolean gunPosition, TGSoundCategory category, EntityCondition condition) {
-		this(soundname, entity, volume, pitch, repeat, moving, gunPosition, category);
-		this.condition = condition;
-	}
-	
-	public TGSound(SoundEvent soundname, Entity entity, float volume, float pitch, boolean repeat, boolean moving, boolean gunPosition, TGSoundCategory category) {
-		this(soundname, entity, volume, pitch, repeat, moving, category);
-		this.gunPosition = gunPosition;
-		if (gunPosition) {
-			if (entity instanceof EntityLivingBase) {
-    			Vec2f pos = MathUtil.polarOffsetXZ(xPosF, zPosF, 1.0f, (float)(((EntityLivingBase)entity).rotationYawHead*Math.PI/180.0f));
-    			xPosF = pos.x;
-    			zPosF = pos.y;
-    			yPosF = yPosF + (entity.height*0.5f);		
-    		}
-		}
-	}
-	
-	public TGSound(SoundEvent soundname, Entity entity, float volume, float pitch, boolean repeat, boolean moving, TGSoundCategory category) {
-		this(soundname, entity, volume, pitch, repeat, category);
-		this.moving = moving;
-		if (entity != null) {
-			xPosF = (float) entity.posX;
-	        yPosF = (float) entity.posY;
-	        zPosF = (float) entity.posZ;
-		}
-	}
-	
-	public TGSound(SoundEvent soundname, Entity entity, float volume, float pitch, boolean repeat, TGSoundCategory category) {
-		super(soundname, category.getVanillaCategory());
-		this.tgcategory=category;
-		this.volume = volume; //TGConfig.getVolumeMultiplier(volume, category);
-		this.pitch = pitch;
-		this.repeat = repeat;
+	public TGSound(SoundEvent sound, Entity entity, float volume, float pitch, boolean repeat, boolean moving, boolean gunPosition,
+			TGSoundCategory category, EntityCondition condition) {
+		super(sound, category.getVanillaCategory(), SoundInstance.createUnseededRandom());
 		this.entity = entity;
-		//System.out.println("I'm a sound, lol - " + soundname.getSoundName());
-	}
-	
-	public TGSound(SoundEvent soundname, float posx, float posy, float posz, float volume, float pitch, boolean repeat, TGSoundCategory category){
-		this(soundname,null,volume,pitch,repeat, category);
-		this.xPosF= posx;
-		this.yPosF = posy;
-		this.zPosF = posz;
-	}
-	
-//	public TGSound(String soundname, float volume, float pitch, boolean repeat) {
-//		this(soundname, null, volume, pitch, repeat);
-//		this.field_147666_i = ISound.AttenuationType.NONE;
-//	}
-	
-//	public TGSound(String soundName, float x, float y, float z, float volume, float pitch, boolean repeat) {
-//		this(soundName, null, volume, pitch, repeat);
-//		this.xPosF = x;
-//		this.yPosF = y;
-//		this.zPosF = z;
-//
-//	}
-
-	public void setDonePlaying()
-    {
-        this.repeat = false;
-        this.donePlaying = true;
-        this.repeatDelay = 0;
-    }
-
-    @Override
-    public void update()
-    {	
-    	if (entity != null && !condition.evaluate(entity)) {
-    		this.setDonePlaying();
-    	}
-    	
-       //TODO: Auto-remove?
-        if (moving && entity != null) {
-	        xPosF = (float) entity.posX;
-	        yPosF = (float) entity.posY;
-	        zPosF = (float) entity.posZ;
-        	if (gunPosition) {
-        		if (entity instanceof EntityLivingBase) {
-        			Vec2f pos = MathUtil.polarOffsetXZ(xPosF, zPosF, 1.0f, (float) (((EntityLivingBase)entity).rotationYawHead*Math.PI/180.0f));
-        			xPosF = pos.x;
-        			zPosF = pos.y;
-        			yPosF = yPosF + (entity.height*0.5f);
-        			
-        		}
-        		
-        	}
-        } else if (moving){
-        	this.setDonePlaying();
-        }
-    }
-
-	
-	public void setPitch(float pitch) {
+		this.volume = volume;
 		this.pitch = pitch;
+		this.looping = repeat;
+		this.delay = 0;
+		this.moving = moving;
+		this.gunPosition = gunPosition;
+		this.condition = condition == null ? EntityCondition.NONE : condition;
+		updatePosition();
 	}
 
-	public void setRepeatDelay(int delay)
-    {
-        this.repeatDelay = delay;
-    }
+	private void updatePosition() {
+		this.x = entity.getX();
+		this.y = entity.getY();
+		this.z = entity.getZ();
+		if (gunPosition && entity instanceof LivingEntity living) {
+			MathUtil.Vec2 pos = MathUtil.polarOffsetXZ(this.x, this.z, 1.0, living.getYHeadRot() * Math.PI / 180.0);
+			this.x = pos.x;
+			this.z = pos.y;
+			this.y += entity.getBbHeight() * 0.5f;
+		}
+	}
 
+	@Override
+	public void tick() {
+		if (!condition.evaluate(entity)) {
+			this.stop();
+			return;
+		}
+		if (moving) {
+			if (entity.isRemoved()) {
+				this.stop();
+				return;
+			}
+			updatePosition();
+		}
+	}
 }

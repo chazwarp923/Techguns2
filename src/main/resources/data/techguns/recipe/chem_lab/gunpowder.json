@@ -1,0 +1,18 @@
+{
+  "type": "techguns:chem_lab",
+  "input1": {
+    "tag": "c:dusts/redstone"
+  },
+  "input2": {
+    "tag": "minecraft:coals"
+  },
+  "fluid_input": {
+    "tag": "minecraft:water",
+    "amount": 250
+  },
+  "result": {
+    "id": "minecraft:gunpowder"
+  },
+  "allow_swap": true,
+  "power_per_tick": 5
+}

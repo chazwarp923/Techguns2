@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ppp",
+    "  p"
+  ],
+  "key": {
+    "p": {
+      "tag": "c:plates/plastic"
+    }
+  },
+  "result": {
+    "id": "techguns:plasticstock"
+  }
+}

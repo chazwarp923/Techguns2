@@ -1,0 +1,33 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:reactionchamber_controller"
+    },
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:reactionchamber_housing"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " g ",
+    "crc",
+    " g "
+  ],
+  "key": {
+    "r": {
+      "item": "techguns:reactionchamber_housing"
+    },
+    "c": {
+      "tag": "c:circuits/elite"
+    },
+    "g": {
+      "tag": "c:glass_blocks"
+    }
+  },
+  "result": {
+    "id": "techguns:reactionchamber_controller"
+  }
+}

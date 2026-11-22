@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "bfw",
+    "bf "
+  ],
+  "key": {
+    "b": {
+      "item": "techguns:ironbarrel"
+    },
+    "f": {
+      "item": "minecraft:flint_and_steel"
+    },
+    "w": {
+      "item": "techguns:woodstock"
+    }
+  },
+  "result": {
+    "id": "techguns:sawedoff",
+    "components": {
+      "techguns:ammo": 0
+    }
+  }
+}

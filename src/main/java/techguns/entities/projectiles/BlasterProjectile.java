@@ -1,32 +1,27 @@
 package techguns.entities.projectiles;
 
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
-import techguns.TGPackets;
-import techguns.Techguns;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.BlockHitResult;
+import techguns.TGEntities;
 import techguns.api.damagesystem.DamageType;
 import techguns.damagesystem.TGDamageSource;
-import techguns.deatheffects.EntityDeathUtils.DeathType;
+import techguns.deatheffects.DeathType;
 import techguns.items.guns.GenericGun;
 import techguns.items.guns.IProjectileFactory;
-import techguns.packets.PacketSpawnParticle;
+import techguns.util.TGFXHooks;
 
+/** Blaster rifle / scatter beam rifle bolt. */
 public class BlasterProjectile extends GenericProjectile {
 
-	public BlasterProjectile(World worldIn) {
-		super(worldIn);
+	public BlasterProjectile(EntityType<? extends BlasterProjectile> type, Level level) {
+		super(type, level);
 	}
 
-	public BlasterProjectile(World worldIn, double posX, double posY, double posZ, float yaw, float pitch, float damage, float speed, int TTL, float spread, float dmgDropStart,
-			float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos leftGun) {
-		super(worldIn, posX, posY, posZ, yaw, pitch, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, leftGun);
-	}
-
-	public BlasterProjectile(World par2World, EntityLivingBase p, float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin,
-			float penetration, boolean blockdamage, EnumBulletFirePos leftGun) {
-		super(par2World, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, leftGun);
+	public BlasterProjectile(Level level, LivingEntity p, float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd,
+			float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos) {
+		super(TGEntities.BLASTER.get(), level, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos);
 	}
 
 	@Override
@@ -37,40 +32,30 @@ public class BlasterProjectile extends GenericProjectile {
 		return src;
 	}
 
-	public static class Factory implements IProjectileFactory<BlasterProjectile> {
+	@Override
+	protected void hitBlock(BlockHitResult hit) {
+		TGFXHooks.createFX("LaserGunImpact", this.level(), hit.getLocation().x, hit.getLocation().y, hit.getLocation().z, 0, 0, 0);
+	}
 
+	@Override
+	protected float inWaterUpdateBehaviour(float f1) {
+		if (this.isInWaterRainOrBubble()) {
+			this.clearFire();
+		}
+		return f1;
+	}
+
+	public static class Factory implements IProjectileFactory<BlasterProjectile> {
 		@Override
-		public BlasterProjectile createProjectile(GenericGun gun, World world, EntityLivingBase p, float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd,
-				float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, float radius, double gravity) {
-			return new BlasterProjectile(world,p,damage,speed,TTL,spread,dmgDropStart,dmgDropEnd,dmgMin,penetration,blockdamage,firePos);
+		public BlasterProjectile createProjectile(GenericGun gun, Level level, LivingEntity p, float damage, float speed, int TTL, float spread,
+				float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, float radius,
+				double gravity) {
+			return new BlasterProjectile(level, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos);
 		}
 
 		@Override
 		public DamageType getDamageType() {
 			return DamageType.ENERGY;
 		}
-		
 	}
-
-	@Override
-	protected void hitBlock(RayTraceResult rayTraceResult) {
-		/*if (!this.world.isRemote){
-			Vec3d hitVec = raytraceResultIn.hitVec;
-			TGPackets.network.sendToAllAround(new PacketSpawnParticle("LaserGunImpact", hitVec.x, hitVec.y, hitVec.z), TGPackets.targetPointAroundEnt(this, 35.0f));
-		}*/
-		Techguns.proxy.createFX("LaserGunImpact", world, rayTraceResult.hitVec.x, rayTraceResult.hitVec.y, rayTraceResult.hitVec.z, 0,0,0);
-	}
-
-	@Override
-	protected float inWaterUpdateBehaviour(float f1) {
-		//no slowdown/bubbles in water
-
-		if (this.isWet()) {
-			this.extinguish();
-		}
-		return f1;
-	}
-
-	
-	
 }

@@ -1,0 +1,13 @@
+{
+  "values": [
+    {
+      "id": "#c:ender",
+      "required": false
+    },
+    {
+      "id": "#c:molten_ender",
+      "required": false
+    },
+    "#minecraft:lava"
+  ]
+}

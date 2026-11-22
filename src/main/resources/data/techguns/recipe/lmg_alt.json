@@ -1,0 +1,35 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " gr",
+    "bfs",
+    " m "
+  ],
+  "key": {
+    "r": {
+      "tag": "c:dusts/redstone"
+    },
+    "b": {
+      "item": "techguns:obsidiansteelbarrel"
+    },
+    "s": {
+      "item": "techguns:plasticstock"
+    },
+    "f": {
+      "item": "techguns:obsidiansteelreceiver"
+    },
+    "g": {
+      "tag": "c:glass_panes"
+    },
+    "m": {
+      "item": "techguns:lmgmagazineempty"
+    }
+  },
+  "result": {
+    "id": "techguns:lmg",
+    "components": {
+      "techguns:ammo": 0
+    }
+  }
+}

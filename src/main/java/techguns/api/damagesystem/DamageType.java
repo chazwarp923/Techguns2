@@ -1,51 +1,29 @@
 package techguns.api.damagesystem;
 
-import com.mojang.realmsclient.gui.ChatFormatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 
-import net.minecraft.client.resources.I18n;
-
+/** Techguns damage categories (independent of vanilla's data-driven damage types). */
 public enum DamageType {
-	PHYSICAL, //Melee hits
-	PROJECTILE, //Arrows, bullets,..
-	FIRE, //fire, flamethrower
-	EXPLOSION, // Explosions like TNT, Rockets
-	ENERGY, // Energy Weapons, Lasers, Magic
-	POISON, //gas, slimy stuff
-	UNRESISTABLE, //Things that should never get reduced with armor value: starve, falldmg, suffocate...
-	ICE, //anything cold related
-	LIGHTNING, //electricity, shock, lightning magic
-	RADIATION, //
-	DARK; // dark energy, black holes, dark magic
+	PHYSICAL(ChatFormatting.DARK_GRAY), // Melee hits
+	PROJECTILE(ChatFormatting.GRAY), // Arrows, bullets,..
+	FIRE(ChatFormatting.RED), // fire, flamethrower
+	EXPLOSION(ChatFormatting.DARK_RED), // Explosions like TNT, Rockets
+	ENERGY(ChatFormatting.DARK_AQUA), // Energy Weapons, Lasers, Magic
+	POISON(ChatFormatting.DARK_GREEN), // gas, slimy stuff
+	UNRESISTABLE(ChatFormatting.BLACK), // never reduced by armor: starve, falldmg, suffocate...
+	ICE(ChatFormatting.AQUA), // anything cold related
+	LIGHTNING(ChatFormatting.YELLOW), // electricity, shock, lightning magic
+	RADIATION(ChatFormatting.GREEN),
+	DARK(ChatFormatting.BLACK); // dark energy, black holes, dark magic
 
-	@Override
-	public String toString() {
-		switch(this){
-			
-			case PROJECTILE:
-				return ChatFormatting.GRAY+I18n.format("techguns.TGDamageType.PROJECTILE", new Object[0]);
-			case FIRE:
-				return ChatFormatting.RED+I18n.format("techguns.TGDamageType.FIRE",new Object[0]);
-			case EXPLOSION:
-				return ChatFormatting.DARK_RED+I18n.format("techguns.TGDamageType.EXPLOSION",new Object[0]);
-			case ENERGY:
-				return ChatFormatting.DARK_AQUA+I18n.format("techguns.TGDamageType.ENERGY",new Object[0]);
-			case POISON:
-				return ChatFormatting.DARK_GREEN+I18n.format("techguns.TGDamageType.POISON",new Object[0]);
-			case UNRESISTABLE:
-				return ChatFormatting.BLACK+I18n.format("techguns.TGDamageType.UNRESISTABLE",new Object[0]);
-			case ICE:
-				return ChatFormatting.AQUA+I18n.format("techguns.TGDamageType.ICE",new Object[0]);
-			case LIGHTNING:
-				return ChatFormatting.YELLOW+I18n.format("techguns.TGDamageType.LIGHTNING",new Object[0]);
-			case RADIATION:
-				return ChatFormatting.GREEN+I18n.format("techguns.TGDamageType.RADIATION",new Object[0]);
-			case DARK:
-				return ChatFormatting.BLACK+I18n.format("techguns.TGDamageType.DARK",new Object[0]);
-			case PHYSICAL:
-			default:
-				return ChatFormatting.DARK_GRAY+I18n.format("techguns.TGDamageType.PHYSICAL",new Object[0]);
-		}
+	private final ChatFormatting color;
+
+	DamageType(ChatFormatting color) {
+		this.color = color;
 	}
-	
-	
+
+	public Component getDisplayName() {
+		return Component.translatable("techguns.TGDamageType." + name()).withStyle(color);
+	}
 }

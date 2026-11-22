@@ -1,0 +1,13 @@
+{
+  "type": "techguns:legacy",
+  "biomes": "#techguns:has_structure/desert_oil_cluster",
+  "step": "surface_structures",
+  "spawn_overrides": {},
+  "terrain_adaptation": "none",
+  "structures": [
+    {
+      "name": "desert_oil_cluster",
+      "weight": 1
+    }
+  ]
+}

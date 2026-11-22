@@ -1,0 +1,32 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " p ",
+    "ers",
+    " c "
+  ],
+  "key": {
+    "p": {
+      "tag": "c:plates/titanium"
+    },
+    "r": {
+      "item": "techguns:carbonreceiver"
+    },
+    "s": {
+      "item": "techguns:carbonstock"
+    },
+    "c": {
+      "item": "techguns:energycellempty"
+    },
+    "e": {
+      "item": "techguns:sonicemitter"
+    }
+  },
+  "result": {
+    "id": "techguns:sonicshotgun",
+    "components": {
+      "techguns:ammo": 0
+    }
+  }
+}

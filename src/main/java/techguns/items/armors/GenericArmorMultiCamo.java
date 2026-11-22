@@ -3,169 +3,79 @@ package techguns.items.armors;
 import java.util.List;
 import java.util.Random;
 
-import org.lwjgl.input.Keyboard;
-
-import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.EnumActionResult;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.text.TextComponentString;
-import net.minecraft.world.World;
-import techguns.Techguns;
+import net.minecraft.core.Holder;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ArmorMaterial;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import techguns.TGDataComponents;
 import techguns.util.TextUtil;
 
-public class GenericArmorMultiCamo extends GenericArmor implements ICamoChangeable{
-		protected static Random rnd=new Random();
-		protected String[] textureNames;
-		protected String camoNameSuffix="";
-		
-		
-		public GenericArmorMultiCamo(String unlocalizedName, TGArmorMaterial material, String[] textureNames, EntityEquipmentSlot type) {
-			this(Techguns.MODID, unlocalizedName, material, textureNames, type);
-		}
-		
-		public GenericArmorMultiCamo(String modid, String unlocalizedName, TGArmorMaterial material, String[] textureNames, EntityEquipmentSlot type) {
-		    super(modid,unlocalizedName,material, textureNames[0],type);
-		   this.textureNames=textureNames;
-		}
+/** Armor with several textures; sneak + right click cycles the camo. */
+public class GenericArmorMultiCamo extends GenericArmor implements ICamoChangeable {
 
-		public GenericArmorMultiCamo setCamoNameSuffix(String s){
-			this.camoNameSuffix=s+".";
-			return this;
-		}
-		
-		/*@Override
-		public String getArmorTexture(ItemStack stack, Entity entity, int slot,
-				String type) {
-			NBTTagCompound tags = stack.getTagCompound();
-			byte camoID=0;
-			if (tags!=null){
-				if (tags.hasKey("camo")){
-					camoID=tags.getByte("camo");
-				}
-			}
-			
-			if (this.hasDoubleTexture()) {
-				return Techguns.MODID + ":textures/armor/" + this.textureNames[camoID] + "_" + (this.armorType == EntityEquipmentSlot.LEGS ? "2" : "1") + ".png";
-			} else { //USE SINGLE TEXTURE
-				return Techguns.MODID + ":textures/armor/" + this.textureNames[camoID] + ".png";
-			}
-		}*/
+	protected static final Random rnd = new Random();
+	protected String camoNameSuffix = "";
 
+	public GenericArmorMultiCamo(Holder<ArmorMaterial> vanillaMaterial, TGArmorMaterial material, String[] textureNames, EquipmentSlot slot) {
+		super(vanillaMaterial, material, textureNames, slot);
+	}
 
+	public GenericArmorMultiCamo setCamoNameSuffix(String s) {
+		this.camoNameSuffix = s + ".";
+		return this;
+	}
 
-		@Override
-		public void addInformation(ItemStack item, World worldIn, List<String> list, ITooltipFlag flagIn) {
-			
-			/*NBTTagCompound tags = item.getTagCompound();
-			byte camoID=0;
-			if (tags!=null && tags.hasKey("camo")){
-				camoID=tags.getByte("camo");
-			}*/
-			super.addInformation(item, worldIn, list, flagIn);
-			if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT)){	
-				list.add(TextUtil.trans(Techguns.MODID+".tooltip.currentcamo")+": "+getCurrentCamoName(item));
-			}
-		}
+	@Override
+	public int getCamoCount() {
+		return textureNames.length;
+	}
 
-		@Override
-		public ActionResult<ItemStack> onItemRightClick(World world, EntityPlayer player, EnumHand handIn) {
+	@Override
+	public int getCurrentCamoIndex(ItemStack item) {
+		return item.getOrDefault(TGDataComponents.CAMO.get(), 0);
+	}
 
-			if (player.isSneaking()){
-				
-				ItemStack item = player.getHeldItem(handIn);
-				
-				//int camoID=switchCamo(item);
-				//this.setTextureName(this.textureNames[camoID]);
-				//System.out.println("Switched Camo to:"+camoID);
-				
-				this.switchCamo(item);
-				if (world.isRemote){
-					player.sendMessage(new TextComponentString(TextUtil.trans("techguns.message.camoswitch")+" "+getCurrentCamoName(item)));
-				}
-		
-				return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, item);
-			} else {
-				return super.onItemRightClick(world, player, handIn);
-			}
+	@Override
+	public Component getCurrentCamoName(ItemStack item) {
+		int camoID = this.getCurrentCamoIndex(item);
+		if (camoID >= 0) {
+			return camoName(textureNames[0], camoNameSuffix, camoID);
 		}
+		return TextUtil.transTG("item.invalidcamo");
+	}
 
-		@Override
-		public int getCamoCount() {
-			if (textureNames!=null){
-				return textureNames.length;
-			}
-			return 0;
-		}
+	@Override
+	protected void addCamoInformation(ItemStack item, List<Component> list) {
+		list.add(TextUtil.transTG("tooltip.currentcamo").append(": ").append(getCurrentCamoName(item)));
+	}
 
-		@Override
-		public String getCurrentCamoName(ItemStack item) {
-			NBTTagCompound tags = item.getTagCompound();
-			byte camoID=-1;
-			if (tags!=null && tags.hasKey("camo")){
-				camoID=tags.getByte("camo");
+	@Override
+	public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+		if (player.isShiftKeyDown()) {
+			ItemStack item = player.getItemInHand(hand);
+			this.switchCamo(item);
+			if (level.isClientSide) {
+				player.displayClientMessage(TextUtil.transTG("message.camoswitch").append(" ").append(getCurrentCamoName(item)), false);
 			}
-			if(camoID>=0){
-				return TextUtil.trans(this.modid+".item."+textureNames[0]+"."+camoNameSuffix+"camoname."+camoID);
-			} else {
-				return TextUtil.trans(Techguns.MODID+".item.invalidcamo");
-			}
+			return InteractionResultHolder.sidedSuccess(item, level.isClientSide);
 		}
-		
-		public static int getRandomCamoIndexFor(GenericArmorMultiCamo type){
-			int count = type.getCamoCount();
-			if( count <=0){
-				return 0;
-			}
-			return rnd.nextInt(count);
-		}
-		
-		public static ItemStack getNewWithCamo(Item item, int camo){
-			ItemStack armor = new ItemStack(item);
-			NBTTagCompound tags = armor.getTagCompound();
-			if(tags==null){
-				tags=new NBTTagCompound();
-				armor.setTagCompound(tags);
-			}
-			tags.setByte("camo", (byte)camo);		
-			return armor;
-		}
-		
-		@Override
-		public void onCreated(ItemStack stack, World world, EntityPlayer player) {
-			super.onCreated(stack, world, player);
-			NBTTagCompound tags = stack.getTagCompound();
-			if(tags==null){
-				tags=new NBTTagCompound();
-				stack.setTagCompound(tags);
-			}
-			tags.setByte("camo", (byte)0);
-		}
+		return super.use(level, player, hand);
+	}
 
-	
-		protected static int getArmorLayer(EntityEquipmentSlot slot){
-			return EntityEquipmentSlot.LEGS==slot ? 2:1;
-		}
-		
-	    @Override
-	    public String getArmorTexture(ItemStack stack, Entity entity, EntityEquipmentSlot slot, String type)
-	    {
-	    	GenericArmorMultiCamo armor = (GenericArmorMultiCamo) stack.getItem();
-	    	 
-	    	int i = armor.getCurrentCamoIndex(stack);
-	    	if (i>=0 && i<this.textureNames.length){
-		        return this.modid+":textures/models/armor/"+this.textureNames[i]+(this.hasDoubleTexture()?("_layer_"+getArmorLayer(slot)):"")+".png";
-	    	} else {
-	    		return null;
-	    	}
+	public static int getRandomCamoIndexFor(GenericArmorMultiCamo type) {
+		int count = type.getCamoCount();
+		return count <= 0 ? 0 : rnd.nextInt(count);
+	}
 
-	    }
-		
-		
+	public static ItemStack getNewWithCamo(Item item, int camo) {
+		ItemStack armor = new ItemStack(item);
+		armor.set(TGDataComponents.CAMO.get(), camo);
+		return armor;
+	}
 }

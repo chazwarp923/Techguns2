@@ -1,91 +1,104 @@
 package techguns.util;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.common.network.NetworkRegistry.TargetPoint;
-import techguns.TGPackets;
-import techguns.Techguns;
-import techguns.client.ClientProxy;
+import javax.annotation.Nullable;
+
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
 import techguns.client.audio.TGSoundCategory;
 import techguns.packets.PacketPlaySound;
+import techguns.packets.TGPackets;
 
+/**
+ * Sound helpers (1.12 SoundUtil). When called on both sides, the server sends a PacketPlaySound to everyone around
+ * (the acting player skips it unless playOnOwnPlayer), and the client plays it right away for the acting player.
+ * Sounds are TGSounds on the client: moving ones follow the entity, gun position ones sit beside the head, and an
+ * EntityCondition can stop them early.
+ */
 public class SoundUtil {
 
-	/**
-	 * Plays a moving Sound on the specified Entity, in front of the entity.
-	 */
-	public static void playSoundOnEntityGunPosition(World world, Entity entity, SoundEvent soundname, float volume, float pitch, boolean repeat, boolean moving, boolean playOnOwnPlayer, TGSoundCategory category, EntityCondition condition) {
-		if (!world.isRemote) {
-			TGPackets.network.sendToAllAround(new PacketPlaySound(soundname, entity, volume, pitch, repeat, moving, true, playOnOwnPlayer, category, condition),
-				new TargetPoint(entity.dimension, entity.posX, entity.posY, entity.posZ, 100.0f));
-		}else {
-			Techguns.proxy.playSoundOnEntity(entity, soundname, volume, pitch, repeat, moving,true, true, category, condition);
+	/** 1.12 sent sound packets to players within 100 blocks */
+	private static final double PACKET_RANGE = 100.0;
+
+	/** client side sound playback, installed during client setup (no-op on a dedicated server) */
+	public interface ClientPlayer {
+		void play(Entity entity, SoundEvent sound, float volume, float pitch, boolean repeat, boolean moving, boolean gunPosition,
+				TGSoundCategory category, EntityCondition condition);
+	}
+
+	private static ClientPlayer clientPlayer = null;
+
+	public static void setClientPlayer(ClientPlayer p) {
+		clientPlayer = p;
+	}
+
+	public static void playOnClient(Entity entity, SoundEvent sound, float volume, float pitch, boolean repeat, boolean moving, boolean gunPosition,
+			TGSoundCategory category, EntityCondition condition) {
+		if (clientPlayer != null) {
+			clientPlayer.play(entity, sound, volume, pitch, repeat, moving, gunPosition, category, condition);
 		}
 	}
-	
-	
-	/**
-	 * Plays a moving Sound on the specified Entity, in front of the entity.
-	 */
-	public static void playSoundOnEntityGunPosition(World world, Entity entity, SoundEvent soundname, float volume, float pitch, boolean repeat, boolean moving, boolean playOnOwnPlayer, TGSoundCategory category) {
-		if (!world.isRemote) {
-			TGPackets.network.sendToAllAround(new PacketPlaySound(soundname, entity, volume, pitch, repeat, moving, true, playOnOwnPlayer, category),
-				new TargetPoint(entity.dimension, entity.posX, entity.posY, entity.posZ, 100.0f));
-		}else {
-			Techguns.proxy.playSoundOnEntity(entity, soundname, volume, pitch, repeat, moving,true, true, category);
+
+	private static void play(Level level, Entity entity, @Nullable SoundEvent sound, float volume, float pitch, boolean repeat, boolean moving,
+			boolean gunPosition, boolean playOnOwnPlayer, TGSoundCategory category, EntityCondition condition) {
+		if (sound == null) {
+			return;
 		}
-	}
-	
-	/**
-	 * Plays a moving Sound on the specified Entity, in front of the entity.
-	 */
-	public static void playSoundOnEntityGunPosition(World world, Entity entity, SoundEvent soundname, float volume, float pitch, boolean repeat, boolean moving,  TGSoundCategory category) {
-		playSoundOnEntityGunPosition(world, entity, soundname, volume, pitch, repeat, moving, false, category);
-	}
-	
-	/**
-	 * Like playSoundOnEntityGunPosition() but does a check for last played own reload.
-	 */
-	public static void playReloadSoundOnEntity(World world, Entity entity, SoundEvent soundname, float volume, float pitch, boolean repeat, boolean moving,  TGSoundCategory category) {
-		if (!world.isRemote) {
-			TGPackets.network.sendToAllAround(new PacketPlaySound(soundname, entity, volume, pitch, repeat, moving, true, category),
-				new TargetPoint(entity.dimension, entity.posX, entity.posY, entity.posZ, 100.0f));
-		}else {
-			ClientProxy cp = ClientProxy.get();
-			if (cp.lastReloadsoundPlayed - System.currentTimeMillis()<-500){
-				cp.lastReloadsoundPlayed = System.currentTimeMillis();
-				Techguns.proxy.playSoundOnEntity(entity, soundname, volume, pitch, repeat, moving,true, category);
+		if (level.isClientSide) {
+			playOnClient(entity, sound, volume, pitch, repeat, moving, gunPosition, category, condition);
+		} else {
+			ResourceLocation id = BuiltInRegistries.SOUND_EVENT.getKey(sound);
+			if (id == null) {
+				id = sound.getLocation();
 			}
+			TGPackets.sendToAllAround(new PacketPlaySound(id, entity.getId(), volume, pitch, repeat, moving, gunPosition, playOnOwnPlayer, category.getId()),
+					entity, PACKET_RANGE);
 		}
 	}
-	
-	
-	/**
-	 * Plays a moving Sound on the specified Entity
-	 */
-	public static void playSoundOnEntity(World world, Entity entity, SoundEvent soundname, float volume, float pitch, boolean repeat,  TGSoundCategory category) {
-		if (!world.isRemote) {
-		TGPackets.network.sendToAllAround(new PacketPlaySound(soundname, entity, volume, pitch, repeat, true, category),
-				new TargetPoint(entity.dimension, entity.posX, entity.posY, entity.posZ, 100.0f));
-		}else {
-			Techguns.proxy.playSoundOnEntity(entity, soundname, volume, pitch, repeat, true, false,category);
-			//Minecraft.getMinecraft().getSoundHandler().playSound(new TGSound(soundname,entity, volume, pitch, repeat));
-		}
+
+	/** Plays a sound in front of the entity; stops early when the condition fails (on the acting client). */
+	public static void playSoundOnEntityGunPosition(Level level, Entity entity, @Nullable SoundEvent sound, float volume, float pitch, boolean repeat,
+			boolean moving, boolean playOnOwnPlayer, TGSoundCategory category, EntityCondition condition) {
+		play(level, entity, sound, volume, pitch, repeat, moving, true, playOnOwnPlayer, category, condition);
 	}
-	
-	/**
-	 * Plays a non-moving Sound at the specified Entity's position
-	 */
-	public static void playSoundAtEntityPos(World world, Entity entity, SoundEvent soundname, float volume, float pitch, boolean repeat, TGSoundCategory category) {
-		if (!world.isRemote) {
-		TGPackets.network.sendToAllAround(new PacketPlaySound(soundname, entity, volume, pitch, repeat, false, category),
-				new TargetPoint(entity.dimension, entity.posX, entity.posY, entity.posZ, 100.0f));
-		}else {
-			//Minecraft.getMinecraft().getSoundHandler().playSound(new TGSound(soundname, (float)entity.posX, (float)entity.posY, (float)entity.posZ, volume, pitch, repeat));
-			//Minecraft.getMinecraft().getSoundHandler().playSound(new TGSound(soundname,entity, volume, pitch, repeat, false));
-			Techguns.proxy.playSoundOnEntity(entity, soundname, volume, pitch, repeat, false, false,category);
-		}
+
+	/** Plays a sound in front of the entity. */
+	public static void playSoundOnEntityGunPosition(Level level, Entity entity, @Nullable SoundEvent sound, float volume, float pitch, boolean repeat,
+			boolean moving, boolean playOnOwnPlayer, TGSoundCategory category) {
+		play(level, entity, sound, volume, pitch, repeat, moving, true, playOnOwnPlayer, category, EntityCondition.NONE);
 	}
-	
+
+	public static void playSoundOnEntityGunPosition(Level level, Entity entity, @Nullable SoundEvent sound, float volume, float pitch, boolean repeat,
+			boolean moving, TGSoundCategory category) {
+		playSoundOnEntityGunPosition(level, entity, sound, volume, pitch, repeat, moving, false, category);
+	}
+
+	private static long lastReloadSoundPlayed = 0;
+
+	/** Like playSoundOnEntityGunPosition() but avoids double reload sounds on the client. */
+	public static void playReloadSoundOnEntity(Level level, Entity entity, @Nullable SoundEvent sound, float volume, float pitch, boolean repeat,
+			boolean moving, TGSoundCategory category) {
+		if (level.isClientSide) {
+			long now = System.currentTimeMillis();
+			if (now - lastReloadSoundPlayed < 500) {
+				return;
+			}
+			lastReloadSoundPlayed = now;
+		}
+		playSoundOnEntityGunPosition(level, entity, sound, volume, pitch, repeat, moving, false, category);
+	}
+
+	/** Plays a sound that follows the entity. */
+	public static void playSoundOnEntity(Level level, Entity entity, @Nullable SoundEvent sound, float volume, float pitch, boolean repeat,
+			TGSoundCategory category) {
+		play(level, entity, sound, volume, pitch, repeat, true, false, false, category, EntityCondition.NONE);
+	}
+
+	/** Plays a non-moving sound at the entity's position. */
+	public static void playSoundAtEntityPos(Level level, Entity entity, @Nullable SoundEvent sound, float volume, float pitch, boolean repeat,
+			TGSoundCategory category) {
+		play(level, entity, sound, volume, pitch, repeat, false, false, false, category, EntityCondition.NONE);
+	}
 }

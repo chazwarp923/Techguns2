@@ -1,0 +1,40 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:chem_lab"
+    },
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:reactionchamber_housing"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "sms",
+    "pcp",
+    "ses"
+  ],
+  "key": {
+    "p": {
+      "item": "techguns:cyberneticparts"
+    },
+    "s": {
+      "tag": "c:plates/steel"
+    },
+    "c": {
+      "item": "techguns:chem_lab"
+    },
+    "e": {
+      "tag": "c:circuits/elite"
+    },
+    "m": {
+      "item": "techguns:mechanicalpartscarbon"
+    }
+  },
+  "result": {
+    "id": "techguns:reactionchamber_housing",
+    "count": 9
+  }
+}

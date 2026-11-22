@@ -1,0 +1,20 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:tfg"
+  },
+  "results": [
+    {
+      "id": "techguns:ingottitanium",
+      "count": 5
+    },
+    {
+      "id": "techguns:ingotlead",
+      "count": 4
+    },
+    {
+      "id": "techguns:carbonfibers",
+      "count": 4
+    }
+  ]
+}

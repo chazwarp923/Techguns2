@@ -1,0 +1,14 @@
+{
+  "type": "techguns:metal_press",
+  "input1": {
+    "tag": "c:ingots/steel"
+  },
+  "input2": {
+    "tag": "c:ingots/steel"
+  },
+  "allow_swap": true,
+  "result": {
+    "id": "techguns:platesteel",
+    "count": 2
+  }
+}

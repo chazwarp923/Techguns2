@@ -1,0 +1,441 @@
+package techguns.gametest;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+import com.mojang.authlib.GameProfile;
+
+import io.netty.buffer.Unpooled;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Container;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.util.FakePlayerFactory;
+import net.neoforged.neoforge.common.util.TriState;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.gametest.GameTestHolder;
+import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.neoforged.neoforge.server.permission.PermissionAPI;
+import techguns.TGConfig;
+import techguns.TGDataComponents;
+import techguns.TGPermissions;
+import techguns.TGSounds;
+import techguns.TGuns;
+import techguns.Techguns;
+import techguns.api.guns.GunHandType;
+import techguns.api.tginventory.ITGSpecialSlot;
+import techguns.api.tginventory.TGSlotType;
+import techguns.capabilities.TGExtendedPlayer;
+import techguns.client.audio.TGSoundCategory;
+import techguns.events.ArmorEvents;
+import techguns.events.GunInteractEvents;
+import techguns.events.TGTickHandler;
+import techguns.items.guns.GenericGun;
+import techguns.items.guns.GenericGunMeleeCharge;
+import techguns.packets.PacketPlaySound;
+import techguns.packets.PacketSwapWeapon;
+import techguns.packets.PacketTGKeybindPress;
+import techguns.util.EntityCondition;
+import techguns.util.SoundUtil;
+
+/**
+ * Game tests for the server side gameplay code: permissions and safe mode, weapon swaps, ammo change crafting refunds,
+ * off hand rules, area mining selection, sounds and their packets. Players are NeoForge fake players, which take part in
+ * the logic but drop every packet sent to them, so the tests call the handlers directly.
+ */
+@GameTestHolder(Techguns.MODID)
+@PrefixGameTestTemplate(false)
+public class GameplayTests {
+
+	private static ServerPlayer player(GameTestHelper helper) {
+		return FakePlayerFactory.get(helper.getLevel(), new GameProfile(UUID.randomUUID(), "tg_test"));
+	}
+
+	private static List<GenericGun> guns() {
+		return BuiltInRegistries.ITEM.stream().filter(i -> i instanceof GenericGun && BuiltInRegistries.ITEM.getKey(i).getNamespace().equals(Techguns.MODID))
+				.map(i -> (GenericGun) i).toList();
+	}
+
+	private static GenericGun gunWithHands(GameTestHelper helper, GunHandType type) {
+		for (GenericGun g : guns()) {
+			if (g.getGunHandType() == type) {
+				return g;
+			}
+		}
+		throw new AssertionError("no gun with hand type " + type);
+	}
+
+	/* ---------------------------------------------------------------- permissions / safe mode */
+
+	@GameTest(template = "empty")
+	public static void unsafeModePermissionNode(GameTestHelper helper) {
+		helper.assertTrue(PermissionAPI.getRegisteredNodes().contains(TGPermissions.ALLOW_UNSAFE_MODE), "permission node not registered");
+		helper.assertTrue(TGPermissions.ALLOW_UNSAFE_MODE.getNodeName().equals("techguns.allowunsafemode"),
+				"node name " + TGPermissions.ALLOW_UNSAFE_MODE.getNodeName());
+		boolean old = TGConfig.limitUnsafeModeToOP;
+		try {
+			TGConfig.limitUnsafeModeToOP = false;
+			helper.assertTrue(TGPermissions.canUseUnsafeMode(player(helper)), "the node should allow everyone by default");
+		} finally {
+			TGConfig.limitUnsafeModeToOP = old;
+		}
+		helper.succeed();
+	}
+
+	@GameTest(template = "empty")
+	public static void restrictUnsafeModeToOps(GameTestHelper helper) {
+		ServerPlayer ply = player(helper);
+		var ops = helper.getLevel().getServer().getPlayerList();
+		boolean old = TGConfig.limitUnsafeModeToOP;
+		try {
+			TGConfig.limitUnsafeModeToOP = true;
+			helper.assertFalse(TGPermissions.canUseUnsafeMode(ply), "non-op allowed with RestrictUnsafeModeToOP");
+			ops.op(ply.getGameProfile());
+			helper.assertTrue(TGPermissions.canUseUnsafeMode(ply), "op refused with RestrictUnsafeModeToOP");
+		} finally {
+			ops.deop(ply.getGameProfile());
+			TGConfig.limitUnsafeModeToOP = old;
+		}
+		helper.succeed();
+	}
+
+	@GameTest(template = "empty")
+	public static void safemodeToggleRespectsPermission(GameTestHelper helper) {
+		ServerPlayer ply = player(helper);
+		TGExtendedPlayer props = TGExtendedPlayer.get(ply);
+		boolean old = TGConfig.limitUnsafeModeToOP;
+		try {
+			TGConfig.limitUnsafeModeToOP = true;
+			props.enableSafemode = true;
+			PacketTGKeybindPress.handleOnServer(new PacketTGKeybindPress(PacketTGKeybindPress.TOGGLE_SAFEMODE), ply);
+			helper.assertTrue(props.enableSafemode, "non-op could leave safe mode");
+
+			props.enableSafemode = false;
+			ArmorEvents.onLogin(new PlayerEvent.PlayerLoggedInEvent(ply));
+			helper.assertTrue(props.enableSafemode, "login did not force safe mode for a player without permission");
+
+			TGConfig.limitUnsafeModeToOP = false;
+			PacketTGKeybindPress.handleOnServer(new PacketTGKeybindPress(PacketTGKeybindPress.TOGGLE_SAFEMODE), ply);
+			helper.assertFalse(props.enableSafemode, "permitted player could not leave safe mode");
+			PacketTGKeybindPress.handleOnServer(new PacketTGKeybindPress(PacketTGKeybindPress.TOGGLE_SAFEMODE), ply);
+			helper.assertTrue(props.enableSafemode, "safe mode toggle did not switch back on");
+		} finally {
+			TGConfig.limitUnsafeModeToOP = old;
+		}
+		helper.succeed();
+	}
+
+	/* ---------------------------------------------------------------- weapon swap */
+
+	@GameTest(template = "empty")
+	public static void weaponSwapSwapsFireDelays(GameTestHelper helper) {
+		ServerPlayer ply = player(helper);
+		TGExtendedPlayer props = TGExtendedPlayer.get(ply);
+		GenericGun one = gunWithHands(helper, GunHandType.ONE_HANDED);
+		ItemStack a = new ItemStack(one);
+		ItemStack b = new ItemStack(one);
+		ply.setItemInHand(InteractionHand.MAIN_HAND, a);
+		ply.setItemInHand(InteractionHand.OFF_HAND, b);
+		TGTickHandler.onPlayerTickPre(new PlayerTickEvent.Pre(ply)); // records the guns in hand
+
+		props.fireDelayMainhand = 5;
+		props.fireDelayOffhand = 9;
+		TGTickHandler.onPlayerTickPre(new PlayerTickEvent.Pre(ply)); // no swap: both just count down
+		helper.assertTrue(props.fireDelayMainhand == 4 && props.fireDelayOffhand == 8,
+				"unexpected delays without a swap: " + props.fireDelayMainhand + "/" + props.fireDelayOffhand);
+
+		// the swap hands key moves the same stacks
+		ply.setItemInHand(InteractionHand.MAIN_HAND, b);
+		ply.setItemInHand(InteractionHand.OFF_HAND, a);
+		TGTickHandler.onPlayerTickPre(new PlayerTickEvent.Pre(ply)); // counts down to 3/7, then swaps
+		helper.assertTrue(props.fireDelayMainhand == 7 && props.fireDelayOffhand == 3,
+				"delays not swapped: " + props.fireDelayMainhand + "/" + props.fireDelayOffhand);
+		helper.assertTrue(props.gunMainHand == b && props.gunOffHand == a, "gun hands not updated");
+
+		// a new stack in hand is not a swap
+		ply.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(one));
+		TGTickHandler.onPlayerTickPre(new PlayerTickEvent.Pre(ply));
+		helper.assertTrue(props.fireDelayMainhand == 6 && props.fireDelayOffhand == 2,
+				"delays swapped for a new stack: " + props.fireDelayMainhand + "/" + props.fireDelayOffhand);
+		helper.succeed();
+	}
+
+	@GameTest(template = "empty")
+	public static void swapAttackTimesSwapsBothHands(GameTestHelper helper) {
+		TGExtendedPlayer props = TGExtendedPlayer.get(player(helper));
+		props.getAttackTime(false).setReloadTime(111L);
+		props.getAttackTime(true).setReloadTime(222L);
+		props.fireDelayMainhand = 1;
+		props.fireDelayOffhand = 2;
+		props.swapAttackTimes();
+		helper.assertTrue(props.getAttackTime(false).getReloadTime() == 222L && props.getAttackTime(true).getReloadTime() == 111L,
+				"attack times not swapped");
+		helper.assertTrue(props.fireDelayMainhand == 2 && props.fireDelayOffhand == 1, "fire delays not swapped");
+		helper.succeed();
+	}
+
+	/* ---------------------------------------------------------------- ammo change crafting */
+
+	/** the first ammo item of a gun with a magazine, that counts as ammo for the ammo slot */
+	private static ItemStack ammoFor(GameTestHelper helper, GenericGun gun) {
+		ItemStack ammo = gun.getAmmoType().getAmmo(0)[0].copy();
+		helper.assertTrue(ammo.getItem() instanceof ITGSpecialSlot s && s.getSlot(ammo) == TGSlotType.AMMOSLOT, ammo + " is not ammo slot ammo");
+		return ammo;
+	}
+
+	/** count in the main inventory and the Techguns ammo slots (refunds go to the ammo slots first) */
+	private static int count(Player ply, Item item) {
+		int n = 0;
+		for (ItemStack s : ply.getInventory().items) {
+			if (s.is(item)) {
+				n += s.getCount();
+			}
+		}
+		for (ItemStack s : techguns.curios.TGCurios.getStacks(ply, techguns.curios.TGCurios.SLOT_AMMO)) {
+			if (s.is(item)) {
+				n += s.getCount();
+			}
+		}
+		return n;
+	}
+
+	private static void clearInventory(Player ply) {
+		ply.getInventory().clearContent();
+		List<ItemStack> ammo = techguns.curios.TGCurios.getStacks(ply, techguns.curios.TGCurios.SLOT_AMMO);
+		for (int i = 0; i < ammo.size(); i++) {
+			ammo.set(i, ItemStack.EMPTY);
+		}
+	}
+
+	@GameTest(template = "empty")
+	public static void ammoChangeCraftingRefundsLoadedAmmo(GameTestHelper helper) {
+		ServerPlayer ply = player(helper);
+		clearInventory(ply);
+		GenericGun gun = TGuns.AK47.get();
+		ItemStack gunStack = new ItemStack(gun);
+		gunStack.set(TGDataComponents.AMMO.get(), gun.getClipsize() / 2);
+		List<ItemStack> expected = gun.getAmmoOnUnload(gunStack);
+		helper.assertFalse(expected.isEmpty(), "half loaded AK47 unloads nothing");
+
+		Container grid = new SimpleContainer(9);
+		grid.setItem(0, gunStack);
+		grid.setItem(1, ammoFor(helper, gun));
+		GunInteractEvents.onCraft(new PlayerEvent.ItemCraftedEvent(ply, new ItemStack(gun), grid));
+		for (ItemStack e : expected) {
+			int have = count(ply, e.getItem());
+			helper.assertTrue(have >= e.getCount(), "refund missing " + e + ", player has " + have);
+		}
+
+		// anything else in the grid: not an ammo change recipe, nothing refunded
+		clearInventory(ply);
+		grid.setItem(2, new ItemStack(Items.STICK));
+		GunInteractEvents.onCraft(new PlayerEvent.ItemCraftedEvent(ply, new ItemStack(gun), grid));
+		for (ItemStack e : expected) {
+			helper.assertTrue(count(ply, e.getItem()) == 0, "refunded for a recipe that is not an ammo change");
+		}
+		helper.succeed();
+	}
+
+	/* ---------------------------------------------------------------- off hand rules */
+
+	@GameTest(template = "empty")
+	public static void twoHandedGunBlocksOffhand(GameTestHelper helper) {
+		ServerPlayer ply = player(helper);
+		GenericGun two = gunWithHands(helper, GunHandType.TWO_HANDED);
+		GenericGun one = gunWithHands(helper, GunHandType.ONE_HANDED);
+
+		ply.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(two));
+		ply.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.BREAD));
+		var off = new PlayerInteractEvent.RightClickItem(ply, InteractionHand.OFF_HAND);
+		GunInteractEvents.rightClickItem(off);
+		helper.assertTrue(off.isCanceled(), "off hand use allowed next to a two handed gun");
+		var main = new PlayerInteractEvent.RightClickItem(ply, InteractionHand.MAIN_HAND);
+		GunInteractEvents.rightClickItem(main);
+		helper.assertFalse(main.isCanceled(), "main hand use blocked");
+
+		ply.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.BREAD));
+		ply.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(two));
+		var entity = new PlayerInteractEvent.EntityInteract(ply, InteractionHand.OFF_HAND, ply);
+		GunInteractEvents.entityInteract(entity);
+		helper.assertTrue(entity.isCanceled(), "off hand entity use allowed with a two handed gun in the off hand");
+
+		ply.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(one));
+		ply.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.BREAD));
+		var ok = new PlayerInteractEvent.RightClickItem(ply, InteractionHand.OFF_HAND);
+		GunInteractEvents.rightClickItem(ok);
+		helper.assertFalse(ok.isCanceled(), "off hand use blocked next to a one handed gun");
+		helper.succeed();
+	}
+
+	@GameTest(template = "empty")
+	public static void sneakingWithOffhandGunUsesBlock(GameTestHelper helper) {
+		ServerPlayer ply = player(helper);
+		GenericGun one = gunWithHands(helper, GunHandType.ONE_HANDED);
+		BlockPos pos = helper.absolutePos(BlockPos.ZERO);
+		BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false);
+		ply.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.TORCH));
+		ply.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(one));
+
+		ply.setShiftKeyDown(true);
+		var ev = new PlayerInteractEvent.RightClickBlock(ply, InteractionHand.MAIN_HAND, pos, hit);
+		GunInteractEvents.rightClickBlock(ev);
+		helper.assertTrue(ev.getUseBlock() == TriState.TRUE, "sneaking did not force block use");
+
+		ply.setShiftKeyDown(false);
+		var ev2 = new PlayerInteractEvent.RightClickBlock(ply, InteractionHand.MAIN_HAND, pos, hit);
+		GunInteractEvents.rightClickBlock(ev2);
+		helper.assertTrue(ev2.getUseBlock() == TriState.DEFAULT, "block use changed without sneaking");
+		helper.succeed();
+	}
+
+	/* ---------------------------------------------------------------- area mining */
+
+	@GameTest(template = "empty")
+	public static void areaMiningSelection(GameTestHelper helper) {
+		ServerPlayer ply = player(helper);
+		GenericGunMeleeCharge drill = (GenericGunMeleeCharge) TGuns.MININGDRILL.get();
+		ItemStack stack = new ItemStack(drill);
+		ply.setItemInHand(InteractionHand.MAIN_HAND, stack);
+		helper.assertTrue(drill.getMiningRadius(stack) == 1, "mining drill radius " + drill.getMiningRadius(stack));
+
+		// a 3x3 plane facing z around the centre
+		BlockPos c = helper.absolutePos(new BlockPos(2, 2, 1));
+		var level = helper.getLevel();
+		level.setBlockAndUpdate(c, Blocks.STONE.defaultBlockState());
+		BlockPos[] around = { c.offset(-1, -1, 0), c.offset(0, -1, 0), c.offset(1, -1, 0), c.offset(-1, 0, 0), c.offset(1, 0, 0), c.offset(-1, 1, 0),
+				c.offset(0, 1, 0), c.offset(1, 1, 0) };
+		var states = new net.minecraft.world.level.block.state.BlockState[] { Blocks.STONE.defaultBlockState(), Blocks.OBSIDIAN.defaultBlockState(),
+				Blocks.CHEST.defaultBlockState(), Blocks.AIR.defaultBlockState(), Blocks.OAK_PLANKS.defaultBlockState(), Blocks.BEDROCK.defaultBlockState(),
+				Blocks.DIRT.defaultBlockState(), Blocks.DEEPSLATE.defaultBlockState() };
+		for (int i = 0; i < around.length; i++) {
+			level.setBlockAndUpdate(around[i], states[i]);
+		}
+		// in front of the plane, must not be included
+		level.setBlockAndUpdate(c.offset(0, 0, 1), Blocks.STONE.defaultBlockState());
+
+		Set<BlockPos> got = new HashSet<>(drill.getAreaMiningBlocks(ply, level, stack, c, Direction.Axis.Z));
+		// stone, obsidian, dirt, deepslate; not: centre, chest (block entity), air, planks (axe), bedrock, block outside the plane
+		Set<BlockPos> want = Set.of(around[0], around[1], around[6], around[7]);
+		helper.assertTrue(got.equals(want), "area mining picked " + got + ", expected " + want);
+
+		ItemStack empty = new ItemStack(drill);
+		empty.set(TGDataComponents.AMMO.get(), 0);
+		ply.setItemInHand(InteractionHand.MAIN_HAND, empty);
+		helper.assertTrue(drill.getAreaMiningBlocks(ply, level, empty, c, Direction.Axis.Z).isEmpty(), "an empty drill still mines an area");
+
+		GenericGunMeleeCharge chainsaw = (GenericGunMeleeCharge) TGuns.CHAINSAW.get();
+		ItemStack saw = new ItemStack(chainsaw);
+		helper.assertTrue(chainsaw.getAreaMiningBlocks(ply, level, saw, c, Direction.Axis.Z).isEmpty(), "a tool without mining radius mines an area");
+
+		for (BlockPos p : around) {
+			level.removeBlock(p, false);
+		}
+		level.removeBlock(c, false);
+		level.removeBlock(c.offset(0, 0, 1), false);
+		helper.succeed();
+	}
+
+	/* ---------------------------------------------------------------- ambient effects */
+
+	@GameTest(template = "empty")
+	public static void ambientEffectNeedsFuel(GameTestHelper helper) {
+		GenericGun shishkebap = TGuns.SHISHKEBAP.get();
+		ItemStack fueled = new ItemStack(shishkebap);
+		helper.assertTrue(shishkebap.isAmbientEffectActive(fueled), "fueled Shishkebap has no flames");
+		ItemStack empty = new ItemStack(shishkebap);
+		empty.set(TGDataComponents.AMMO.get(), 0);
+		helper.assertFalse(shishkebap.isAmbientEffectActive(empty), "empty Shishkebap still burns");
+		for (GenericGun g : guns()) {
+			if (g != shishkebap) {
+				helper.assertFalse(g.isAmbientEffectActive(new ItemStack(g)), BuiltInRegistries.ITEM.getKey(g) + " has an ambient effect");
+			}
+		}
+		helper.succeed();
+	}
+
+	/* ---------------------------------------------------------------- sounds and packets */
+
+	@GameTest(template = "empty")
+	public static void soundsResolveAndPlay(GameTestHelper helper) {
+		ServerPlayer ply = player(helper);
+		// the sound packet carries registry ids: every Techguns sound must have one
+		for (var holder : TGSounds.SOUNDS.getEntries()) {
+			helper.assertTrue(BuiltInRegistries.SOUND_EVENT.getKey(holder.get()) != null, "sound " + holder.getId() + " has no registry id");
+		}
+		// every category must survive the id round trip used by the packet
+		for (int i = 0; TGSoundCategory.get(i) != null; i++) {
+			helper.assertTrue(TGSoundCategory.get(i).getId() == i, "sound category id " + i);
+		}
+		// server side calls must not throw (no real players around, so nothing is sent)
+		var level = helper.getLevel();
+		SoundUtil.playSoundOnEntityGunPosition(level, ply, TGSounds.SHISHKEBAP_SWING.get(), 1f, 1f, false, true, false, TGSoundCategory.GUN_FIRE,
+				EntityCondition.CHARGING_WEAPON);
+		SoundUtil.playSoundOnEntityGunPosition(level, ply, TGSounds.SHISHKEBAP_SWING.get(), 1f, 1f, false, true, TGSoundCategory.GUN_FIRE);
+		SoundUtil.playReloadSoundOnEntity(level, ply, TGSounds.SHISHKEBAP_SWING.get(), 1f, 1f, false, true, TGSoundCategory.RELOAD);
+		SoundUtil.playSoundOnEntity(level, ply, TGSounds.SHISHKEBAP_SWING.get(), 1f, 1f, false, TGSoundCategory.PLAYER_EFFECT);
+		SoundUtil.playSoundAtEntityPos(level, ply, TGSounds.SHISHKEBAP_SWING.get(), 1f, 1f, false, TGSoundCategory.PLAYER_EFFECT);
+		SoundUtil.playSoundOnEntity(level, ply, null, 1f, 1f, false, TGSoundCategory.PLAYER_EFFECT);
+		helper.succeed();
+	}
+
+	@GameTest(template = "empty")
+	public static void packetsRoundTrip(GameTestHelper helper) {
+		PacketPlaySound sound = new PacketPlaySound(ResourceLocation.fromNamespaceAndPath("techguns", "guns.shishkebabfire"), 1234, 4f, 0.5f, true, true,
+				false, true, TGSoundCategory.RELOAD.getId());
+		FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+		PacketPlaySound.CODEC.encode(buf, sound);
+		PacketPlaySound decoded = PacketPlaySound.CODEC.decode(buf);
+		helper.assertTrue(sound.equals(decoded), "PacketPlaySound round trip: " + decoded);
+		helper.assertTrue(buf.readableBytes() == 0, "PacketPlaySound left bytes");
+
+		PacketSwapWeapon swap = new PacketSwapWeapon(77);
+		FriendlyByteBuf buf2 = new FriendlyByteBuf(Unpooled.buffer());
+		PacketSwapWeapon.CODEC.encode(buf2, swap);
+		helper.assertTrue(swap.equals(PacketSwapWeapon.CODEC.decode(buf2)), "PacketSwapWeapon round trip");
+		helper.succeed();
+	}
+
+	@GameTest(template = "empty")
+	public static void entityConditions(GameTestHelper helper) {
+		ServerPlayer ply = player(helper);
+		TGExtendedPlayer props = TGExtendedPlayer.get(ply);
+		props.isChargingWeapon = true;
+		helper.assertTrue(EntityCondition.CHARGING_WEAPON.evaluate(ply), "charging not detected");
+		props.isChargingWeapon = false;
+		helper.assertFalse(EntityCondition.CHARGING_WEAPON.evaluate(ply), "charging still detected");
+		helper.assertTrue(EntityCondition.NONE.evaluate(ply), "NONE must never stop");
+		for (EntityCondition c : EntityCondition.values()) {
+			helper.assertTrue(EntityCondition.fromByte(c.id) == c, "condition id " + c);
+		}
+		helper.succeed();
+	}
+
+	@GameTest(template = "empty")
+	public static void startTrackingSyncDoesNotThrow(GameTestHelper helper) {
+		ServerPlayer watcher = player(helper);
+		ServerPlayer flyer = player(helper);
+		TGExtendedPlayer.get(flyer).isJumpkeyPressed = true;
+		ArmorEvents.onStartTracking(new PlayerEvent.StartTracking(watcher, flyer));
+		TGExtendedPlayer.get(flyer).isJumpkeyPressed = false;
+		ArmorEvents.onStartTracking(new PlayerEvent.StartTracking(watcher, flyer));
+		helper.succeed();
+	}
+}

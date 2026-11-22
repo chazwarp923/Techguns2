@@ -1,0 +1,8 @@
+{
+  "type": "techguns:camo_bench",
+  "items": [
+    "techguns:camonet",
+    "techguns:camonet_desert",
+    "techguns:camonet_snow"
+  ]
+}

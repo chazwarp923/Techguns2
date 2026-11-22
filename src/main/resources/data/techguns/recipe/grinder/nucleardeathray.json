@@ -1,0 +1,22 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:nucleardeathray"
+  },
+  "results": [
+    {
+      "id": "techguns:carbonfibers",
+      "count": 6
+    },
+    {
+      "id": "techguns:ingotlead",
+      "count": 3
+    },
+    {
+      "id": "techguns:mechanicalpartscarbon"
+    },
+    {
+      "id": "techguns:circuitboardelite"
+    }
+  ]
+}

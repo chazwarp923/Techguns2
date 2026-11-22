@@ -1,11 +1,13 @@
 package techguns.client.models.guns;
 
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
-import net.minecraft.entity.Entity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.ItemDisplayContext;
 import techguns.client.models.ModelMultipart;
+import techguns.client.models.ModelRenderer;
 import techguns.client.render.TGRenderHelper;
+import techguns.client.render.gl.GlStateManager;
+
+
 
 public class ModelTFG extends ModelMultipart {
 	public ModelRenderer Glow01;
@@ -461,7 +463,7 @@ public class ModelTFG extends ModelMultipart {
 
     @Override
     public void render(Entity entityIn, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch, float scale, int ammoLeft, float reloadProgress,
-    		TransformType transformType, int part, float fireProgress, float chargeProgress) {
+    		ItemDisplayContext transformType, int part, float fireProgress, float chargeProgress) {
         this.Front19.render(scale);
         this.Stock11.render(scale);
         this.Front05.render(scale);

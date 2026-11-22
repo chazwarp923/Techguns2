@@ -1,194 +1,86 @@
 package techguns;
 
-import java.util.ArrayList;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.BucketItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.LiquidBlock;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.FlowingFluid;
+import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.material.PushReaction;
+import net.neoforged.neoforge.common.NeoForgeMod;
+import net.neoforged.neoforge.fluids.BaseFlowingFluid;
+import net.neoforged.neoforge.fluids.FluidType;
+import net.neoforged.neoforge.registries.DeferredBlock;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredItem;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.NeoForgeRegistries;
+import techguns.api.damagesystem.DamageType;
+import techguns.damagesystem.TGDamageSource;
+import techguns.deatheffects.DeathType;
+import techguns.entities.projectiles.GenericProjectile;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.event.RegistryEvent;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidRegistry;
-import net.minecraftforge.fluids.IFluidBlock;
-import net.minecraftforge.fml.common.event.FMLInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
-import techguns.blocks.BlockFluidAcid;
-import techguns.init.ITGInitializer;
+/**
+ * Techguns fluids (1.12 TGFluids): creeper acid with its fluid block and bucket. Milk is the NeoForge milk fluid,
+ * water and lava are vanilla. Recipes use fluid tags, so fuels / oils of other mods can be added to them.
+ */
+public class TGFluids {
 
-public class TGFluids implements ITGInitializer {
-	
-	/**
-	 * Same as FluidRegistry.WATER
-	 */
-	public static Fluid WATER;
-	/**
-	 * Same as FluidRegistry.LAVA
-	 */
-	public static Fluid LAVA;
-	
-	public static Fluid MILK;
-	
-//	protected static String[] oilnames = {"oil", "tree_oil", "crude_oil", "seed_oil"};
-	public static ArrayList<Fluid> oils = new ArrayList<Fluid>();
-	
-	public static ArrayList<Fluid> worldspawn_oils = new ArrayList<Fluid>();
-	//public static Fluid OIL;
-	public static Fluid OIL_WORLDSPAWN=null;
-	
-	//public static Fluid FUEL;
-//	protected static String[] fuelnames = {"fuel", "refined_fuel", "biofuel", "biodiesel", "diesel", "gasoline", "refined_biofuel", "fire_water", "rocket_fuel"};
-	public static ArrayList<Fluid> fuels = new ArrayList<Fluid>();
-	
-	public static Fluid LIQUID_REDSTONE;
-	
-	public static Fluid LIQUID_COAL;
+	public static final DeferredRegister<FluidType> FLUID_TYPES = DeferredRegister.create(NeoForgeRegistries.Keys.FLUID_TYPES, Techguns.MODID);
+	public static final DeferredRegister<net.minecraft.world.level.material.Fluid> FLUIDS = DeferredRegister.create(BuiltInRegistries.FLUID,
+			Techguns.MODID);
 
-	public static Fluid ACID;
-	
-	public static Fluid LIQUID_ENDER;
-	
-	public static Fluid BIOFUEL;
+	public static final DeferredHolder<FluidType, FluidType> ACID_TYPE = FLUID_TYPES.register("creeper_acid",
+			() -> new FluidType(FluidType.Properties.create().descriptionId("block.techguns.creeper_acid").density(100).canSwim(true)
+					.canDrown(true).supportsBoating(false)));
 
-	public static boolean addedMilk=false;
+	public static final DeferredHolder<net.minecraft.world.level.material.Fluid, BaseFlowingFluid.Source> ACID = FLUIDS.register("creeper_acid",
+			() -> new BaseFlowingFluid.Source(TGFluids.acidProps()));
+	public static final DeferredHolder<net.minecraft.world.level.material.Fluid, BaseFlowingFluid.Flowing> ACID_FLOWING = FLUIDS
+			.register("creeper_acid_flowing", () -> new BaseFlowingFluid.Flowing(TGFluids.acidProps()));
 
-	public static ArrayList<IFluidBlock> FLUIDBLOCKS = new ArrayList<>();
-	
-	public static Block BLOCK_FLUID_ACID;
-	public static Block BLOCK_FLUID_MILK;
-	
-	public static boolean addedAcid=false;
-	
-	@Override
-	public void preInit(FMLPreInitializationEvent event) {
-		WATER=FluidRegistry.WATER;
-		LAVA=FluidRegistry.LAVA;
-		
-		addedAcid = FluidRegistry.registerFluid(new Fluid("creeper_acid", new ResourceLocation(Techguns.MODID, "blocks/acid_still"), new ResourceLocation(Techguns.MODID, "blocks/acid_flow")).setGaseous(false).setLuminosity(0).setUnlocalizedName("creeperAcid").setDensity(100));
-		ACID = FluidRegistry.getFluid("creeper_acid");
-		if(addedAcid) {
-			
-			BLOCK_FLUID_ACID = new BlockFluidAcid(ACID,Material.WATER).setRegistryName(new ResourceLocation(Techguns.MODID, "block_creeper_acid"))
-					.setUnlocalizedName(Techguns.MODID+".block_creeper_acid").setCreativeTab(Techguns.tabTechgun);
-		}
-		
-		addedMilk = FluidRegistry.registerFluid(new Fluid("milk", new ResourceLocation(Techguns.MODID, "blocks/milk_still"), new ResourceLocation(Techguns.MODID, "blocks/milk_flow")).setUnlocalizedName("milk"));
-		MILK = FluidRegistry.getFluid("milk");
-		if(addedMilk) {			
-			BLOCK_FLUID_MILK = new BlockFluidAcid(MILK,Material.WATER).setRegistryName(new ResourceLocation(Techguns.MODID, "block_milk"))
-					.setUnlocalizedName(Techguns.MODID+".block_milk").setCreativeTab(Techguns.tabTechgun);
-		}
+	public static final DeferredBlock<LiquidBlock> ACID_BLOCK = TGBlocks.registerNoItem("block_creeper_acid",
+			p -> new AcidBlock(ACID.get(), p), BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_GREEN).replaceable().noCollission()
+					.strength(100.0f).pushReaction(PushReaction.DESTROY).noLootTable().liquid());
+
+	public static final DeferredItem<BucketItem> ACID_BUCKET = TGItems.register("creeper_acid_bucket",
+			() -> new BucketItem(ACID.get(), new Item.Properties().craftRemainder(Items.BUCKET).stacksTo(1)));
+
+	private static BaseFlowingFluid.Properties acidProps() {
+		return new BaseFlowingFluid.Properties(ACID_TYPE, ACID, ACID_FLOWING).block(ACID_BLOCK).bucket(ACID_BUCKET).slopeFindDistance(4)
+				.levelDecreasePerBlock(1);
 	}
 
-	public void registerItems(RegistryEvent.Register<Item> event) {
-		if(BLOCK_FLUID_ACID!=null) {
-			ItemBlock ib = new ItemBlock(BLOCK_FLUID_ACID);
-			ib.setRegistryName(BLOCK_FLUID_ACID.getRegistryName());
-			event.getRegistry().register(ib);
-		}
-		if(BLOCK_FLUID_MILK!=null) {
-			ItemBlock ib = new ItemBlock(BLOCK_FLUID_MILK);
-			ib.setRegistryName(BLOCK_FLUID_MILK.getRegistryName());
-			event.getRegistry().register(ib);
-		}
-	}
-	
-	public void registerBlocks(RegistryEvent.Register<Block> event) {
-		if(BLOCK_FLUID_ACID!=null) {
-			event.getRegistry().register(BLOCK_FLUID_ACID);
-			FluidRegistry.addBucketForFluid(ACID);
-		}
-		if(BLOCK_FLUID_MILK!=null) {
-			event.getRegistry().register(BLOCK_FLUID_MILK);
-			FluidRegistry.addBucketForFluid(MILK);
-		}
-	}
-	
-	@SideOnly(Side.CLIENT)
-	public static void initModels() {
-		if(BLOCK_FLUID_ACID!=null) {
-			Techguns.proxy.registerFluidModelsForFluidBlock(BLOCK_FLUID_ACID);
-		}
-		if(BLOCK_FLUID_MILK!=null) {
-			Techguns.proxy.registerFluidModelsForFluidBlock(BLOCK_FLUID_MILK);
-		}
+	/** called from the mod constructor, before registration */
+	public static void init(net.neoforged.bus.api.IEventBus modBus) {
+		NeoForgeMod.enableMilkFluid();
+		FLUID_TYPES.register(modBus);
+		FLUIDS.register(modBus);
 	}
 
-	@Override
-	public void init(FMLInitializationEvent event) {
+	/** acid hurts living things swimming in it (1.12 BlockFluidAcid) */
+	public static class AcidBlock extends LiquidBlock {
+		public AcidBlock(FlowingFluid fluid, Properties props) {
+			super(fluid, props);
+		}
 
-	}
-
-	//@Override
-	//public void postInit(FMLPostInitializationEvent event) {
-	public static void RecipeInit() {
-		//MILK = FluidRegistry.getFluid("milk");
-		
-		/*	if (MILK==null){
-				MILK = new Fluid("milk").setGaseous(false).setDensity(1050).setViscosity(1050).setUnlocalizedName("milk");
-				addedMilk=true;
-				FluidRegistry.registerFluid(MILK);
-				FluidContainerRegistry.registerFluidContainer(FluidRegistry.getFluidStack("milk", FluidContainerRegistry.BUCKET_VOLUME), new ItemStack(Items.milk_bucket), new ItemStack(Items.bucket));
-			}	*/
-			
-			//OIL = FluidRegistry.getFluid("oil");
-
-			for (String fluidName: TGConfig.fluidListFuel) {
-				Fluid f = FluidRegistry.getFluid(fluidName);
-				if(f!=null) {
-					fuels.add(f);
-				}
+		@Override
+		protected void entityInside(BlockState state, Level level, BlockPos pos, Entity ent) {
+			super.entityInside(state, level, pos, ent);
+			if (!level.isClientSide && ent instanceof LivingEntity && GenericProjectile.BULLET_TARGETS.test(ent)) {
+				TGDamageSource acid = new TGDamageSource(level, TGDamageTypes.POISON, null, null, DamageType.POISON, DeathType.BIO);
+				acid.goreChance = 1.0f;
+				acid.ignoreHurtresistTime = false;
+				acid.knockbackMultiplier = 0.0f;
+				ent.hurt(acid, 2.0f);
 			}
-
-			for (String fluidName: TGConfig.fluidListOil) {
-				Fluid f = FluidRegistry.getFluid(fluidName);
-				if (f != null) {
-					oils.add(f);
-				}
-			}
-			
-			for (String fluidName: TGConfig.fluidListOilWorldspawn) {
-				Fluid f = FluidRegistry.getFluid(fluidName);
-				if (f != null) {
-					worldspawn_oils.add(f);
-					if(f.getBlock()!=null && OIL_WORLDSPAWN==null){
-						OIL_WORLDSPAWN=f;
-					}
-				}
-			}
-
-			LIQUID_REDSTONE = FluidRegistry.getFluid("redstone");
-			if (LIQUID_REDSTONE==null){
-		//		System.out.println("No Liquid Redstone, fallback to lava");
-				LIQUID_REDSTONE = LAVA;
-			}
-			
-			LIQUID_COAL = FluidRegistry.getFluid("coal");
-			if (LIQUID_COAL==null){
-		//		System.out.println("No Liquid coal, fallback to oil/water");
-
-				LIQUID_COAL = WATER;
-				
-			}
-			
-			LIQUID_ENDER = FluidRegistry.getFluid("ender");
-			if (LIQUID_ENDER==null){
-//				System.out.println("No Liquid ender, fallback to lava");
-				LIQUID_ENDER = LAVA;
-			}
-			
-			BIOFUEL = FluidRegistry.getFluid("biofuel");
-			if (BIOFUEL==null){
-		//		System.out.println("No Biofuel, fallback to lava");
-				BIOFUEL = LAVA;
-			}
-	}
-
-	@Override
-	public void postInit(FMLPostInitializationEvent event) {
-		
+		}
 	}
 }

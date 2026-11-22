@@ -1,26 +1,30 @@
 package techguns.client.particle;
 
+
+import java.util.ArrayList;
+import techguns.client.particle.TGParticleSystemType.DirResult;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import java.util.Iterator;
 import java.util.List;
 
-import net.minecraft.client.particle.Particle;
-import net.minecraft.client.renderer.BufferBuilder;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
-import techguns.client.ClientProxy;
-import techguns.client.particle.TGParticleSystemType.DirResult;
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import techguns.client.render.TGRenderHelper;
+import techguns.client.render.TGRenderHelper.RenderType;
 import techguns.util.EntityCondition;
 import techguns.util.MathUtil;
-
 /**
  * A particle system which spawns particles
  */
-@SideOnly(Side.CLIENT)
-public class TGParticleSystem extends Particle implements ITGParticle {
+public class TGParticleSystem extends TGParticleBase implements ITGParticle {
 	
 	public TGParticleSystemType type;
 	
@@ -57,12 +61,12 @@ public class TGParticleSystem extends Particle implements ITGParticle {
 	
 	Entity entity; //parent entity (if attached to an entity)
 	public boolean attachToHead = false;
-	public Vec3d entityOffset = null;
+	public Vec3 entityOffset = null;
 	TGParticle parent; //parent particle (if attached to a particle)
 	
 	protected boolean itemAttached=false;
 	
-	public TGParticleSystem(World worldIn, TGParticleSystemType type, double xCoordIn, double yCoordIn, double zCoordIn, double xSpeedIn, double ySpeedIn, double zSpeedIn) {
+	public TGParticleSystem(Level worldIn, TGParticleSystemType type, double xCoordIn, double yCoordIn, double zCoordIn, double xSpeedIn, double ySpeedIn, double zSpeedIn) {
 		//super(worldIn, xCoordIn, yCoordIn, zCoordIn, 0.0D, 0.0D, 0.0D);
 		super(worldIn, xCoordIn + type.offset.x, yCoordIn+type.offset.y, zCoordIn+type.offset.z);
 		this.motionX = xSpeedIn;
@@ -73,20 +77,17 @@ public class TGParticleSystem extends Particle implements ITGParticle {
 	}
 	
 	public TGParticleSystem(Entity entity, TGParticleSystemType type) {
-		this(entity.world, type, entity.posX,entity.posY,entity.posZ,0,0,0);
+		this(entity.level(), type, entity.getX(),entity.getY(),entity.getZ(),0,0,0);
 		this.entity = entity;
 	}
 		
 
-	public TGParticleSystem(World worldIn,TGParticle part, TGParticleSystemType type) {
+	public TGParticleSystem(Level worldIn,TGParticle part, TGParticleSystemType type) {
 		this(worldIn, type, part.posX(), part.posY(), part.posZ(),0,0,0);
 		this.parent = part;
 		//System.out.println("Spawn attached system : " + type.name);
 	}
 
-	public void renderParticle(BufferBuilder buffer, Entity entityIn, float partialTicks, float rotationX, float rotationZ, float rotationYZ, float rotationXY, float rotationXZ) {
-		//This is a ParticleSystem which spawns the actual particles. Don't render anything
-	}
 	
 	protected void init() {
 		this.systemLifetime = MathUtil.randomInt(this.rand, type.systemLifetimeMin, type.systemLifetimeMax);
@@ -119,38 +120,38 @@ public class TGParticleSystem extends Particle implements ITGParticle {
 	    		return;
 	    	}			
 			
-			if (this.attachToHead && entity instanceof EntityLivingBase) {
-				EntityLivingBase elb = (EntityLivingBase) entity;
+			if (this.attachToHead && entity instanceof LivingEntity) {
+				LivingEntity elb = (LivingEntity) entity;
 
-				this.rotationPitch=elb.rotationPitch;
-				this.rotationYaw=elb.rotationYawHead;
+				this.rotationPitch=elb.getXRot();
+				this.rotationYaw=elb.getYHeadRot();
 							
-				Vec3d offset = type.offset;
+				Vec3 offset = type.offset;
 				if (this.entityOffset != null) offset = offset.add(this.entityOffset);
 				
-				offset = offset.rotatePitch((float) (-elb.rotationPitch*MathUtil.D2R));
-				offset = offset.rotateYaw((float) ((-elb.rotationYawHead)*MathUtil.D2R));		
+				offset = offset.xRot((float) (-elb.getXRot()*MathUtil.D2R));
+				offset = offset.yRot((float) ((-elb.getYHeadRot())*MathUtil.D2R));		
 				
-				this.posX = elb.prevPosX + offset.x;
-				this.posY = elb.prevPosY + elb.getEyeHeight() + offset.y;
-				this.posZ = elb.prevPosZ + offset.z;
+				this.posX = elb.xo + offset.x;
+				this.posY = elb.yo + elb.getEyeHeight() + offset.y;
+				this.posZ = elb.zo + offset.z;
 			}else {
-				this.rotationPitch=entity.rotationPitch;
-				this.rotationYaw=entity.rotationYaw;
+				this.rotationPitch=entity.getXRot();
+				this.rotationYaw=entity.getYRot();
 						
-				Vec3d offset = type.offset;
+				Vec3 offset = type.offset;
 				if (this.entityOffset != null) offset = offset.add(this.entityOffset);
 				
-				offset = offset.rotatePitch((float) (-entity.rotationPitch*MathUtil.D2R));
-				offset = offset.rotateYaw((float) ((-entity.rotationYaw)*MathUtil.D2R));		
+				offset = offset.xRot((float) (-entity.getXRot()*MathUtil.D2R));
+				offset = offset.yRot((float) ((-entity.getYRot())*MathUtil.D2R));		
 				
-				this.posX = entity.prevPosX + offset.x;
-				this.posY = entity.prevPosY + offset.y;
-				this.posZ = entity.prevPosZ + offset.z;
+				this.posX = entity.xo + offset.x;
+				this.posY = entity.yo + offset.y;
+				this.posZ = entity.zo + offset.z;
 			}
-			this.motionX = entity.motionX;
-			this.motionY = entity.motionY;
-			this.motionZ = entity.motionZ;
+			this.motionX = entity.getDeltaMovement().x;
+			this.motionY = entity.getDeltaMovement().y;
+			this.motionZ = entity.getDeltaMovement().z;
 			
 		} else if (this.parent != null) {
 			this.posX=parent.posX() + type.offset.x;
@@ -176,10 +177,10 @@ public class TGParticleSystem extends Particle implements ITGParticle {
 			for (int i = 0; i < count; i++) {
 				//Get position and motion data
 				DirResult dir = this.type.new DirResult();
-				Vec3d position = type.volumeType.getPosition(this, dir, i, count);
+				Vec3 position = type.volumeType.getPosition(this, dir, i, count);
 				//System.out.printf("Dir: %.3f,  %.3f,  %.3f\n", dir[0], dir[1], dir[2]);
 				//position = position.addVector(type.offset.x, type.offset.y, type.offset.z);
-				Vec3d motion = type.velocityType.getVelocity(this, dir.values);
+				Vec3 motion = type.velocityType.getVelocity(this, dir.values);
 				
 				motion = motion.scale(this.scale);
 				position = position.scale(this.scale);
@@ -190,11 +191,11 @@ public class TGParticleSystem extends Particle implements ITGParticle {
 				
 				//System.out.println(String.format("Entity pitch : %.3f,  yaw : %.3f", this.rotationPitch, this.rotationYaw));				
 				
-				motion = motion.rotatePitch((float) (-this.rotationPitch*MathUtil.D2R));
-				motion = motion.rotateYaw((float) ((-this.rotationYaw)*MathUtil.D2R));
+				motion = motion.xRot((float) (-this.rotationPitch*MathUtil.D2R));
+				motion = motion.yRot((float) ((-this.rotationYaw)*MathUtil.D2R));
 				if (type.volumeType != TGParticleSystemType.VOL_TRAIL) {
-					position = position.rotatePitch((float) (-this.rotationPitch*MathUtil.D2R));
-					position = position.rotateYaw((float) ((-this.rotationYaw)*MathUtil.D2R));		
+					position = position.xRot((float) (-this.rotationPitch*MathUtil.D2R));
+					position = position.yRot((float) ((-this.rotationYaw)*MathUtil.D2R));		
 				}
 				//System.out.println("Motion: ("+motion.x+ ", "+motion.y + ", "+ motion.z+")");
 				//System.out.println("Position: ("+position.x+ ", "+position.y + ", "+ position.z+")");
@@ -233,7 +234,7 @@ public class TGParticleSystem extends Particle implements ITGParticle {
 		}
 		
 		if (this.entity!=null){
-			if (this.entity.isDead){
+			if (this.entity.isRemoved()){
 				this.setExpired();
 			} else if ( this.systemLifetime>0 && ticksExisted>= this.systemLifetime){
 				this.setExpired();
@@ -254,7 +255,7 @@ public class TGParticleSystem extends Particle implements ITGParticle {
 	}
 
 	protected void addEffect(ITGParticle s) {
-		ClientProxy.get().particleManager.addEffect(s);
+		TGParticleManager.INSTANCE.addEffect(s);
 	}
 	
 	/**
@@ -291,8 +292,8 @@ public class TGParticleSystem extends Particle implements ITGParticle {
 	}
 
 	@Override
-	public Vec3d getPos() {
-		return new Vec3d(this.posX, this.posY, this.posZ);
+	public Vec3 getPos() {
+		return new Vec3(this.posX, this.posY, this.posZ);
 	}
 
 	@Override
@@ -306,16 +307,15 @@ public class TGParticleSystem extends Particle implements ITGParticle {
 	}
 
 	@Override
-	public void doRender(BufferBuilder buffer, Entity entityIn, float partialTickTime, float rotX, float rotZ,
+	public void doRender(TGParticleBuffers buffers, float partialTickTime, float rotX, float rotZ,
 			float rotYZ, float rotXY, float rotXZ) {
-		this.renderParticle(buffer, entityIn, partialTickTime, rotX, rotZ, rotYZ, rotXY, rotXZ);
+		// a particle system only spawns particles, it renders nothing itself
 	}
 
-	@Override
-	public AxisAlignedBB getRenderBoundingBox(float partialTickTime, Entity viewEntity) {
+		public AABB getRenderBoundingBox(float partialTickTime, Entity viewEntity) {
 		//DOESN'T MATTER, SYSTEM DOES NOT RENDER STUFF ANYWAY
 	    float s = 0.5f; 
-		return new AxisAlignedBB(this.posX-s, this.posY-s, this.posZ-s, this.posX+s, this.posY+s, this.posZ+s);
+		return new AABB(this.posX-s, this.posY-s, this.posZ-s, this.posX+s, this.posY+s, this.posZ+s);
 	}
 
 	@Override
@@ -338,9 +338,8 @@ public class TGParticleSystem extends Particle implements ITGParticle {
 	}
 	
 //ACTUALLY WE DON'T NEED THIS	
-//	@SideOnly(Side.CLIENT)
-//	public static class Factory implements IParticleFactory {
-//		public Particle createParticle(int particleID, World worldIn, double xCoordIn, double yCoordIn, double zCoordIn, double xSpeedIn, double ySpeedIn, double zSpeedIn, int... parameters) {
+//	//	public static class Factory implements IParticleFactory {
+//		public Particle createParticle(int particleID, Level worldIn, double xCoordIn, double yCoordIn, double zCoordIn, double xSpeedIn, double ySpeedIn, double zSpeedIn, int... parameters) {
 //        	if (parameters.length <= 0) return null;
 //        	TGParticleSystemType type = TGParticleList.getType(parameters[0]);
 //			return new TGParticleSystem(worldIn, xCoordIn, yCoordIn, zCoordIn, xSpeedIn, ySpeedIn, zSpeedIn, type);

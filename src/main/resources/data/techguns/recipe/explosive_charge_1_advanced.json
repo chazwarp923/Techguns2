@@ -1,0 +1,30 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:c4_charge"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "rtr",
+    "tct",
+    "rtr"
+  ],
+  "key": {
+    "r": {
+      "tag": "c:plates/plastic"
+    },
+    "c": {
+      "tag": "c:circuits/basic"
+    },
+    "t": {
+      "item": "techguns:tgx"
+    }
+  },
+  "result": {
+    "id": "techguns:c4_charge",
+    "count": 4
+  }
+}

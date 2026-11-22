@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "iii",
+    "ici",
+    "iii"
+  ],
+  "key": {
+    "c": {
+      "item": "minecraft:coal"
+    },
+    "i": {
+      "tag": "c:nuggets/iron"
+    }
+  },
+  "result": {
+    "id": "techguns:gasmaskfilter"
+  }
+}

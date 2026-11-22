@@ -1,0 +1,14 @@
+{
+  "type": "techguns:metal_press",
+  "input1": {
+    "tag": "c:ingots/bronze"
+  },
+  "input2": {
+    "tag": "c:ingots/bronze"
+  },
+  "allow_swap": true,
+  "result": {
+    "id": "techguns:platebronze",
+    "count": 2
+  }
+}

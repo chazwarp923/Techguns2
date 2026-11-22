@@ -2,81 +2,52 @@ package techguns.client.particle;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.util.EnumHand;
-import net.minecraft.world.World;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
 
 public class TGParticleListType extends TGFXType {
-	ArrayList<ParticleSystemEntry> particleSystems = new ArrayList<ParticleSystemEntry>();
 
-	
-	
+	ArrayList<String> particleSystems = new ArrayList<>();
+
 	public TGParticleListType() {
 		isList = true;
 	}
 
 	public void addParticleSystem(String particleSystem) {
-		particleSystems.add(new ParticleSystemEntry(particleSystem));
-	}
-	
-	class ParticleSystemEntry {
-		//ParticleSystemType type; //Actually is just a string
-		String particleSystem;
-		//TODO: Delay, Offset, Scale, etc.
-
-		public ParticleSystemEntry(String particleSystem) {
-			super();
-			this.particleSystem = particleSystem;
-		}
+		particleSystems.add(particleSystem);
 	}
 
-	
-	@Override
-	public List<TGParticleSystem> createParticleSystems(World world, double posX, double posY, double posZ, double motionX, double motionY, double motionZ) {
-		ArrayList<TGParticleSystem> list = new ArrayList<TGParticleSystem>();
-		for (ParticleSystemEntry system : particleSystems) {		
-			if (TGFX.FXList.containsKey(system.particleSystem)) {
-				TGFXType fxtype = TGFX.FXList.get(system.particleSystem);
-				list.addAll(fxtype.createParticleSystems(world, posX, posY, posZ, motionX, motionY, motionZ));
+	private List<TGParticleSystem> collect(Function<TGFXType, List<TGParticleSystem>> f) {
+		ArrayList<TGParticleSystem> list = new ArrayList<>();
+		for (String system : particleSystems) {
+			TGFXType fxtype = TGFX.FXList.get(system);
+			if (fxtype != null) {
+				list.addAll(f.apply(fxtype));
 			}
 		}
 		return list;
+	}
+
+	@Override
+	public List<TGParticleSystem> createParticleSystems(Level world, double posX, double posY, double posZ, double motionX, double motionY, double motionZ) {
+		return collect(t -> t.createParticleSystems(world, posX, posY, posZ, motionX, motionY, motionZ));
 	}
 
 	@Override
 	public List<TGParticleSystem> createParticleSystemsOnEntity(Entity ent) {
-		ArrayList<TGParticleSystem> list = new ArrayList<TGParticleSystem>();
-		for (ParticleSystemEntry system : particleSystems) {		
-			if (TGFX.FXList.containsKey(system.particleSystem)) {
-				TGFXType fxtype = TGFX.FXList.get(system.particleSystem);
-				list.addAll(fxtype.createParticleSystemsOnEntity(ent));
-			}
-		}
-		return list;
-	}
-	
-	@Override
-	public List<TGParticleSystem> createParticleSystemsOnEntityItemAttached(Entity ent, EnumHand hand) {
-		ArrayList<TGParticleSystem> list = new ArrayList<TGParticleSystem>();
-		for (ParticleSystemEntry system : particleSystems) {		
-			if (TGFX.FXList.containsKey(system.particleSystem)) {
-				TGFXType fxtype = TGFX.FXList.get(system.particleSystem);
-				list.addAll(fxtype.createParticleSystemsOnEntityItemAttached(ent, hand));
-			}
-		}
-		return list;
+		return collect(t -> t.createParticleSystemsOnEntity(ent));
 	}
 
 	@Override
-	public List<TGParticleSystem> createParticleSystemsOnParticle(World worldIn, TGParticle ent) {
-		ArrayList<TGParticleSystem> list = new ArrayList<TGParticleSystem>();
-		for (ParticleSystemEntry system : particleSystems) {		
-			if (TGFX.FXList.containsKey(system.particleSystem)) {
-				TGFXType fxtype = TGFX.FXList.get(system.particleSystem);
-				list.addAll(fxtype.createParticleSystemsOnParticle(worldIn, ent));
-			}
-		}
-		return list;
+	public List<TGParticleSystem> createParticleSystemsOnEntityItemAttached(Entity ent, InteractionHand hand) {
+		return collect(t -> t.createParticleSystemsOnEntityItemAttached(ent, hand));
+	}
+
+	@Override
+	public List<TGParticleSystem> createParticleSystemsOnParticle(Level worldIn, TGParticle ent) {
+		return collect(t -> t.createParticleSystemsOnParticle(worldIn, ent));
 	}
 }

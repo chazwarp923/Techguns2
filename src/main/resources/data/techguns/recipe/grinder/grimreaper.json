@@ -1,0 +1,18 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:grimreaper"
+  },
+  "results": [
+    {
+      "id": "techguns:ingotobsidiansteel",
+      "count": 32
+    },
+    {
+      "id": "techguns:circuitboardelite"
+    },
+    {
+      "id": "techguns:carbonfibers"
+    }
+  ]
+}

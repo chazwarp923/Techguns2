@@ -1,0 +1,17 @@
+{
+  "type": "techguns:chem_lab",
+  "input1": {
+    "item": "techguns:biomass"
+  },
+  "bottle": {
+    "item": "techguns:biotankempty"
+  },
+  "fluid_input": {
+    "tag": "minecraft:water",
+    "amount": 500
+  },
+  "result": {
+    "id": "techguns:biotank"
+  },
+  "power_per_tick": 1
+}

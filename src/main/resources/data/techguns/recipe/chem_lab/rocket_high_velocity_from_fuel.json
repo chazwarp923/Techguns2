@@ -1,0 +1,14 @@
+{
+  "type": "techguns:chem_lab",
+  "input1": {
+    "item": "techguns:rocket"
+  },
+  "fluid_input": {
+    "tag": "techguns:fuel",
+    "amount": 125
+  },
+  "result": {
+    "id": "techguns:rocket_high_velocity"
+  },
+  "power_per_tick": 5
+}

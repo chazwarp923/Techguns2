@@ -1,24 +1,34 @@
 package techguns.client.particle;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import net.minecraft.resources.ResourceLocation;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import techguns.client.render.TGRenderHelper;
 import techguns.client.render.TGRenderHelper.RenderType;
+import techguns.util.EntityCondition;
 import techguns.util.MathUtil;
-
 /**
  * the parameters for a particle system and its particles are specified in its type
  */
 public class TGParticleSystemType extends TGFXType{
+	/** shared client-thread random */
+	public static final RandomSource RAND = RandomSource.create();
+
 	TGRenderHelper.RenderType renderType = RenderType.SOLID; //Type of Transparency
-	ResourceLocation texture = new ResourceLocation("techguns:textures/fx/fireball.png"); //Particle Texture
+	ResourceLocation texture = ResourceLocation.parse("techguns:textures/fx/fireball.png"); //Particle Texture
 	int rows = 1; //number of rows in the animated texture (1 for no animation)
 	int columns = 1; //number of columns in the animated texture (1 for no animation)
 	int frames = 1; //number of animated frames (1 for no animation)
@@ -77,7 +87,7 @@ public class TGParticleSystemType extends TGFXType{
 	float systemVelocityFactorMin = 0.0f; //How much of the system's velocity is added to the particle's velocity
 	float systemVelocityFactorMax = 0.0f;
 	
-	Vec3d offset = new Vec3d(0.0, 0.0, 0.0); //TODO! Particles are spawned at this offset
+	Vec3 offset = new Vec3(0.0, 0.0, 0.0); //TODO! Particles are spawned at this offset
 	
 	IVolumeType volumeType = VOL_POINT;
 	float[] volumeData = new float[3];
@@ -127,30 +137,30 @@ public class TGParticleSystemType extends TGFXType{
 	
 	public static IVelocityType VEL_NONE = new IVelocityType(){
 		@Override
-		public Vec3d getVelocity(TGParticleSystem sys, float... params) {
-			return new Vec3d(0,0,0);
+		public Vec3 getVelocity(TGParticleSystem sys, float... params) {
+			return new Vec3(0,0,0);
 		}		
 	};
 	
 	public static IVelocityType VEL_ORTHO = new IVelocityType(){
 		@Override
-		public Vec3d getVelocity(TGParticleSystem sys, float... params) {
-			Random rand = new Random();
+		public Vec3 getVelocity(TGParticleSystem sys, float... params) {
+			RandomSource rand = TGParticleSystemType.RAND;
 			if (sys.type.velocityDataMin.length >= 3) {
 				float x = MathUtil.randomFloat(rand, sys.type.velocityDataMin[0], sys.type.velocityDataMax[0]);
 				float y = MathUtil.randomFloat(rand, sys.type.velocityDataMin[1], sys.type.velocityDataMax[1]);
 				float z = MathUtil.randomFloat(rand, sys.type.velocityDataMin[2], sys.type.velocityDataMax[2]);
 				
-				return new Vec3d(x,y,z);				
+				return new Vec3(x,y,z);				
 			}
-			return new Vec3d(0,0,0);
+			return new Vec3(0,0,0);
 		}		
 	};
 	
 	public static IVelocityType VEL_OUTWARD = new IVelocityType(){
 		@Override
-		public Vec3d getVelocity(TGParticleSystem sys, float... params) {
-			Random rand = new Random();
+		public Vec3 getVelocity(TGParticleSystem sys, float... params) {
+			RandomSource rand = TGParticleSystemType.RAND;
 			if (sys.type.velocityDataMin.length >= 2) {
 				float r = MathUtil.randomFloat(rand, sys.type.velocityDataMin[0], sys.type.velocityDataMax[0]);
 				float y = MathUtil.randomFloat(rand, sys.type.velocityDataMin[1], sys.type.velocityDataMax[1]);
@@ -158,67 +168,67 @@ public class TGParticleSystemType extends TGFXType{
 				if (params.length == 1 ){ //Cylinder (yaw angle)
 					double angle = -params[0];
 					//System.out.printf("Outward, angle=%.3f\n",params[0]);
-					return new Vec3d( r*Math.cos(angle),  y, r*Math.sin(angle));
+					return new Vec3( r*Math.cos(angle),  y, r*Math.sin(angle));
 				}else if (params.length == 3) { //Sphere or Hemisphere
-					return new Vec3d( params[0]*r, params[1]*r, params[2]*r);
+					return new Vec3( params[0]*r, params[1]*r, params[2]*r);
 				}else  { //e.g. POINT
 					double angle = rand.nextDouble()*2.0*Math.PI;
-					return new Vec3d( r*Math.cos(angle), y, r*Math.sin(angle));
+					return new Vec3( r*Math.cos(angle), y, r*Math.sin(angle));
 				}
 			}
-			return new Vec3d(0,0,0);
+			return new Vec3(0,0,0);
 		}		
 	};
 	
 	public static IVelocityType VEL_SPHERICAL = new IVelocityType(){
 		@Override
-		public Vec3d getVelocity(TGParticleSystem sys, float... params) {
-			Random rand = new Random();
+		public Vec3 getVelocity(TGParticleSystem sys, float... params) {
+			RandomSource rand = TGParticleSystemType.RAND;
 			if (sys.type.velocityDataMin.length >= 1) {
 				float r = MathUtil.randomFloat(rand, sys.type.velocityDataMin[0], sys.type.velocityDataMax[0]);
 
 //				if (dir.x != 0 || dir.y != 0 || dir.z != 0) {
-//					return new Vec3d(dir.x*r,  dir.y*r, dir.z*r);
+//					return new Vec3(dir.x*r,  dir.y*r, dir.z*r);
 //				}else {
 					double angle = rand.nextDouble()*2.0*Math.PI;
 					double y = 1.0-(rand.nextDouble()*2.0);
 					double a = Math.sqrt(1.0-Math.pow(y, 2));
-					return new Vec3d(r*a*Math.cos(angle), r*y, r*a*Math.sin(angle));
+					return new Vec3(r*a*Math.cos(angle), r*y, r*a*Math.sin(angle));
 	//			}
 		
 			}
-			return new Vec3d(0,0,0);
+			return new Vec3(0,0,0);
 		}		
 	};
 	
 	public static IVelocityType VEL_HEMISPHERICAL = new IVelocityType(){
 		@Override
-		public Vec3d getVelocity(TGParticleSystem sys, float...params) {
-			Random rand = new Random();
+		public Vec3 getVelocity(TGParticleSystem sys, float...params) {
+			RandomSource rand = TGParticleSystemType.RAND;
 			if (sys.type.velocityDataMin.length >= 1) {
 				float r = MathUtil.randomFloat(rand, sys.type.velocityDataMin[0], sys.type.velocityDataMax[0]);
 
 //				if (dir.x != 0 || dir.y != 0 || dir.z != 0) {
 //					
-//					return new Vec3d(dir.x*r, dir.y*r, dir.z*r);
+//					return new Vec3(dir.x*r, dir.y*r, dir.z*r);
 //				}else {
 					double angle = rand.nextDouble()*2.0*Math.PI;
 					double y = rand.nextDouble();
 					double a = Math.sqrt(1.0-Math.pow(y, 2));
 					
-					return new Vec3d(r*a*Math.cos(angle), r*a*Math.sin(angle), r*y);
+					return new Vec3(r*a*Math.cos(angle), r*a*Math.sin(angle), r*y);
 //				}
 		
 			}
-			return new Vec3d(0,0,0);
+			return new Vec3(0,0,0);
 		}		
 	};
 	
 	public static IVolumeType VOL_POINT = new IVolumeType() {
 
 		@Override
-		public Vec3d getPosition(TGParticleSystem sys, DirResult dir, int i, int count) {
-			return new Vec3d(0,0,0);
+		public Vec3 getPosition(TGParticleSystem sys, DirResult dir, int i, int count) {
+			return new Vec3(0,0,0);
 		}
 		
 	};
@@ -226,8 +236,8 @@ public class TGParticleSystemType extends TGFXType{
 	
 	public static IVolumeType VOL_CYLINDER = new IVolumeType() {
 		@Override
-		public Vec3d getPosition(TGParticleSystem sys, DirResult dir, int i, int count) {
-			Random rand = new Random();
+		public Vec3 getPosition(TGParticleSystem sys, DirResult dir, int i, int count) {
+			RandomSource rand = TGParticleSystemType.RAND;
 			if (sys.type.volumeData.length >= 2) {
 				float r;
 				float y;
@@ -239,24 +249,24 @@ public class TGParticleSystemType extends TGFXType{
 				}
 				y = rand.nextFloat()*sys.type.volumeData[1];
 				
-				Vec3d direction = new Vec3d(1.0, 0.0, 0.0).rotateYaw(angle);
+				Vec3 direction = new Vec3(1.0, 0.0, 0.0).yRot(angle);
 				//System.out.printf("angle=%.3f,  direction = %.3f / %.3f / %.3f\n", angle, direction.x, direction.y, direction.z);
 				//dir.setValues((float)direction.x, (float)direction.y, (float)direction.z);
 				dir.setValues(angle);
 				
-				Vec3d position = new Vec3d(direction.x*r, y, direction.z*r);
+				Vec3 position = new Vec3(direction.x*r, y, direction.z*r);
 				return position;
 			}else {
 				//fail;
-				return new Vec3d(0,0,0);
+				return new Vec3(0,0,0);
 			}	
 		}		
 	};
 	
 	public static IVolumeType VOL_CYLINDER2 = new IVolumeType() { //Tilted cylinder
 		@Override
-		public Vec3d getPosition(TGParticleSystem sys, DirResult dir, int i, int count) {
-			Random rand = new Random();
+		public Vec3 getPosition(TGParticleSystem sys, DirResult dir, int i, int count) {
+			RandomSource rand = TGParticleSystemType.RAND;
 			if (sys.type.volumeData.length >= 2) {
 				float r;
 				float z;
@@ -268,20 +278,20 @@ public class TGParticleSystemType extends TGFXType{
 				}
 				z = rand.nextFloat()*sys.type.volumeData[1];
 				
-				Vec3d direction = new Vec3d(0.0, 1.0, 0.0).rotatePitch(angle); //.rotateYaw((float)(Math.PI*0.5d));
+				Vec3 direction = new Vec3(0.0, 1.0, 0.0).xRot(angle); //.yRot((float)(Math.PI*0.5d));
 				dir.setValues((float)direction.x, (float)direction.y, (float)direction.z);
-				return new Vec3d(direction.x*r, direction.y*r, z);
+				return new Vec3(direction.x*r, direction.y*r, z);
 			}else {
 				//fail;
-				return new Vec3d(0,0,0);
+				return new Vec3(0,0,0);
 			}	
 		}		
 	};
 	
 	public static IVolumeType VOL_SPHERE = new IVolumeType() {
 		@Override
-		public Vec3d getPosition(TGParticleSystem sys, DirResult dir, int i, int count) {
-			Random rand = new Random();
+		public Vec3 getPosition(TGParticleSystem sys, DirResult dir, int i, int count) {
+			RandomSource rand = TGParticleSystemType.RAND;
 			if (sys.type.volumeData.length >= 1) {
 				float r;
 				double angle = rand.nextDouble()*2.0*Math.PI;
@@ -294,21 +304,21 @@ public class TGParticleSystemType extends TGFXType{
 					r = MathUtil.randomFloat(rand, 0.0f, sys.type.volumeData[0]);
 				}
 
-				Vec3d direction = new Vec3d(a*Math.cos(angle),  y, a*Math.sin(angle));
+				Vec3 direction = new Vec3(a*Math.cos(angle),  y, a*Math.sin(angle));
 				dir.setValues((float)direction.x, (float)direction.y, (float)direction.z);
 				
-				return new Vec3d(direction.x*r, direction.y*r, direction.z*r);
+				return new Vec3(direction.x*r, direction.y*r, direction.z*r);
 			}else {
 				//fail;
-				return new Vec3d(0,0,0);
+				return new Vec3(0,0,0);
 			}	
 		}		
 	};
 	
 	public static IVolumeType VOL_HEMISPHERE = new IVolumeType() {
 		@Override
-		public Vec3d getPosition(TGParticleSystem sys, DirResult dir, int i, int count) {
-			Random rand = new Random();
+		public Vec3 getPosition(TGParticleSystem sys, DirResult dir, int i, int count) {
+			RandomSource rand = TGParticleSystemType.RAND;
 			if (sys.type.volumeData.length >= 1) {
 				float r;
 				double angle = rand.nextDouble()*2.0*Math.PI;
@@ -321,32 +331,32 @@ public class TGParticleSystemType extends TGFXType{
 					r = MathUtil.randomFloat(rand, 0.0f, sys.type.volumeData[0]);
 				}
 
-				Vec3d direction = new Vec3d(a*Math.cos(angle),  y, a*Math.sin(angle));
+				Vec3 direction = new Vec3(a*Math.cos(angle),  y, a*Math.sin(angle));
 				dir.setValues((float)direction.x, (float)direction.y, (float)direction.z);
 				
-				return new Vec3d(direction.x*r, direction.y*r, direction.z*r);
+				return new Vec3(direction.x*r, direction.y*r, direction.z*r);
 			}else {
 				//fail;
-				return new Vec3d(0,0,0);
+				return new Vec3(0,0,0);
 			}	
 		}		
 	};
 	
 	public static IVolumeType VOL_TRAIL = new IVolumeType() {
 		@Override
-		public Vec3d getPosition(TGParticleSystem sys, DirResult dir, int i, int count) {
-			Random rand = new Random();
+		public Vec3 getPosition(TGParticleSystem sys, DirResult dir, int i, int count) {
+			RandomSource rand = TGParticleSystemType.RAND;
 			if (sys.type.volumeData.length >= 1) {
 				
 				float len;
 				
 				Entity ent = sys.entity;
 				if (ent==null){
-					return new Vec3d(sys.posX(), sys.posY(),sys.posZ());
+					return new Vec3(sys.posX(), sys.posY(),sys.posZ());
 				} else {
 					
-					Vec3d motion = new Vec3d(ent.motionX, ent.motionY, ent.motionZ).normalize();
-					//Vec3d motion = new Vec3d(sys.motionX(), sys.motionY(), sys.motionZ()).normalize();
+					Vec3 motion = ent.getDeltaMovement().normalize();
+					//Vec3 motion = new Vec3(sys.motionX(), sys.motionY(), sys.motionZ()).normalize();
 					
 					len = sys.type.volumeData[0];
 					float t = (i*1.0f) / (count*1.0f) * len;
@@ -354,22 +364,45 @@ public class TGParticleSystemType extends TGFXType{
 					
 					dir.setValues((float)motion.x, (float)motion.y, (float)motion.z);
 					
-					return new Vec3d(-motion.x*t, -motion.y*t, -motion.z*t);
+					return new Vec3(-motion.x*t, -motion.y*t, -motion.z*t);
 				}
 
 			}else {
 				//fail;
-				return new Vec3d(0,0,0);
+				return new Vec3(0,0,0);
 			}	
 		}		
 	};
 	
 	public interface IVelocityType {		
-		public Vec3d getVelocity(TGParticleSystem sys, float ... params);
+		public Vec3 getVelocity(TGParticleSystem sys, float ... params);
 	}
 	
 	public interface IVolumeType {
-		public Vec3d getPosition(TGParticleSystem sys, DirResult dir, int i, int count);
+		public Vec3 getPosition(TGParticleSystem sys, DirResult dir, int i, int count);
+	}
+
+	/** copy with the first color entry replaced and all sizes scaled (1.12 DeathEffect.GoreData.getExtendedType) */
+	public TGParticleSystemType tinted(int r, int g, int b, float scale) {
+		TGParticleSystemType type = new TGParticleSystemType();
+		type.extend(this);
+		if (!type.colorEntries.isEmpty()) {
+			ColorEntry c = type.colorEntries.get(0);
+			c.r = r / 255.0f;
+			c.g = g / 255.0f;
+			c.b = b / 255.0f;
+		}
+		type.sizeMin *= scale;
+		type.sizeMax *= scale;
+		type.sizeRateMin *= scale;
+		type.sizeRateMax *= scale;
+		type.startSizeRateDampingMin *= scale;
+		type.startSizeRateMin *= scale;
+		type.startSizeRateMax *= scale;
+		for (int i = 0; i < type.volumeData.length; i++) {
+			type.volumeData[i] *= scale;
+		}
+		return type;
 	}
 
 	public void extend(TGParticleSystemType other) {
@@ -425,7 +458,7 @@ public class TGParticleSystemType extends TGFXType{
 			this.volumeData[i] = other.volumeData[i];
 		}
 		this.volumeType = other.volumeType;
-		this.offset = new Vec3d(other.offset.x, other.offset.y, other.offset.z);
+		this.offset = new Vec3(other.offset.x, other.offset.y, other.offset.z);
 		this.particlesMoveWithSystem = other.particlesMoveWithSystem;
 		this.streak = other.streak;
 		this.groundAligned = other.groundAligned;
@@ -436,7 +469,7 @@ public class TGParticleSystemType extends TGFXType{
 
 
 	@Override
-	public List<TGParticleSystem> createParticleSystems(World world, double posX, double posY, double posZ,
+	public List<TGParticleSystem> createParticleSystems(Level world, double posX, double posY, double posZ,
 			double motionX, double motionY, double motionZ) {
 		ArrayList<TGParticleSystem> list = new ArrayList<TGParticleSystem>();
 		list.add(new TGParticleSystem(world, this, posX, posY, posZ, motionX, motionY, motionZ));
@@ -451,14 +484,14 @@ public class TGParticleSystemType extends TGFXType{
 	}
 	
 	@Override
-	public List<TGParticleSystem> createParticleSystemsOnParticle(World worldIn, TGParticle ent) {
+	public List<TGParticleSystem> createParticleSystemsOnParticle(Level worldIn, TGParticle ent) {
 		ArrayList<TGParticleSystem> list = new ArrayList<TGParticleSystem>();
 		list.add(new TGParticleSystem(worldIn, ent,this));
 		return list;
 	}
 	
 	@Override
-	public List<TGParticleSystem> createParticleSystemsOnEntityItemAttached(Entity ent, EnumHand hand) {
+	public List<TGParticleSystem> createParticleSystemsOnEntityItemAttached(Entity ent, InteractionHand hand) {
 		ArrayList<TGParticleSystem> list = new ArrayList<>();
 		list.add(new TGParticleSystemItemAttached(ent, hand, this));
 		return list;

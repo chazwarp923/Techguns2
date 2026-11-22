@@ -1,11 +1,10 @@
 {
   "variants": {
     "type=hole": {
-      "model": "techguns:hole"
+      "model": "techguns:block/hole"
     },
-	"type=soldier_spawn": {
-      "model": "techguns:soldier_spawn",
-	  "y": 0
+    "type=soldier_spawn": {
+      "model": "techguns:block/soldier_spawn"
     }
   }
 }

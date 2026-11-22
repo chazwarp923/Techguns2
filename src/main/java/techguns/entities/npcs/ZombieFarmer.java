@@ -1,107 +1,55 @@
 package techguns.entities.npcs;
 
-import java.util.Random;
-
-import net.minecraft.block.Block;
-import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.init.Items;
-import net.minecraft.init.SoundEvents;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
 import techguns.TGArmors;
 import techguns.TGuns;
-import techguns.Techguns;
 import techguns.items.armors.GenericArmorMultiCamo;
 
+/** 1.12 ZombieFarmer */
 public class ZombieFarmer extends GenericNPCUndead {
 
-	public static final ResourceLocation LOOT = new ResourceLocation(Techguns.MODID, "entities/zombiefarmer");
-	
-	public ZombieFarmer(World world) {
-		super(world);
+	public ZombieFarmer(EntityType<? extends ZombieFarmer> type, Level level) {
+		super(type, level);
 		setTGArmorStats(0f, 0f);
 	}
 
-	@Override
-	protected void applyEntityAttributes() {
-		super.applyEntityAttributes();
-		this.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).setBaseValue(0.20D);
-		this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(18);
-		this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).setBaseValue(3);
-		this.getEntityAttribute(SharedMonsterAttributes.FOLLOW_RANGE).setBaseValue(50.0D);
+	public static AttributeSupplier.Builder createAttributes() {
+		return GenericNPC.createAttributes(0.2D, 18D, 3D, 50D);
 	}
 
 	@Override
 	protected void addRandomArmor(int difficulty) {
-
-		// Armors
-		double chance = 0.5;
-		
-		int camo = GenericArmorMultiCamo.getRandomCamoIndexFor((GenericArmorMultiCamo) TGArmors.t1_miner_Chestplate);
-		
-			this.setItemStackToSlot(EntityEquipmentSlot.CHEST, GenericArmorMultiCamo.getNewWithCamo(
-					TGArmors.t1_miner_Chestplate,camo));
-		if (Math.random() <= chance)
-			this.setItemStackToSlot(EntityEquipmentSlot.LEGS, GenericArmorMultiCamo.getNewWithCamo(
-					TGArmors.t1_miner_Leggings,camo));
-		if (Math.random() <= chance)
-			this.setItemStackToSlot(EntityEquipmentSlot.FEET, GenericArmorMultiCamo.getNewWithCamo(
-					TGArmors.t1_miner_Boots,camo));
-
-		// Weapons
-		Random r = new Random();
-		Item weapon = null;
-		switch (r.nextInt(4)) {
-		case 0:
-			weapon = Items.WOODEN_HOE;
-			break;
-		case 1:
-			weapon = Items.IRON_HOE;
-			break;
-		case 2:
-			weapon = Items.STONE_HOE;
-			break;
-		case 3:
-		default:
-			weapon = TGuns.handcannon;
-			break;
-		}
-		if (weapon != null) this.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, new ItemStack(weapon));
-	}
-	
-	@Override
-	public SoundEvent getAmbientSound() {
-		return SoundEvents.ENTITY_ZOMBIE_AMBIENT;
+		int camo = GenericArmorMultiCamo.getRandomCamoIndexFor((GenericArmorMultiCamo) TGArmors.T1_MINER_CHESTPLATE.get());
+		this.setItemSlot(EquipmentSlot.CHEST, GenericArmorMultiCamo.getNewWithCamo(TGArmors.T1_MINER_CHESTPLATE.get(), camo));
+		equipChance(EquipmentSlot.LEGS, GenericArmorMultiCamo.getNewWithCamo(TGArmors.T1_MINER_LEGGINGS.get(), camo), 0.5);
+		equipChance(EquipmentSlot.FEET, GenericArmorMultiCamo.getNewWithCamo(TGArmors.T1_MINER_BOOTS.get(), camo), 0.5);
+		equip(EquipmentSlot.MAINHAND, pick(Items.WOODEN_HOE, Items.IRON_HOE, Items.STONE_HOE, TGuns.HANDCANNON.get()));
 	}
 
 	@Override
-	public SoundEvent getHurtSound(DamageSource damageSourceIn) {
-		return SoundEvents.ENTITY_ZOMBIE_HURT;
+	protected SoundEvent getAmbientSound() {
+		return SoundEvents.ZOMBIE_AMBIENT;
 	}
 
 	@Override
-	public SoundEvent getDeathSound() {
-		return SoundEvents.ENTITY_ZOMBIE_DEATH;
+	protected SoundEvent getHurtSound(DamageSource src) {
+		return SoundEvents.ZOMBIE_HURT;
 	}
 
-	public SoundEvent getStepSound() {
-		return SoundEvents.ENTITY_ZOMBIE_STEP;
+	@Override
+	protected SoundEvent getDeathSound() {
+		return SoundEvents.ZOMBIE_DEATH;
 	}
-	
+
 	@Override
-    protected void playStepSound(BlockPos pos, Block blockIn)
-    {
-        this.playSound(this.getStepSound(), 0.15F, 1.0F);
-    }
-	
-	@Override
-	protected ResourceLocation getLootTable() {
-		return LOOT;
+	protected SoundEvent getStepSound() {
+		return SoundEvents.ZOMBIE_STEP;
 	}
 }

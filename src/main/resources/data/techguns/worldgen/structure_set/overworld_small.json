@@ -1,0 +1,18 @@
+{
+  "structures": [
+    {
+      "structure": "techguns:overworld_small",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 16,
+    "separation": 6,
+    "salt": 180431,
+    "exclusion_zone": {
+      "other_set": "techguns:overworld_medium",
+      "chunk_count": 6
+    }
+  }
+}

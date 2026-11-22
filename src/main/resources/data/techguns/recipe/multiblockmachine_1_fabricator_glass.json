@@ -1,0 +1,31 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:fabricator_glass"
+    },
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:fabricator_housing"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "fgf",
+    "g g",
+    "fgf"
+  ],
+  "key": {
+    "f": {
+      "item": "techguns:fabricator_housing"
+    },
+    "g": {
+      "tag": "c:glass_blocks"
+    }
+  },
+  "result": {
+    "id": "techguns:fabricator_glass",
+    "count": 4
+  }
+}

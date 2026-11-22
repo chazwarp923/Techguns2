@@ -1,10 +1,10 @@
 package techguns.client.models.armor;
 
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
+import techguns.client.models.ModelRenderer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import techguns.capabilities.TGExtendedPlayer;
-import techguns.client.ClientProxy;
+import techguns.util.TGFXHooks;
 import techguns.util.MathUtil;
 
 public class ModelJetPack extends ModelAdditionalSlotBase {
@@ -134,26 +134,26 @@ public class ModelJetPack extends ModelAdditionalSlotBase {
 	public void render(float scale, Entity entityIn) {
 		BackBack.render(scale);
 		
-		if (entityIn!=null && entityIn instanceof EntityPlayer){
-			EntityPlayer entityPlayer = (EntityPlayer) entityIn;
+		if (entityIn!=null && entityIn instanceof Player){
+			Player entityPlayer = (Player) entityIn;
 			boolean showFlames=false;
 			
 			TGExtendedPlayer props = TGExtendedPlayer.get(entityPlayer);
 			
 			if(props!=null){
-				showFlames=props.isJumpkeyPressed() && entityIn.motionY > -0.1f;
+				showFlames=props.isJumpkeyPressed && entityIn.getDeltaMovement().y > -0.1f;
 			} else {
 				showFlames=false;
 			}
 				
 			if(showFlames){
 				
-				float rot = -entityPlayer.renderYawOffset;
+				float rot = -entityPlayer.yBodyRot;
 				
 				double dZ = -0.3;//(Keybinds.Z);
 				double dX = 0.2;//(Keybinds.X);
 				
-				if(entityPlayer.isSneaking()){
+				if(entityPlayer.isCrouching()){
 					dZ = -0.45;
 				}
 				
@@ -165,16 +165,16 @@ public class ModelJetPack extends ModelAdditionalSlotBase {
 				
 				
 				float motiony= -0.025f;
-				if (entityPlayer.motionY<motiony){
-					motiony=(float) entityPlayer.motionY;
+				if (entityPlayer.getDeltaMovement().y<motiony){
+					motiony=(float) entityPlayer.getDeltaMovement().y;
 				}
 				
 				float offsetY=1.5f;//-0.7f;
 				/*if(entityPlayer!=self){
 					offsetY=+0.7f;
 				}*/
-				ClientProxy.get().createFX("FlamethrowerTrailFlames", entityPlayer.world, entityPlayer.posX+offsetX,entityPlayer.posY+offsetY, entityPlayer.posZ+offsetZ,0,motiony,0);
-				ClientProxy.get().createFX("FlamethrowerTrailFlames", entityPlayer.world, entityPlayer.posX+offsetX2,entityPlayer.posY+offsetY, entityPlayer.posZ+offsetZ2,0,motiony,0);
+				TGFXHooks.createFX("FlamethrowerTrailFlames", entityPlayer.level(), entityPlayer.getX()+offsetX,entityPlayer.getY()+offsetY, entityPlayer.getZ()+offsetZ,0,motiony,0);
+				TGFXHooks.createFX("FlamethrowerTrailFlames", entityPlayer.level(), entityPlayer.getX()+offsetX2,entityPlayer.getY()+offsetY, entityPlayer.getZ()+offsetZ2,0,motiony,0);
 			}
 		}
 		

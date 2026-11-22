@@ -1,136 +1,116 @@
 package techguns.entities.projectiles;
 
-import java.util.ArrayList;
+import java.util.List;
 
-import io.netty.buffer.ByteBuf;
-import net.minecraft.block.SoundType;
-import net.minecraft.block.material.Material;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
-import techguns.TGPackets;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+import techguns.TGDamageTypes;
+import techguns.TGEntities;
 import techguns.api.damagesystem.DamageType;
 import techguns.damagesystem.DamageSystem;
 import techguns.damagesystem.TGDamageSource;
-import techguns.deatheffects.EntityDeathUtils.DeathType;
+import techguns.deatheffects.DeathType;
 import techguns.items.guns.GenericGun;
 import techguns.items.guns.IProjectileFactory;
 import techguns.packets.PacketSpawnParticle;
+import techguns.packets.TGPackets;
 
-public class SonicShotgunProjectile extends GenericProjectile implements IEntityAdditionalSpawnData{
-	
-	public ArrayList<Entity> entitiesHit;
+/** Sonic shotgun ring projectile; all projectiles of one shot share entitiesHit so a target is hit once. */
+public class SonicShotgunProjectile extends GenericProjectile {
 
+	public List<Entity> entitiesHit;
 	public boolean mainProjectile = false;
 
-	public SonicShotgunProjectile(World worldIn, double posX, double posY, double posZ, float yaw, float pitch,
-			float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin,
-			float penetration, boolean blockdamage, EnumBulletFirePos firePos) {
-		super(worldIn, posX, posY, posZ, yaw, pitch, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration,
-				blockdamage, firePos);
-	}
-	
-	public SonicShotgunProjectile(World par2World, EntityLivingBase p, float damage, float speed, int TTL, float spread,
-			float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage,
-			EnumBulletFirePos firePos) {
-		super(par2World, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos);
+	public SonicShotgunProjectile(EntityType<? extends SonicShotgunProjectile> type, Level level) {
+		super(type, level);
 	}
 
-	public SonicShotgunProjectile(World worldIn) {
-		super(worldIn);
+	public SonicShotgunProjectile(Level level, LivingEntity p, float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd,
+			float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos) {
+		super(TGEntities.SONIC_SHOTGUN.get(), level, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage,
+				firePos);
 	}
 
 	@Override
 	protected TGDamageSource getProjectileDamageSource() {
-		TGDamageSource src = new TGDamageSource("tg_sonic",this, shooter, DamageType.PHYSICAL, DeathType.GORE);
-		src.ignoreHurtresistTime=true;
-    	src.armorPenetration = this.penetration;
-    	src.setKnockback(2.0f);
-    	src.goreChance=1.0f;
-    	return src;
+		TGDamageSource src = new TGDamageSource(this.level(), TGDamageTypes.SONIC, this, shooter, DamageType.PHYSICAL, DeathType.GORE);
+		src.ignoreHurtresistTime = true;
+		src.armorPenetration = this.penetration;
+		src.setKnockback(2.0f);
+		src.goreChance = 1.0f;
+		return src;
 	}
-	
+
 	@Override
-	public boolean shouldRenderInPass(int pass) {
-		if ( pass==1) {
-			return mainProjectile;
-		}else {
-			return !mainProjectile;
-		}
-	}
-	
-	@Override
-	protected void doImpactEffects(Material mat, RayTraceResult rayTraceResult, SoundType sound) {
-		if (mainProjectile) {
-			if (!this.world.isRemote){
-    			TGPackets.network.sendToAllAround(new PacketSpawnParticle("SonicShotgunImpact", this.posX,this.posY,this.posZ), TGPackets.targetPointAroundEnt(this, 50.0f));
-    		}
+	protected void doImpactEffects(BlockState state, HitResult hit, SoundType sound) {
+		if (mainProjectile && !this.level().isClientSide) {
+			TGPackets.sendToAllAround(new PacketSpawnParticle("SonicShotgunImpact", this.getX(), this.getY(), this.getZ()), this, 50.0);
 		}
 	}
 
 	@Override
-	protected void onHit(RayTraceResult mop) {
-		if (mop.entityHit != null )
-        {
-			if (entitiesHit != null && !entitiesHit.contains(mop.entityHit)) {
-	        	TGDamageSource src = getProjectileDamageSource();        	
-	        	TGDamageSource knockback = TGDamageSource.getKnockbackDummyDmgSrc(this, this.shooter);
-	        	
-	        	if (mop.entityHit instanceof EntityLivingBase){
-	        		EntityLivingBase ent = (EntityLivingBase) mop.entityHit;
-	        		
-	        		float dmg = DamageSystem.getDamageFactor(this.shooter, ent);
-	        		if (dmg>0){
-	        		
-		        		ent.attackEntityFrom(knockback, 0.01f);
-		        		ent.attackEntityFrom(src, this.getDamage()*dmg);
-		        		if (src.wasSuccessful()) {
-							
-							if (ent instanceof EntityLiving) {
-								this.setAIRevengeTarget(((EntityLiving) ent));
-							}
-		
-							this.onHitEffect(ent,mop);
+	protected void onHit(HitResult hit) {
+		if (hit instanceof EntityHitResult ehr) {
+			Entity target = ehr.getEntity();
+			if (!this.level().isClientSide && entitiesHit != null && !entitiesHit.contains(target)) {
+				TGDamageSource src = getProjectileDamageSource();
+				if (target instanceof LivingEntity ent) {
+					float dmg = DamageSystem.getDamageFactor(this.shooter, ent);
+					if (dmg > 0) {
+						ent.hurt(TGDamageSource.getKnockbackDummyDmgSrc(this, this.shooter), 0.01f);
+						if (ent.hurt(src, this.getDamage() * dmg)) {
+							this.onHitEffect(ent, ehr);
 						}
-	        		}
-	        	} else {
-	        		mop.entityHit.attackEntityFrom(src,this.getDamage());            	
-	        	}
-	        	
-	        	entitiesHit.add(mop.entityHit);
-            }
-        } else if (mop.typeOfHit == RayTraceResult.Type.BLOCK) {
-        	this.hitBlock(mop);
-
-			this.setDead();
-    	}
+					}
+				} else {
+					target.hurt(src, this.getDamage());
+				}
+				entitiesHit.add(target);
+			}
+		} else if (hit instanceof BlockHitResult bhr) {
+			this.hitBlock(bhr);
+			this.discard();
+		}
 	}
 
 	@Override
-	public void writeSpawnData(ByteBuf buffer) {
+	protected void onClientSpawn() {
+		if (mainProjectile) {
+			techguns.util.TGFXHooks.createFXOnEntity("SonicShotgunTrail", this);
+		}
+	}
+
+	@Override
+	public void writeSpawnData(RegistryFriendlyByteBuf buffer) {
+		super.writeSpawnData(buffer);
 		buffer.writeBoolean(mainProjectile);
 	}
 
 	@Override
-	public void readSpawnData(ByteBuf additionalData) {
-		this.mainProjectile = additionalData.readBoolean();
+	public void readSpawnData(RegistryFriendlyByteBuf buffer) {
+		super.readSpawnData(buffer);
+		this.mainProjectile = buffer.readBoolean();
 	}
-	
-	public static class Factory implements IProjectileFactory<SonicShotgunProjectile> {
 
+	public static class Factory implements IProjectileFactory<SonicShotgunProjectile> {
 		@Override
-		public SonicShotgunProjectile createProjectile(GenericGun gun, World world, EntityLivingBase p, float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd,
-				float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, float radius, double gravity) {
-			return new SonicShotgunProjectile(world,p,damage,speed,TTL,spread,dmgDropStart,dmgDropEnd,dmgMin,penetration,blockdamage,firePos);
+		public SonicShotgunProjectile createProjectile(GenericGun gun, Level level, LivingEntity p, float damage, float speed, int TTL, float spread,
+				float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, float radius,
+				double gravity) {
+			return new SonicShotgunProjectile(level, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos);
 		}
 
 		@Override
 		public DamageType getDamageType() {
 			return DamageType.PHYSICAL;
 		}
-		
 	}
 }

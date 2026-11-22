@@ -1,72 +1,58 @@
 package techguns.tileentities;
 
-import net.minecraft.block.Block;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TextComponentTranslation;
-import techguns.TGBlocks;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
+import techguns.TGBlockEntities;
 import techguns.TGItems;
 import techguns.TGSounds;
-import techguns.Techguns;
-import techguns.blocks.machines.MultiBlockMachine;
-import techguns.tileentities.operation.FabricatorRecipe;
-import techguns.tileentities.operation.FabricatorRecipe.RecipeData;
+import techguns.gui.containers.FabricatorMenu;
+import techguns.recipes.FabricatorRecipe;
 import techguns.tileentities.operation.ItemStackHandlerPlus;
+import techguns.tileentities.operation.MachineOperation;
 import techguns.tileentities.operation.MachineSlotItem;
 
+/** Fabricator controller (1.12 FabricatorTileEntMaster). */
 public class FabricatorTileEntMaster extends MultiBlockMachineTileEntMaster {
 
-	protected static final float SOUND_VOLUME=0.5f;
-	
-	public static final int SLOT_INPUT1 =0;
-	public static final int SLOT_WIRES=1;
-	public static final int SLOT_POWDER=2;
-	public static final int SLOT_PLATE=3;
-	public static final int SLOT_OUTPUT=4;
-	public static final int SLOT_UPGRADE=5;
-	
-	
-	public MachineSlotItem input;
-	public MachineSlotItem wireslot;
-	public MachineSlotItem powderslot;
-	public MachineSlotItem plateslot;
-	
-	public static final int powerPerTick=80;
-	
-	public FabricatorTileEntMaster() {
-		super(6, 100000);
-		
-		input = new MachineSlotItem(this, SLOT_INPUT1);
-		wireslot = new MachineSlotItem(this, SLOT_WIRES);
-		powderslot = new MachineSlotItem(this, SLOT_POWDER);
-		plateslot = new MachineSlotItem(this, SLOT_PLATE);
-		
-		this.inventory = new ItemStackHandlerPlus(6) {
+	protected static final float SOUND_VOLUME = 0.5f;
 
+	public static final int SLOT_INPUT1 = 0;
+	public static final int SLOT_WIRES = 1;
+	public static final int SLOT_POWDER = 2;
+	public static final int SLOT_PLATE = 3;
+	public static final int SLOT_OUTPUT = 4;
+	public static final int SLOT_UPGRADE = 5;
+
+	public static final int POWER_PER_TICK = 80;
+
+	public final MachineSlotItem input = new MachineSlotItem(this, SLOT_INPUT1);
+	public final MachineSlotItem wireslot = new MachineSlotItem(this, SLOT_WIRES);
+	public final MachineSlotItem powderslot = new MachineSlotItem(this, SLOT_POWDER);
+	public final MachineSlotItem plateslot = new MachineSlotItem(this, SLOT_PLATE);
+
+	public FabricatorTileEntMaster(BlockPos pos, BlockState state) {
+		super(TGBlockEntities.FABRICATOR.get(), pos, state, 6, 100000);
+	}
+
+	@Override
+	protected ItemStackHandlerPlus createInventory(int size) {
+		return new ItemStackHandlerPlus(size) {
 			@Override
 			protected void onContentsChanged(int slot) {
-				super.onContentsChanged(slot);
-				setContentsChanged(true);
+				onInventoryChanged(slot);
 			}
 
 			@Override
 			protected boolean allowItemInSlot(int slot, ItemStack stack) {
-				switch (slot) {
-				case SLOT_INPUT1:
-				case SLOT_WIRES:
-				case SLOT_POWDER:
-				case SLOT_PLATE:
-					return isItemValidForSlot(slot, stack);
-				case SLOT_OUTPUT:
-					return false;
-				case SLOT_UPGRADE:
-					return TGItems.isMachineUpgrade(stack);
-				}
-				return false;
+				return switch (slot) {
+					case SLOT_INPUT1, SLOT_WIRES, SLOT_POWDER, SLOT_PLATE, SLOT_UPGRADE -> getValidSlotForItemInMachine(stack) == slot;
+					default -> false;
+				};
 			}
 
 			@Override
@@ -76,113 +62,103 @@ public class FabricatorTileEntMaster extends MultiBlockMachineTileEntMaster {
 		};
 	}
 
-	public boolean isItemValidForSlot(int slot, ItemStack stack) {
-		return this.getValidSlotForItemInMachine(stack)==slot;
-	}
-	
 	@Override
-	public ITextComponent getDisplayName() {
-		return new TextComponentTranslation(Techguns.MODID+".container.fabricator", new Object[0]);
+	public AbstractContainerMenu createMenu(int id, Inventory inv, Player player) {
+		return new FabricatorMenu(id, inv, this);
 	}
 
 	@Override
-	public int getNeededPower() {
-		return powerPerTick;
+	public Component getDisplayName() {
+		return Component.translatable("techguns.container.fabricator");
 	}
 
-	
-	
-	@Override
-	public AxisAlignedBB getRenderBoundingBox() {
-		if(this.isFormed()) {
-			BlockPos p = this.getPos();
-			EnumFacing left = multiblockDirection.rotateY();
-			
-			BlockPos other = p.offset(multiblockDirection, 2).offset(left, 2).offset(EnumFacing.UP,2);
-			BlockPos first = p.offset(multiblockDirection.getOpposite(),2).offset(left.getOpposite(),1).offset(EnumFacing.DOWN,1);
-			return new AxisAlignedBB(first,other);
-		} else {
-			return super.getRenderBoundingBox();
+	public int getValidSlotForItemInMachine(ItemStack stack) {
+		if (stack.is(FabricatorRecipe.WIRES_SLOT)) {
+			return SLOT_WIRES;
 		}
+		if (stack.is(FabricatorRecipe.POWDER_SLOT)) {
+			return SLOT_POWDER;
+		}
+		if (stack.is(FabricatorRecipe.PLATES_SLOT)) {
+			return SLOT_PLATE;
+		}
+		if (TGItems.isMachineUpgrade(stack)) {
+			return SLOT_UPGRADE;
+		}
+		return SLOT_INPUT1;
+	}
+
+	protected static final net.minecraft.world.phys.shapes.VoxelShape GLASS_FORMED = net.minecraft.world.level.block.Block.box(0, 0, 0, 16, 14.4, 16);
+
+	/** housing blocks take items and energy (1.12 FabricatorTileEntSlave) */
+	@Override
+	public boolean forwardsCapability(int slaveType, net.neoforged.neoforge.capabilities.BlockCapability<?, ?> cap) {
+		return slaveType == techguns.blocks.machines.multiblocks.FabricatorSchematic.TYPE_HOUSING
+				&& (cap == net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK || cap == net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK);
+	}
+
+	@Override
+	public net.minecraft.world.phys.shapes.VoxelShape getSlaveShape(int slaveType, BlockPos slavePos) {
+		return slaveType == techguns.blocks.machines.multiblocks.FabricatorSchematic.TYPE_GLASS ? GLASS_FORMED : super.getSlaveShape(slaveType, slavePos);
+	}
+
+	@Override
+	protected int getNeededPower() {
+		return POWER_PER_TICK;
+	}
+
+	public FabricatorRecipe.Input recipeInput() {
+		return new FabricatorRecipe.Input(input.get(), wireslot.get(), powderslot.get(), plateslot.get());
 	}
 
 	@Override
 	protected void checkAndStartOperation() {
-		this.contentsChanged=false;
-		RecipeData data = FabricatorRecipe.getRecipeDataFor(this.inventory.getStackInSlot(SLOT_INPUT1), this.inventory.getStackInSlot(FabricatorTileEntMaster.SLOT_WIRES), this.inventory.getStackInSlot(FabricatorTileEntMaster.SLOT_POWDER), this.inventory.getStackInSlot(FabricatorTileEntMaster.SLOT_PLATE), this.getMaxMachineUpgradeMultiplier(SLOT_UPGRADE), this.inventory.getStackInSlot(FabricatorTileEntMaster.SLOT_OUTPUT));
-		if (data!=null){
-		
-			this.currentOperation = data.createOperation(this);
-
-			/*if(data.plateConsumption>0){
-				ItemStack plate = this.content[SLOT_PLATE];
-				if (plate!=null){
-					this.plateUsed = plate.copy();
-					this.plateUsed.stackSize=1;
-				}
-			}*/
-			this.input.consume(data.inputConsumption*data.stackMultiplier);
-			this.wireslot.consume(data.wireConsumption*data.stackMultiplier);
-			this.powderslot.consume(data.powderConsumption*data.stackMultiplier);
-			this.plateslot.consume(data.plateConsumption*data.stackMultiplier);
-
-			this.totaltime=100;
-			this.progress=0;
-			
-			if (!this.world.isRemote) {
-				this.needUpdate();
-			}
+		this.setContentsChanged(false);
+		FabricatorRecipe.Input in = recipeInput();
+		var found = FabricatorRecipe.find(level, in);
+		if (found.isEmpty()) {
+			return;
 		}
+		FabricatorRecipe r = found.get().value();
+		int multi = r.getMaxMultiplier(in, this.inventory.getStackInSlot(SLOT_OUTPUT), this.getMaxMachineUpgradeMultiplier(SLOT_UPGRADE));
+		if (multi <= 0) {
+			return;
+		}
+		int nIn = r.input().count();
+		int nWires = r.wires().map(i -> i.count()).orElse(0);
+		int nPowder = r.powder().map(i -> i.count()).orElse(0);
+		int nPlate = r.plate().map(i -> i.count()).orElse(0);
+
+		MachineOperation op = new MachineOperation(r.result().copy(), input.getTypeWithSize(nIn), nWires > 0 ? wireslot.getTypeWithSize(nWires) : ItemStack.EMPTY,
+				nPowder > 0 ? powderslot.getTypeWithSize(nPowder) : ItemStack.EMPTY, nPlate > 0 ? plateslot.getTypeWithSize(nPlate) : ItemStack.EMPTY);
+		op.setStackMultiplier(multi);
+		op.setPowerPerTick(POWER_PER_TICK * multi);
+
+		input.consume(nIn * multi);
+		if (nWires > 0) {
+			wireslot.consume(nWires * multi);
+		}
+		if (nPowder > 0) {
+			powderslot.consume(nPowder * multi);
+		}
+		if (nPlate > 0) {
+			plateslot.consume(nPlate * multi);
+		}
+		this.currentOperation = op;
+		this.totaltime = FabricatorRecipe.TIME;
+		this.progress = 0;
+		this.needUpdate();
 	}
 
 	@Override
 	protected void finishedOperation() {
-		
-		ItemStack itemOut = this.currentOperation.getItemOutput0();
-		if (!itemOut.isEmpty()) {
-			if (!this.inventory.getStackInSlot(SLOT_OUTPUT).isEmpty()) {
-				//this.inventory.getStackInSlot(SLOT_OUTPUT).grow(itemOut.getCount());
-				this.inventory.insertItemNoCheck(SLOT_OUTPUT, itemOut, false);
-			} else {
-				this.inventory.setStackInSlot(SLOT_OUTPUT, itemOut);
-			}
-		}
+		this.inventory.insertItemNoCheck(SLOT_OUTPUT, currentOperation.getItemOutput0(), false);
 	}
 
 	@Override
 	protected void playAmbientSound() {
-		if (this.world.isRemote && this.progress == 1) {
-			//machines.fabricatorWork
-			world.playSound(this.getPos().getX(), this.getPos().getY(), this.getPos().getZ(), TGSounds.FABRICATOR_WORK, SoundCategory.BLOCKS, SOUND_VOLUME, 1.0F, true );
+		if (this.progress == 1) {
+			this.playLocalSound(TGSounds.FABRICATOR_WORK.get(), SOUND_VOLUME);
 		}
 	}
-
-	@Override
-	protected MultiBlockMachine getMachineBlockType() {
-		return TGBlocks.MULTIBLOCK_MACHINE;
-	}
-	
-	public int getValidSlotForItemInMachine(ItemStack stack) {
-		if(FabricatorRecipe.itemStackInList(FabricatorRecipe.items_wireslot, stack)){
-			return SLOT_WIRES;
-		}
-		if(FabricatorRecipe.itemStackInList(FabricatorRecipe.items_powderslot, stack)){
-			return SLOT_POWDER;
-		}
-		if(FabricatorRecipe.itemStackInList(FabricatorRecipe.items_plateslot, stack)){
-			return SLOT_PLATE;
-		}
-		
-		if (TGItems.isMachineUpgrade(stack)) {
-			return SLOT_UPGRADE;
-		}
-		
-		return SLOT_INPUT1;
-	}
-
-	@Override
-	public AxisAlignedBB getBBforSlave(BlockPos slavePos) {
-		return Block.FULL_BLOCK_AABB;
-	}
-
 }

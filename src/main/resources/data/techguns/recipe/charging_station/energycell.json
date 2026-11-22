@@ -1,0 +1,10 @@
+{
+  "type": "techguns:charging_station",
+  "input": {
+    "item": "techguns:energycellempty"
+  },
+  "result": {
+    "id": "techguns:energycell"
+  },
+  "charge_amount": 50000
+}

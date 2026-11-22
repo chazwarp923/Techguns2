@@ -1,0 +1,11 @@
+{
+  "size": 8,
+  "order": 200,
+  "icon": "techguns:slot/ammo",
+  "validators": [
+    "techguns:ammo",
+    "curios:tag"
+  ],
+  "add_cosmetic": false,
+  "render_toggle": false
+}

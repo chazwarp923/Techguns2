@@ -1,6 +1,1 @@
-{
-  "parent": "item/generated",
-  "textures": {
-    "layer0": "techguns:items/dummy"
-  }
-}
+{"parent":"minecraft:builtin/entity","gui_light":"front","textures":{"particle":"techguns:items/pistolrounds"}}

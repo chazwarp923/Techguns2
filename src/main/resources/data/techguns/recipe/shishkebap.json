@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "p ",
+    "pm",
+    "sf"
+  ],
+  "key": {
+    "p": {
+      "tag": "c:plates/obsidian_steel"
+    },
+    "s": {
+      "tag": "c:plates/plastic"
+    },
+    "f": {
+      "item": "techguns:fueltank"
+    },
+    "m": {
+      "item": "techguns:pumpmechanism"
+    }
+  },
+  "result": {
+    "id": "techguns:shishkebap"
+  }
+}

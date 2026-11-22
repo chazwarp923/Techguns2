@@ -1,51 +1,35 @@
 package techguns.items.additionalslots;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.MobEffects;
-import net.minecraft.item.ItemStack;
-import net.minecraft.potion.PotionEffect;
-import net.minecraftforge.fml.common.gameevent.TickEvent.PlayerTickEvent;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import techguns.TGItems;
 import techguns.api.tginventory.TGSlotType;
 import techguns.capabilities.TGExtendedPlayer;
 import techguns.items.armors.TGArmorBonus;
 
-public class ItemTacticalMask extends ItemTGSpecialSlotAmmo {
+/** Face slot: night vision (uses charge while enabled), oxygen gear, gas mask. Reloads with energy cells. */
+public class ItemTacticalMask extends ItemTGSpecialSlot {
 
-	public ItemTacticalMask(String unlocalizedName, int camoCount, int dur) {
-		super(unlocalizedName, TGSlotType.FACESLOT, camoCount, dur,TGItems.ENERGY_CELL, TGItems.ENERGY_CELL_EMPTY);
+	public ItemTacticalMask(int camoCount, int dur) {
+		super(TGSlotType.FACESLOT, camoCount, dur, TGItems.ENERGY_CELL, TGItems.ENERGY_CELL_EMPTY);
 	}
 
 	@Override
-	public void onPlayerTick(ItemStack item, PlayerTickEvent event) {
-		if(item.getItemDamage()<item.getMaxDamage()){
-			if(TGExtendedPlayer.get(event.player).enableNightVision){
-				item.setItemDamage(item.getItemDamage()+1);
+	public void onPlayerTick(ItemStack item, Player ply) {
+		if (hasCharge(item)) {
+			if (TGExtendedPlayer.get(ply).enableNightVision) {
+				useCharge(item, 1);
 			}
 		} else {
-			
-			this.tryReloadAndRepair(item, event.player);
+			this.tryReloadAndRepair(item, ply);
 		}
-		
-		PotionEffect poison=event.player.getActivePotionEffect(MobEffects.POISON);
-		PotionEffect wither=event.player.getActivePotionEffect(MobEffects.WITHER);
-		
-		if (poison !=null && item.getItemDamage()<item.getMaxDamage()){
-			event.player.removePotionEffect(MobEffects.POISON);			
-			item.setItemDamage(item.getItemDamage()+1);
-		}
-		if (wither !=null && item.getItemDamage()<item.getMaxDamage()){
-			event.player.removePotionEffect(MobEffects.WITHER);			
-			item.setItemDamage(item.getItemDamage()+1);
-		}
+		ItemGasMask.cleanse(item, ply);
 	}
-	
+
 	@Override
-	public float getBonus(TGArmorBonus type,ItemStack stack, boolean consume, EntityPlayer player){
-		if(type==TGArmorBonus.NIGHTVISION || type == TGArmorBonus.OXYGEN_GEAR){
-			if (stack.getItemDamage()< stack.getMaxDamage()){
-				return 1.0f;
-			}
+	public float getBonus(TGArmorBonus type, ItemStack stack, boolean consume, Player player) {
+		if ((type == TGArmorBonus.NIGHTVISION || type == TGArmorBonus.OXYGEN_GEAR) && hasCharge(stack)) {
+			return 1.0f;
 		}
 		return 0.0f;
 	}

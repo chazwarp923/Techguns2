@@ -1,0 +1,20 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:biogun"
+  },
+  "results": [
+    {
+      "id": "techguns:ingotsteel",
+      "count": 2
+    },
+    {
+      "id": "techguns:plasticsheet",
+      "count": 2
+    },
+    {
+      "id": "minecraft:glass",
+      "count": 2
+    }
+  ]
+}

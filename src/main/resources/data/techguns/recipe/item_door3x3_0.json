@@ -1,0 +1,27 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:door3x3_metal"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ppp",
+    "sps",
+    "ppp"
+  ],
+  "key": {
+    "p": {
+      "tag": "c:plates/iron"
+    },
+    "s": {
+      "item": "minecraft:piston"
+    }
+  },
+  "result": {
+    "id": "techguns:door3x3_metal",
+    "count": 2
+  }
+}

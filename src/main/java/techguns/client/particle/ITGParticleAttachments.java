@@ -1,13 +1,24 @@
 package techguns.client.particle;
 
+
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.util.EnumHand;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
-
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import techguns.client.render.TGRenderHelper;
+import techguns.client.render.TGRenderHelper.RenderType;
+import techguns.util.EntityCondition;
+import techguns.util.MathUtil;
 /**
  * Implemented by capabilities that store entityAttachedParticle systems
  *
@@ -75,8 +86,8 @@ public interface ITGParticleAttachments {
 		}
 	}
 	
-	public default void clearAttachedSystemsHand(EnumHand hand) {
-		if(hand==EnumHand.MAIN_HAND) {
+	public default void clearAttachedSystemsHand(InteractionHand hand) {
+		if(hand==InteractionHand.MAIN_HAND) {
 			if (this.getParticleSysMainhand()!=null) {
 				this.getParticleSysMainhand().clear();
 			}
@@ -87,9 +98,9 @@ public interface ITGParticleAttachments {
 		}
 	}
 	
-	public default void addSystemsHand(EnumHand hand, List<TGParticleSystem> systems) {
+	public default void addSystemsHand(InteractionHand hand, List<TGParticleSystem> systems) {
 		
-		if(hand==EnumHand.MAIN_HAND) {
+		if(hand==InteractionHand.MAIN_HAND) {
 			this.getOrInitParticleSysMainhand().clear();
 			this.getParticleSysMainhand().addAll(systems);
 		} else {
@@ -98,9 +109,9 @@ public interface ITGParticleAttachments {
 		}
 	}
 	
-	public default void addEffectHand(EnumHand hand, List<ITGParticle> effects) {
+	public default void addEffectHand(InteractionHand hand, List<ITGParticle> effects) {
 		
-		if(hand==EnumHand.MAIN_HAND) {
+		if(hand==InteractionHand.MAIN_HAND) {
 			this.getOrInitEntityParticlesMH().addAll(effects);
 		} else {
 			this.getOrInitEntityParticlesOH().addAll(effects);

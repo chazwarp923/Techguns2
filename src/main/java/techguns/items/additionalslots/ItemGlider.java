@@ -1,52 +1,38 @@
 package techguns.items.additionalslots;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.math.Vec3d;
-import net.minecraftforge.fml.common.gameevent.TickEvent.PlayerTickEvent;
-import techguns.Techguns;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 import techguns.api.tginventory.TGSlotType;
 import techguns.capabilities.TGExtendedPlayer;
-import techguns.util.MathUtil;
 
+/** Back slot: sneak in the air to glide. */
 public class ItemGlider extends ItemTGSpecialSlot {
 
-	public ItemGlider(String unlocalizedName, int camoCount, int dur) {
-		super(unlocalizedName, TGSlotType.BACKSLOT, camoCount, dur);
+	public ItemGlider(int camoCount, int dur) {
+		super(TGSlotType.BACKSLOT, camoCount, dur);
 	}
 
 	@Override
-	public void onPlayerTick(ItemStack item, PlayerTickEvent event) {
-		glide(event.player);
+	public void onPlayerTick(ItemStack item, Player ply) {
+		glide(ply);
 	}
 
-	public static void glide(EntityPlayer player) {
-		EntityPlayer ply = player;
-
-		if (!ply.onGround && ply.isSneaking()) {
-			if (ply.motionY < -0.1f) {
-
-				TGExtendedPlayer extendedPlayer = TGExtendedPlayer.get(ply);
-				extendedPlayer.isGliding = true;
-
-				/**
-				 * totally stolen from modular powersuits glider code
-				 */
-				Vec3d lookVec = player.getLookVec();
-				MathUtil.Vec2 playerMoveVec = new MathUtil.Vec2(lookVec.x, lookVec.z);
-
-				if (player.motionY < -0.1f) {
-					double motion = Math.min(0.08, -0.1 - player.motionY);
-					player.motionY += motion;
-					player.motionX += playerMoveVec.x * motion;
-					player.motionZ += playerMoveVec.y * motion;
-
-					player.jumpMovementFactor += 0.03f;
-				}
+	/** sets TGExtendedPlayer.isGliding; motion is applied on both sides, the client one moves the local player */
+	public static void glide(Player ply) {
+		TGExtendedPlayer props = TGExtendedPlayer.get(ply);
+		boolean gliding = false;
+		if (!ply.onGround() && ply.isShiftKeyDown() && !ply.getAbilities().flying) {
+			Vec3 m = ply.getDeltaMovement();
+			if (m.y < -0.1f) {
+				gliding = true;
+				// "totally stolen from modular powersuits glider code"
+				Vec3 look = ply.getLookAngle();
+				double motion = Math.min(0.08, -0.1 - m.y);
+				ply.setDeltaMovement(m.x + look.x * motion, m.y + motion, m.z + look.z * motion);
 			}
-			player.fallDistance = 0;
-
+			ply.resetFallDistance();
 		}
+		props.isGliding = gliding;
 	}
-	
 }

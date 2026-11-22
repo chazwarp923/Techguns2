@@ -1,0 +1,16 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:miningdrill"
+  },
+  "results": [
+    {
+      "id": "techguns:ingotobsidiansteel",
+      "count": 6
+    },
+    {
+      "id": "techguns:plasticsheet",
+      "count": 2
+    }
+  ]
+}

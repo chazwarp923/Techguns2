@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "techguns:glider",
+    "techguns:jumppack",
+    "techguns:scubatanks",
+    "techguns:jetpack",
+    "techguns:antigravpack"
+  ]
+}

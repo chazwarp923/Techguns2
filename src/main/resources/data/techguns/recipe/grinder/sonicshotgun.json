@@ -1,0 +1,23 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:sonicshotgun"
+  },
+  "results": [
+    {
+      "id": "techguns:carbonfibers",
+      "count": 3
+    },
+    {
+      "id": "techguns:plasticsheet",
+      "count": 2
+    },
+    {
+      "id": "minecraft:redstone",
+      "count": 2
+    },
+    {
+      "id": "techguns:ingottitanium"
+    }
+  ]
+}

@@ -1,134 +1,62 @@
 package techguns.entities.npcs;
 
-import java.util.Random;
-
-import net.minecraft.block.Block;
-import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.init.SoundEvents;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
 import techguns.TGArmors;
 import techguns.TGuns;
-import techguns.Techguns;
 import techguns.items.armors.GenericArmorMultiCamo;
 
+/** 1.12 ZombiePigmanSoldier */
 public class ZombiePigmanSoldier extends GenericNPCUndead {
 
-	public static final ResourceLocation LOOT = new ResourceLocation(Techguns.MODID, "entities/zombiepigmansoldier");
-	
-	public ZombiePigmanSoldier(World world) {
-		super(world);
-		setTGArmorStats(10.0f, 0f);
-		this.isImmuneToFire=true;
+	public ZombiePigmanSoldier(EntityType<? extends ZombiePigmanSoldier> type, Level level) {
+		super(type, level);
+		setTGArmorStats(10f, 0f);
 	}
 
-	@Override
-	protected void applyEntityAttributes() {
-		super.applyEntityAttributes();
-		this.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).setBaseValue(0.30D);
-		this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(25);
-		this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).setBaseValue(5);
-		this.getEntityAttribute(SharedMonsterAttributes.FOLLOW_RANGE).setBaseValue(50.0D);
+	public static AttributeSupplier.Builder createAttributes() {
+		return GenericNPC.createAttributes(0.3D, 25D, 5D, 50D);
 	}
 
 	@Override
 	protected void addRandomArmor(int difficulty) {
+		int camo = 3;
+		this.setItemSlot(EquipmentSlot.HEAD, GenericArmorMultiCamo.getNewWithCamo(TGArmors.T2_COMBAT_HELMET.get(), camo));
+		equipChance(EquipmentSlot.CHEST, GenericArmorMultiCamo.getNewWithCamo(TGArmors.T2_COMBAT_CHESTPLATE.get(), camo), 0.5);
+		equipChance(EquipmentSlot.LEGS, GenericArmorMultiCamo.getNewWithCamo(TGArmors.T2_COMBAT_LEGGINGS.get(), camo), 0.5);
+		equipChance(EquipmentSlot.FEET, GenericArmorMultiCamo.getNewWithCamo(TGArmors.T2_COMBAT_BOOTS.get(), camo), 0.5);
+		equip(EquipmentSlot.MAINHAND, pick(TGuns.THOMPSON.get(), TGuns.THOMPSON.get(), TGuns.THOMPSON.get(), TGuns.REVOLVER.get(), TGuns.REVOLVER.get(), TGuns.AK47.get(),
+				TGuns.AK47.get(), TGuns.PISTOL.get(), TGuns.PISTOL.get()));
+	}
 
-		// Armors
-		double chance = 0.5;
-		int camo=3;
-		if (Math.random() <= chance)
-			GenericArmorMultiCamo.getNewWithCamo(TGArmors.t2_combat_Helmet, camo);
-			this.setItemStackToSlot(EntityEquipmentSlot.HEAD,
-					GenericArmorMultiCamo.getNewWithCamo(TGArmors.t2_combat_Helmet, camo));
-		if (Math.random() <= chance)
-			this.setItemStackToSlot(EntityEquipmentSlot.CHEST, 
-					GenericArmorMultiCamo.getNewWithCamo(TGArmors.t2_combat_Chestplate, camo));
-		if (Math.random() <= chance)
-			this.setItemStackToSlot(EntityEquipmentSlot.LEGS, GenericArmorMultiCamo.getNewWithCamo(TGArmors.t2_combat_Leggings, camo));
-		if (Math.random() <= chance)
-			this.setItemStackToSlot(EntityEquipmentSlot.FEET, GenericArmorMultiCamo.getNewWithCamo(TGArmors.t2_combat_Boots, camo));
+	@Override
+	protected SoundEvent getAmbientSound() {
+		return SoundEvents.ZOMBIFIED_PIGLIN_AMBIENT;
+	}
 
-		// Weapons
-		Random r = new Random();
-		Item weapon = null;
-		int bound = 9;
-		
-		switch (r.nextInt(bound)) {
-		case 0:
-		case 1:
-		case 2:
-			weapon = TGuns.thompson;
-			break;
-		case 3:
-		case 4:
-			weapon = TGuns.revolver;
-			break;
-		case 5:
-		case 6:
-			weapon = TGuns.ak47;
-			break;
-		case 7:
-		case 8:
-			weapon = TGuns.pistol;
-			break;
-		case 9:
-		case 10:
-			weapon = TGuns.flamethrower;
-			break;
-		case 11:
-		case 12:
-			weapon = TGuns.combatshotgun;
-			break;
-		case 13:
-			weapon = TGuns.lmg;
-			break;
-		case 14:
-		default:
-			weapon = TGuns.rocketlauncher;
-			break;
-		}
-		if (weapon != null) this.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, new ItemStack(weapon));
+	@Override
+	protected SoundEvent getHurtSound(DamageSource src) {
+		return SoundEvents.ZOMBIFIED_PIGLIN_HURT;
+	}
+
+	@Override
+	protected SoundEvent getDeathSound() {
+		return SoundEvents.ZOMBIFIED_PIGLIN_DEATH;
+	}
+
+	@Override
+	protected SoundEvent getStepSound() {
+		return SoundEvents.ZOMBIE_STEP;
 	}
 
 	@Override
 	protected boolean shouldBurnInDay() {
 		return false;
-	}
-
-	@Override
-	public SoundEvent getAmbientSound() {
-		return SoundEvents.ENTITY_ZOMBIE_PIG_AMBIENT;
-	}
-
-	@Override
-	public SoundEvent getHurtSound(DamageSource damageSourceIn) {
-		return SoundEvents.ENTITY_ZOMBIE_PIG_HURT;
-	}
-
-	@Override
-	public SoundEvent getDeathSound() {
-		return SoundEvents.ENTITY_ZOMBIE_PIG_DEATH;
-	}
-
-	public SoundEvent getStepSound() {
-		return SoundEvents.ENTITY_ZOMBIE_STEP;
-	}
-	
-	@Override
-    protected void playStepSound(BlockPos pos, Block blockIn)
-    {
-        this.playSound(this.getStepSound(), 0.15F, 1.0F);
-    }
-
-	@Override
-	protected ResourceLocation getLootTable() {
-		return LOOT;
 	}
 }

@@ -1,6 +1,7 @@
 {
-  "parent": "item/generated",
+  "parent": "minecraft:builtin/entity",
+  "gui_light": "front",
   "textures": {
-    "layer0": "techguns:items/t4_power_leggings"
+    "particle": "techguns:models/armor/powerarmor_mk2_darkgrey"
   }
 }

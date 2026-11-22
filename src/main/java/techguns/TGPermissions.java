@@ -1,38 +1,37 @@
 package techguns;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.common.event.FMLInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.server.permission.DefaultPermissionLevel;
-import net.minecraftforge.server.permission.PermissionAPI;
-import techguns.init.ITGInitializer;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.server.permission.PermissionAPI;
+import net.neoforged.neoforge.server.permission.events.PermissionGatherEvent;
+import net.neoforged.neoforge.server.permission.nodes.PermissionNode;
+import net.neoforged.neoforge.server.permission.nodes.PermissionTypes;
 
-public class TGPermissions implements ITGInitializer {
-	public static final String ALLOW_UNSAFE_MODE = Techguns.MODID+".allowunsafemode";
+/** 1.12 TGPermissions: who may switch guns out of safe mode. */
+@EventBusSubscriber(modid = Techguns.MODID)
+public class TGPermissions {
 
-	@Override
-	public void preInit(FMLPreInitializationEvent event) {
+	/** "techguns.allowunsafemode", granted to everyone by default (as in 1.12) */
+	public static final PermissionNode<Boolean> ALLOW_UNSAFE_MODE = new PermissionNode<>(Techguns.MODID, "allowunsafemode", PermissionTypes.BOOLEAN,
+			(player, uuid, context) -> true);
+
+	@SubscribeEvent
+	public static void registerNodes(PermissionGatherEvent.Nodes event) {
+		ALLOW_UNSAFE_MODE.setInformation(net.minecraft.network.chat.Component.literal("Allow unsafe mode"),
+				net.minecraft.network.chat.Component.literal("Allow player to use the unsafe mode of weapons."));
+		event.addNodes(ALLOW_UNSAFE_MODE);
 	}
 
-	@Override
-	public void init(FMLInitializationEvent event) {
-		PermissionAPI.registerNode(ALLOW_UNSAFE_MODE, DefaultPermissionLevel.ALL, "Allow player to use the unsafe mode of weapons.");
+	/** config RestrictUnsafeModeToOP overrides the permission node */
+	public static boolean canUseUnsafeMode(ServerPlayer ply) {
+		if (TGConfig.limitUnsafeModeToOP) {
+			return isPlayerOp(ply);
+		}
+		return PermissionAPI.getPermission(ply, ALLOW_UNSAFE_MODE);
 	}
 
-	@Override
-	public void postInit(FMLPostInitializationEvent event) {
-	}
-	
-	public boolean canUseUnsafeMode(EntityPlayer ply) {
-		boolean allow =  (!TGConfig.limitUnsafeModeToOP && PermissionAPI.hasPermission(ply, TGPermissions.ALLOW_UNSAFE_MODE)) || (TGConfig.limitUnsafeModeToOP && isPlayerOp(ply));
-		//System.out.println("LimitOP:"+TGConfig.limitUnsafeModeToOP+" isOp:"+isPlayerOp(ply)+ " Perm:"+PermissionAPI.hasPermission(ply, TGPermissions.ALLOW_UNSAFE_MODE)+" Return:"+allow);
-		return allow;
-	}
-	
-	public static boolean isPlayerOp(EntityPlayer player){
-		boolean op = FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList().getOppedPlayers().getEntry(player.getGameProfile()) != null;
-		return op;
+	public static boolean isPlayerOp(ServerPlayer ply) {
+		return ply.server.getPlayerList().isOp(ply.getGameProfile());
 	}
 }

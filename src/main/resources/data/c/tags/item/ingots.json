@@ -1,0 +1,11 @@
+{
+  "values": [
+    "#c:ingots/bronze",
+    "#c:ingots/enriched_uranium",
+    "#c:ingots/lead",
+    "#c:ingots/obsidian_steel",
+    "#c:ingots/steel",
+    "#c:ingots/tin",
+    "#c:ingots/titanium"
+  ]
+}

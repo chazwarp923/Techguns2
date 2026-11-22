@@ -1,0 +1,19 @@
+{
+  "type": "techguns:fabricator",
+  "input": {
+    "item": "techguns:coil"
+  },
+  "wires": {
+    "tag": "c:circuits/elite",
+    "count": 2
+  },
+  "powder": {
+    "item": "techguns:mechanicalpartscarbon"
+  },
+  "plate": {
+    "tag": "c:plates/titanium"
+  },
+  "result": {
+    "id": "techguns:sonicemitter"
+  }
+}

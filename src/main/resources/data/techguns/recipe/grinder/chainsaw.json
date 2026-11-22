@@ -1,0 +1,15 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:chainsaw"
+  },
+  "results": [
+    {
+      "id": "minecraft:iron_ingot",
+      "count": 5
+    },
+    {
+      "id": "techguns:plasticsheet"
+    }
+  ]
+}

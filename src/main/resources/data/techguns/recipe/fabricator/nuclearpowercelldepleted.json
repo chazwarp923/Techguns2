@@ -1,0 +1,20 @@
+{
+  "type": "techguns:fabricator",
+  "input": {
+    "tag": "c:ingots/steel"
+  },
+  "wires": {
+    "tag": "c:circuits/basic"
+  },
+  "powder": {
+    "tag": "c:dusts/redstone",
+    "count": 4
+  },
+  "plate": {
+    "tag": "c:plates/lead",
+    "count": 2
+  },
+  "result": {
+    "id": "techguns:nuclearpowercelldepleted"
+  }
+}

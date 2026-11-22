@@ -1,0 +1,29 @@
+{
+  "type": "techguns:legacy",
+  "biomes": "#minecraft:is_nether",
+  "step": "surface_structures",
+  "spawn_overrides": {},
+  "terrain_adaptation": "none",
+  "structures": [
+    {
+      "name": "nether_altar_small",
+      "weight": 10
+    },
+    {
+      "name": "nether_soul_platform",
+      "weight": 10
+    },
+    {
+      "name": "nether_loot_01",
+      "weight": 10
+    },
+    {
+      "name": "nether_acid_hole",
+      "weight": 10
+    },
+    {
+      "name": "nether_orecluster_small",
+      "weight": 10
+    }
+  ]
+}

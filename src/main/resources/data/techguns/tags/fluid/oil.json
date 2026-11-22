@@ -1,0 +1,56 @@
+{
+  "values": [
+    {
+      "id": "#c:oil",
+      "required": false
+    },
+    {
+      "id": "#c:oils",
+      "required": false
+    },
+    {
+      "id": "#c:crude_oil",
+      "required": false
+    },
+    {
+      "id": "#c:tree_oil",
+      "required": false
+    },
+    {
+      "id": "#c:seed_oil",
+      "required": false
+    },
+    {
+      "id": "#c:plant_oil",
+      "required": false
+    },
+    {
+      "id": "pneumaticcraft:oil",
+      "required": false
+    },
+    {
+      "id": "thermal:crude_oil",
+      "required": false
+    },
+    {
+      "id": "thermal:tree_oil",
+      "required": false
+    },
+    {
+      "id": "immersivepetroleum:crude_oil",
+      "required": false
+    },
+    {
+      "id": "createdieselgenerators:crude_oil",
+      "required": false
+    },
+    {
+      "id": "createdieselgenerators:plant_oil",
+      "required": false
+    },
+    {
+      "id": "immersiveengineering:plantoil",
+      "required": false
+    }
+  ]
+}

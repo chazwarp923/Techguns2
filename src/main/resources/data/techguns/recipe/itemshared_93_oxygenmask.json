@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " p ",
+    "rpr"
+  ],
+  "key": {
+    "p": {
+      "tag": "c:plates/plastic"
+    },
+    "r": {
+      "tag": "c:rubbers"
+    }
+  },
+  "result": {
+    "id": "techguns:oxygenmask"
+  }
+}

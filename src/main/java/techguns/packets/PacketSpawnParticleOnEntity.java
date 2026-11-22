@@ -1,110 +1,54 @@
 package techguns.packets;
 
-import java.nio.charset.StandardCharsets;
-
-import io.netty.buffer.ByteBuf;
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.Entity;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
-import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
-import techguns.client.ClientProxy;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.world.entity.Entity;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import techguns.Techguns;
 import techguns.util.EntityCondition;
-import techguns.util.TGLogger;
+import techguns.util.TGFXHooks;
 
-public class PacketSpawnParticleOnEntity implements IMessage {
+/** Server -> client: spawn a Techguns FX attached to an entity. */
+public record PacketSpawnParticleOnEntity(String name, int entityID, float offsetX, float offsetY, float offsetZ, boolean attachToHead,
+		EntityCondition condition) implements CustomPacketPayload {
 
-	String name;
-	int entityID;
-	
-	float offsetX = 0.0f;
-	float offsetY = 0.0f;
-	float offsetZ = 0.0f;
-	
-	//float scale = 1.0f;
-	
-	boolean attachToHead = false;
-	
-	EntityCondition condition;
-	
-	public PacketSpawnParticleOnEntity() {};
-	
+	public static final Type<PacketSpawnParticleOnEntity> TYPE = new Type<>(Techguns.rl("spawn_particle_on_entity"));
+
+	public static final StreamCodec<FriendlyByteBuf, PacketSpawnParticleOnEntity> CODEC = StreamCodec.of((buf, m) -> {
+		buf.writeUtf(m.name);
+		buf.writeVarInt(m.entityID);
+		buf.writeFloat(m.offsetX);
+		buf.writeFloat(m.offsetY);
+		buf.writeFloat(m.offsetZ);
+		buf.writeBoolean(m.attachToHead);
+		buf.writeByte(m.condition == null ? EntityCondition.NONE.id : m.condition.id);
+	}, buf -> new PacketSpawnParticleOnEntity(buf.readUtf(), buf.readVarInt(), buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readBoolean(),
+			EntityCondition.fromByte(buf.readByte())));
+
 	public PacketSpawnParticleOnEntity(String name, Entity ent) {
 		this(name, ent, 0.0f, 0.0f, 0.0f, false, EntityCondition.NONE);
 	}
-	
+
 	public PacketSpawnParticleOnEntity(String name, Entity ent, float offsetX, float offsetY, float offsetZ, boolean attachToHead) {
 		this(name, ent, offsetX, offsetY, offsetZ, attachToHead, EntityCondition.NONE);
 	}
-	
+
 	public PacketSpawnParticleOnEntity(String name, Entity ent, float offsetX, float offsetY, float offsetZ, boolean attachToHead, EntityCondition condition) {
-		super();
-		this.name=name;
-		this.entityID=ent.getEntityId();
-		this.offsetX = offsetX;
-		this.offsetY = offsetY;
-		this.offsetZ = offsetZ;
-		this.attachToHead = attachToHead;
-		this.condition = condition;
+		this(name, ent.getId(), offsetX, offsetY, offsetZ, attachToHead, condition);
 	}
 
 	@Override
-	public void fromBytes(ByteBuf buf) {
-		int len = buf.readShort();
-		this.name = buf.readCharSequence(len, StandardCharsets.UTF_8).toString();
-		
-		this.entityID=buf.readInt();
-		
-		this.offsetX=buf.readFloat();
-		this.offsetY=buf.readFloat();
-		this.offsetZ=buf.readFloat();
-		
-		this.attachToHead = buf.readBoolean();
-		
-		this.condition = EntityCondition.fromByte(buf.readByte());
+	public Type<? extends CustomPacketPayload> type() {
+		return TYPE;
 	}
 
-	@Override
-	public void toBytes(ByteBuf buf) {
-		CharSequence cs = this.name;
-		buf.writeShort(cs.length());
-		buf.writeCharSequence(name, StandardCharsets.UTF_8);
-		
-		buf.writeInt(entityID);
-		
-		buf.writeFloat(this.offsetX);
-		buf.writeFloat(this.offsetY);
-		buf.writeFloat(this.offsetZ);
-		
-		buf.writeBoolean(this.attachToHead);
-		
-		if (condition == null) {
-			buf.writeByte(EntityCondition.NONE.id);
-		}
-		else {
-			buf.writeByte(condition.id);
-		}
-	}
-	
-	public static class Handler implements IMessageHandler<PacketSpawnParticleOnEntity, IMessage> {
-		@Override
-		public IMessage onMessage(PacketSpawnParticleOnEntity message, MessageContext ctx) {
-			FMLCommonHandler.instance().getWorldThread(ctx.netHandler).addScheduledTask(() -> handle(message, ctx));
-			return null;
-		}
-
-		private void handle(PacketSpawnParticleOnEntity m, MessageContext ctx) {
-			Entity ent = Minecraft.getMinecraft().player.world.getEntityByID(m.entityID);
-			if (ent!=null){
-//				if (!m.attachToHead && m.offsetX == 0 && m.offsetY == 0 && m.offsetZ ==0) {
-//					ClientProxy.get().createFXOnEntity(m.name, ent);
-//				}else {
-					ClientProxy.get().createFXOnEntityWithOffset(m.name, ent, m.offsetX, m.offsetY, m.offsetZ, m.attachToHead, m.condition);
-//				}
-			} else {
-				TGLogger.logger_client.warning("Got Packet for FX "+m.name+" on Entity, but ent was null");
-			}
+	public static void handle(PacketSpawnParticleOnEntity m, IPayloadContext ctx) {
+		Entity ent = ctx.player().level().getEntity(m.entityID);
+		if (ent != null) {
+			TGFXHooks.createFXOnEntityWithOffset(m.name, ent, m.offsetX, m.offsetY, m.offsetZ, m.attachToHead, m.condition);
+		} else {
+			Techguns.LOGGER.debug("Got packet for FX {} on entity, but entity was null", m.name);
 		}
 	}
 }

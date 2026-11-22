@@ -1,46 +1,29 @@
 package techguns.blocks.machines.multiblocks;
 
 import java.util.HashMap;
+import java.util.Map;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.EnumFacing;
+import javax.annotation.Nullable;
+
 import techguns.tileentities.FabricatorTileEntMaster;
-import techguns.tileentities.OreDrillTileEntMaster;
-import techguns.tileentities.ReactionChamberTileEntMaster;
+import techguns.tileentities.MultiBlockMachineTileEntMaster;
 
-public class MultiBlockRegister {
-	public static HashMap<Class<? extends TileEntity>, MultiBlockMachineSchematic> REGISTER = new HashMap<>();
-	
+/** Schematic for each multiblock controller (1.12 MultiBlockRegister). */
+public final class MultiBlockRegister {
+
+	private static final Map<Class<? extends MultiBlockMachineTileEntMaster>, MultiBlockSchematic> REGISTER = new HashMap<>();
+
 	static {
-		REGISTER.put(FabricatorTileEntMaster.class, new FabricatorDefinition());
-		REGISTER.put(ReactionChamberTileEntMaster.class, new ReactionChamberDefinition());
-		REGISTER.put(OreDrillTileEntMaster.class, new OreDrillDefinition());
+		REGISTER.put(FabricatorTileEntMaster.class, new FabricatorSchematic());
+		REGISTER.put(techguns.tileentities.ReactionChamberTileEntMaster.class, new ReactionChamberSchematic());
+		REGISTER.put(techguns.tileentities.OreDrillTileEntMaster.class, new OreDrillSchematic());
 	}
-	
-	public static boolean canFormFromSide(TileEntity tile, EnumFacing sideHit) {
-		MultiBlockMachineSchematic multiblock = REGISTER.get(tile.getClass());
-		if(multiblock!=null) {
-			return multiblock.canFormFromSide(sideHit);
-		}
-		return false;
+
+	private MultiBlockRegister() {
 	}
-	
-	public static boolean canForm(TileEntity tile, EntityPlayer ply, EnumFacing sideHit) {
-		
-		MultiBlockMachineSchematic multiblock = REGISTER.get(tile.getClass());
-		if(multiblock!=null) {
-			return multiblock.checkForm(tile.getWorld(), ply, tile.getPos(), sideHit);
-		}
-		
-		return false;
-	}
-	
-	public static boolean form(TileEntity tile, EntityPlayer ply, EnumFacing sideHit) {
-		MultiBlockMachineSchematic multiblock = REGISTER.get(tile.getClass());
-		if(multiblock!=null) {
-			return multiblock.form(tile.getWorld(), ply, tile.getPos(), sideHit);
-		}
-		return false;
+
+	@Nullable
+	public static MultiBlockSchematic get(MultiBlockMachineTileEntMaster master) {
+		return REGISTER.get(master.getClass());
 	}
 }

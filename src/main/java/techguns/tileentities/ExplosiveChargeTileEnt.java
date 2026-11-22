@@ -1,200 +1,175 @@
 package techguns.tileentities;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockDirectional;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.SoundEvents;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.ITickable;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.BlockPos.MutableBlockPos;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TextComponentString;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.world.BlockEvent;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.level.BlockEvent;
+import techguns.TGBlockEntities;
 import techguns.TGConfig;
-import techguns.TGPackets;
 import techguns.TGSounds;
-import techguns.Techguns;
 import techguns.blocks.machines.BlockExplosiveCharge;
+import techguns.gui.containers.ExplosiveChargeMenu;
 import techguns.packets.PacketSpawnParticle;
+import techguns.packets.TGPackets;
 
-public class ExplosiveChargeTileEnt extends BasicOwnedTileEnt implements ITickable {
+/**
+ * Mining charge (1.12 ExplosiveChargeTileEnt / ExplosiveChargeAdvTileEnt). Once armed it counts down and then breaks
+ * a square of block lines into the block it is attached to. Blocks are broken in the name of the owner, so
+ * protection mods can cancel it.
+ */
+public class ExplosiveChargeTileEnt extends BasicOwnedTileEnt {
 
-	public ExplosiveChargeTileEnt() {
-		super(0,false);
+	public static final int BUTTON_ID_DETONATE = 10;
+	public static final int BUTTON_ID_RADIUS_PLUS = 11;
+	public static final int BUTTON_ID_RADIUS_MINUS = 12;
+	public static final int BUTTON_ID_LENGTH_PLUS = 13;
+	public static final int BUTTON_ID_LENGTH_MINUS = 14;
+	public static final int BUTTON_ID_FUSE_PLUS = 15;
+	public static final int BUTTON_ID_FUSE_MINUS = 16;
+
+	protected final boolean advanced;
+
+	protected short maxBlastradius;
+	protected short minBlastradius = 3;
+	protected short minBlastLength = 2;
+	protected short maxBlastLength;
+	protected short minFuseTime = 60;
+	protected short maxFuseTime = 200;
+	protected short blastradius;
+	protected short blastlength;
+	protected short fusetime = 100;
+	protected boolean armed = false;
+
+	public ExplosiveChargeTileEnt(BlockPos pos, BlockState state) {
+		super(TGBlockEntities.EXPLOSIVE_CHARGE.get(), pos, state, 0, false);
+		this.advanced = state.getBlock() instanceof BlockExplosiveCharge b && b.isAdvanced();
+		if (advanced) {
+			this.maxBlastradius = 7;
+			this.maxBlastLength = 10;
+			this.blastradius = 5;
+			this.blastlength = 10;
+		} else {
+			this.maxBlastradius = 3;
+			this.maxBlastLength = 5;
+			this.blastradius = 3;
+			this.blastlength = 3;
+		}
 	}
-	
-	protected short maxBlastradius=3;
-	protected short minBlastradius=3;
-	protected short minBlastLength=2;
-	protected short maxBlastLength=5;
-	protected short minFuseTime=60;
-	protected short maxFuseTime=200;
-	
-	protected short blastradius=3;
-	protected short blastlength=3;	
-	
-	protected short fusetime=100;
-	protected boolean armed=false;
-		
+
+	public boolean isAdvanced() {
+		return advanced;
+	}
+
 	public SoundEvent getSoundPlant() {
-		return TGSounds.TNT_PLANT;
+		return advanced ? TGSounds.C4_PLANT.get() : TGSounds.TNT_PLANT.get();
 	}
-	
+
 	public SoundEvent getTickSound() {
-		return TGSounds.TNT_TICK;
+		return advanced ? TGSounds.C4_TICK.get() : TGSounds.TNT_TICK.get();
 	}
-	
+
 	public SoundEvent getInitSound() {
-		return TGSounds.TNT_INIT;
+		return advanced ? TGSounds.C4_INIT.get() : TGSounds.TNT_INIT.get();
 	}
 
-	protected int getBlastRadiusForCuboid(){
-		return this.blastradius/2;
+	protected boolean canBreakBlockHardness(float hardness) {
+		return advanced ? hardness >= 0 && hardness <= TGConfig.explosiveChargeAdvancedMaxBlockHardness
+				: hardness >= 0 && hardness < TGConfig.explosiveChargeMaxBlockHardness;
 	}
-	
-	protected EnumFacing getOrientation() {
-		IBlockState state = this.world.getBlockState(getPos());
-		return state.getValue(BlockDirectional.FACING);
+
+	protected int getBlastRadiusForCuboid() {
+		return this.blastradius / 2;
 	}
-	
-	
-	@Override
-	public void update() {
-		if(this.armed){
-			this.fusetime--;
-			
-			if (!this.world.isRemote && this.fusetime>0 && (this.fusetime % 20 ==0) ){
-				this.world.playSound((EntityPlayer)null,this.pos, getTickSound(),SoundCategory.BLOCKS, 4.0F, 1.0f);
-			}
-			
-			if(this.fusetime<=0){
-				
-				this.explode();
 
-			}
+	protected Direction getOrientation() {
+		BlockState state = this.getBlockState();
+		return state.hasProperty(BlockExplosiveCharge.FACING) ? state.getValue(BlockExplosiveCharge.FACING) : Direction.DOWN;
+	}
 
+	public static void serverTick(Level level, BlockPos pos, BlockState state, ExplosiveChargeTileEnt te) {
+		if (!te.armed) {
+			return;
+		}
+		te.fusetime--;
+		if (te.fusetime > 0 && te.fusetime % 20 == 0) {
+			level.playSound(null, pos, te.getTickSound(), SoundSource.BLOCKS, 4.0f, 1.0f);
+		}
+		if (te.fusetime <= 0) {
+			te.explode();
 		}
 	}
 
-	protected void explode(){
-		
-		BlockPos pos = this.getPos();
-		if(!this.world.isRemote){
-			this.world.playSound((EntityPlayer)null,this.pos, SoundEvents.ENTITY_GENERIC_EXPLODE, SoundCategory.BLOCKS, 4.0F, (1.0F + (this.world.rand.nextFloat() - this.world.rand.nextFloat()) * 0.2F) * 0.7F);
-			
-			//pos.shift(this.getDirection(),1);
-		
-			//get the first slice of the explosion volume
-			
-			EnumFacing facing = this.getOrientation();
-			
-			EnumFacing side1;
-			EnumFacing side2;
-			
-			if(facing.getAxis() == EnumFacing.Axis.X) {
-				side1 = EnumFacing.NORTH;
-				side2 = EnumFacing.UP;
-			} else if (facing.getAxis() == EnumFacing.Axis.Z) {
-				side1 = EnumFacing.EAST;
-				side2 = EnumFacing.UP;
-			} else {
-				side1 = EnumFacing.NORTH;
-				side2 = EnumFacing.EAST;
-			}
-			
-			//remove self
-			world.setBlockToAir(pos);
-			
-			int rad = this.getBlastRadiusForCuboid();
-			this.getPos().getAllInBoxMutable(pos.offset(side1,rad).offset(side2, rad), pos.offset(side1.getOpposite(),rad).offset(side2.getOpposite(), rad)).forEach(p -> {
-				explodeLine(p,facing);
-			});
-
+	protected void explode() {
+		if (!(this.level instanceof ServerLevel sl)) {
+			return;
 		}
-		
+		BlockPos pos = this.getBlockPos();
+		sl.playSound(null, pos, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 4.0f,
+				(1.0f + (sl.random.nextFloat() - sl.random.nextFloat()) * 0.2f) * 0.7f);
+		Direction facing = this.getOrientation();
+		Direction side1;
+		Direction side2;
+		if (facing.getAxis() == Direction.Axis.X) {
+			side1 = Direction.NORTH;
+			side2 = Direction.UP;
+		} else if (facing.getAxis() == Direction.Axis.Z) {
+			side1 = Direction.EAST;
+			side2 = Direction.UP;
+		} else {
+			side1 = Direction.NORTH;
+			side2 = Direction.EAST;
+		}
+		ServerPlayer owner = this.owner != null ? (ServerPlayer) sl.getPlayerByUUID(this.owner) : null;
+		sl.removeBlock(pos, false);
+		int rad = this.getBlastRadiusForCuboid();
+		for (BlockPos p : BlockPos.betweenClosed(pos.relative(side1, rad).relative(side2, rad), pos.relative(side1.getOpposite(), rad).relative(side2.getOpposite(), rad))) {
+			explodeLine(sl, owner, p.immutable(), facing);
+		}
 	}
-	
-	protected void explodeLine(MutableBlockPos p, EnumFacing direction){
-		MutableBlockPos pos = new MutableBlockPos(p);
-		int i =0;
-		boolean blocked=false;
-		
-		while (!blocked && i < this.blastlength){
-			pos.move(direction);	
-			blocked = explodeBlock(pos);
-			i++;
-		}		
-	}
-	
-	/**
-	 * Returns false when explosion is blocked
-	 * @param coords
-	 * @return
-	 */
-	protected boolean explodeBlock(MutableBlockPos coords){
-		IBlockState bs = this.world.getBlockState(coords);
-		Block block = bs.getBlock();
 
-		if(this.canBreakBlockHardness(bs.getBlockHardness(this.world,coords))){
-			
-			//post blockBreakEvent
-			EntityPlayer ply = this.world.getPlayerEntityByUUID(getOwner());
-			if (ply!=null) {
-				final BlockEvent.BreakEvent breakEvent = new BlockEvent.BreakEvent(this.world,coords,bs,ply);
-				
-				MinecraftForge.EVENT_BUS.post(breakEvent);
-					
-				if (!breakEvent.isCanceled()){
-					
-					block.dropBlockAsItem(world,coords, bs,0);
-					world.setBlockToAir(coords);
-		
-					if (world.rand.nextFloat()>0.5f){
-						TGPackets.network.sendToAllAround(new PacketSpawnParticle("MiningChargeBlockExplosion", coords.getX()+0.5d, coords.getY()+0.5d, coords.getZ()+0.5d), TGPackets.targetPointAroundBlockPos(this.world.provider.getDimension(),coords,50));
-					}
-					
-					return false;
-				} 
+	protected void explodeLine(ServerLevel sl, ServerPlayer owner, BlockPos start, Direction direction) {
+		BlockPos.MutableBlockPos pos = start.mutable();
+		for (int i = 0; i < this.blastlength; i++) {
+			pos.move(direction);
+			if (explodeBlock(sl, owner, pos.immutable())) {
+				return;
 			}
 		}
-		return true;
 	}
-	
-	protected boolean canBreakBlockHardness(float hardness){
-		return hardness >=0 && hardness < TGConfig.explosiveChargeMaxBlockHardness;
-	}
-	
-	@Override
-	public void readClientDataFromNBT(NBTTagCompound tags) {
-		super.readClientDataFromNBT(tags);
-		blastradius=tags.getShort("blastradius");
-		blastlength=tags.getShort("blastlength");
-		fusetime=tags.getShort("fusetime");
-		boolean armedNew = tags.getBoolean("armed");
-		if(armedNew!=armed && this.world!=null && this.world.isRemote) {
-			this.world.markBlockRangeForRenderUpdate(getPos(), getPos().add(1, 1, 1));
+
+	/** @return true when the explosion is blocked */
+	protected boolean explodeBlock(ServerLevel sl, ServerPlayer owner, BlockPos p) {
+		BlockState bs = sl.getBlockState(p);
+		if (owner == null || !this.canBreakBlockHardness(bs.getDestroySpeed(sl, p))) {
+			return true;
 		}
-		armed=armedNew;
-	}
-
-	@Override
-	public void writeClientDataToNBT(NBTTagCompound tags) {
-		super.writeClientDataToNBT(tags);
-		tags.setShort("blastradius",blastradius);
-		tags.setShort("blastlength",blastlength);
-		tags.setShort("fusetime",fusetime);
-		tags.setBoolean("armed",armed);
-	}
-
-	@Override
-	public ITextComponent getDisplayName() {
-		return new TextComponentString(Techguns.MODID+".inventory.explosivecharge");
+		if (!bs.isAir()) {
+			BlockEvent.BreakEvent event = new BlockEvent.BreakEvent(sl, p, bs, owner);
+			if (NeoForge.EVENT_BUS.post(event).isCanceled()) {
+				return true;
+			}
+			Block.dropResources(bs, sl, p, sl.getBlockEntity(p), owner, net.minecraft.world.item.ItemStack.EMPTY);
+			sl.removeBlock(p, false);
+		}
+		if (sl.random.nextFloat() > 0.5f) {
+			TGPackets.sendToAllAround(new PacketSpawnParticle("MiningChargeBlockExplosion", p.getX() + 0.5d, p.getY() + 0.5d, p.getZ() + 0.5d), sl,
+					p.getX() + 0.5d, p.getY() + 0.5d, p.getZ() + 0.5d, 50.0d);
+		}
+		return false;
 	}
 
 	public short getBlastradius() {
@@ -209,63 +184,84 @@ public class ExplosiveChargeTileEnt extends BasicOwnedTileEnt implements ITickab
 		return fusetime;
 	}
 
+	public void setBlastradius(int v) {
+		this.blastradius = (short) v;
+	}
+
+	public void setBlastlength(int v) {
+		this.blastlength = (short) v;
+	}
+
+	public void setFusetime(int v) {
+		this.fusetime = (short) v;
+	}
+
 	public boolean isArmed() {
 		return armed;
 	}
 
-
 	@Override
-	public void buttonClicked(int id, EntityPlayer ply, String data) {
-		if (!this.armed){
-			if ((id==0) && (this.isUseableByPlayer(ply))){
-				this.armed=true;
-				if(!this.world.isRemote){
-					this.world.playSound(null,this.getPos(), this.getInitSound(), SoundCategory.BLOCKS, 4.0F, 1.0f);
-					IBlockState state= world.getBlockState(getPos());
-					IBlockState newState = state.withProperty(BlockExplosiveCharge.ARMED, this.armed);
-					this.world.notifyBlockUpdate(getPos(), state, newState, 3);
-					this.markDirty();
-				}
-			}else if(id==1){
-				if(this.blastradius<this.maxBlastradius){
-					this.blastradius++;
+	public void buttonClicked(int id, Player ply) {
+		if (this.armed) {
+			return;
+		}
+		switch (id) {
+			case BUTTON_ID_DETONATE -> {
+				if (this.isUseableByPlayer(ply) && this.level != null && !this.level.isClientSide) {
+					this.armed = true;
+					this.level.playSound(null, this.getBlockPos(), this.getInitSound(), SoundSource.BLOCKS, 4.0f, 1.0f);
+					BlockState state = this.getBlockState();
+					if (state.hasProperty(BlockExplosiveCharge.ARMED)) {
+						this.level.setBlock(this.getBlockPos(), state.setValue(BlockExplosiveCharge.ARMED, true), Block.UPDATE_ALL);
+					}
 					this.needUpdate();
+					ply.closeContainer();
 				}
 			}
-			else if(id==2){
-				if(this.blastradius>this.minBlastradius){
-					this.blastradius--;
-					this.needUpdate();
-				}
-			}
-			
-			else if(id==3){
-				if(this.blastlength< this.maxBlastLength){
-					this.blastlength++;
-					this.needUpdate();
-				}
-			}
-			
-			else if(id==4){
-				if(this.blastlength > this.minBlastLength){
-					this.blastlength--;
-					this.needUpdate();
-				}
-			}
-		
-			else if(id==5){
-				if(this.fusetime< this.maxFuseTime){
-					this.fusetime+=20;
-					this.needUpdate();
-				}
-			}
-			else if(id==6){
-				if(this.fusetime> this.minFuseTime){
-					this.fusetime-=20;
-					this.needUpdate();
-				}
-			}
+			case BUTTON_ID_RADIUS_PLUS -> change(blastradius < maxBlastradius, () -> blastradius++);
+			case BUTTON_ID_RADIUS_MINUS -> change(blastradius > minBlastradius, () -> blastradius--);
+			case BUTTON_ID_LENGTH_PLUS -> change(blastlength < maxBlastLength, () -> blastlength++);
+			case BUTTON_ID_LENGTH_MINUS -> change(blastlength > minBlastLength, () -> blastlength--);
+			case BUTTON_ID_FUSE_PLUS -> change(fusetime < maxFuseTime, () -> fusetime += 20);
+			case BUTTON_ID_FUSE_MINUS -> change(fusetime > minFuseTime, () -> fusetime -= 20);
+			default -> super.buttonClicked(id, ply);
 		}
 	}
-	
+
+	private void change(boolean allowed, Runnable r) {
+		if (allowed) {
+			r.run();
+			this.needUpdate();
+		}
+	}
+
+	@Override
+	public AbstractContainerMenu createMenu(int id, Inventory inv, Player player) {
+		return armed ? null : new ExplosiveChargeMenu(id, inv, this);
+	}
+
+	@Override
+	public Component getDisplayName() {
+		return Component.translatable(this.getBlockState().getBlock().getDescriptionId());
+	}
+
+	@Override
+	public void readClientData(CompoundTag tags, HolderLookup.Provider registries) {
+		super.readClientData(tags, registries);
+		if (tags.contains("blastradius")) {
+			this.blastradius = tags.getShort("blastradius");
+			this.blastlength = tags.getShort("blastlength");
+			this.fusetime = tags.getShort("fusetime");
+		}
+		this.armed = tags.getBoolean("armed");
+	}
+
+	@Override
+	public void writeClientData(CompoundTag tags, HolderLookup.Provider registries) {
+		super.writeClientData(tags, registries);
+		tags.putShort("blastradius", blastradius);
+		tags.putShort("blastlength", blastlength);
+		tags.putShort("fusetime", fusetime);
+		tags.putBoolean("armed", armed);
+	}
 }

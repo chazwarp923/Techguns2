@@ -1,45 +1,35 @@
 package techguns.entities.projectiles;
 
-import io.netty.buffer.ByteBuf;
-import net.minecraft.block.SoundType;
-import net.minecraft.block.material.Material;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.RayTraceResult.Type;
-import net.minecraft.world.World;
-import techguns.TGSounds;
-import techguns.Techguns;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+import techguns.TGEntities;
 import techguns.api.damagesystem.DamageType;
-import techguns.client.ClientProxy;
 import techguns.damagesystem.TGDamageSource;
-import techguns.deatheffects.EntityDeathUtils.DeathType;
+import techguns.deatheffects.DeathType;
 import techguns.items.guns.GenericGun;
 import techguns.items.guns.IProjectileFactory;
 import techguns.items.guns.ammo.DamageModifier;
 
 public class GenericProjectileIncendiary extends GenericProjectile {
 
-	protected boolean showFireTrail=false;
-	
-	public GenericProjectileIncendiary(World worldIn) {
-		super(worldIn);
+	protected boolean showFireTrail = false;
+
+	public GenericProjectileIncendiary(EntityType<? extends GenericProjectileIncendiary> type, Level level) {
+		super(type, level);
 	}
 
-	public GenericProjectileIncendiary(World worldIn, double posX, double posY, double posZ, float yaw, float pitch,
-			float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin,
-			float penetration, boolean blockdamage, EnumBulletFirePos firePos, boolean fireTrail) {
-		super(worldIn, posX, posY, posZ, yaw, pitch, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration,
+	public GenericProjectileIncendiary(Level level, LivingEntity p, float damage, float speed, int TTL, float spread, float dmgDropStart,
+			float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, boolean fireTrail) {
+		super(TGEntities.GENERIC_PROJECTILE_INCENDIARY.get(), level, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration,
 				blockdamage, firePos);
-		this.showFireTrail=fireTrail;
-	}
-
-	public GenericProjectileIncendiary(World par2World, EntityLivingBase p, float damage, float speed, int TTL,
-			float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage,
-			EnumBulletFirePos firePos, boolean fireTrail) {
-		super(par2World, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos);
-		this.showFireTrail=fireTrail;
+		this.showFireTrail = fireTrail;
 	}
 
 	@Override
@@ -51,111 +41,67 @@ public class GenericProjectileIncendiary extends GenericProjectile {
 	}
 
 	@Override
-	protected void onHitEffect(EntityLivingBase ent, RayTraceResult rayTraceResultIn) {
-		super.onHitEffect(ent, rayTraceResultIn);
-		if(!ent.isImmuneToFire()) {
-			ent.setFire(3);
+	protected void onHitEffect(LivingEntity ent, EntityHitResult hit) {
+		super.onHitEffect(ent, hit);
+		if (!ent.fireImmune()) {
+			ent.igniteForSeconds(3);
 		}
 	}
-	
-	
-	
+
 	@Override
-	protected void hitBlock(RayTraceResult raytraceResultIn) {
-		
+	protected void hitBlock(BlockHitResult hit) {
 		if (this.blockdamage) {
-			burnBlocks(world, raytraceResultIn, damage/40f);
+			burnBlocks(this.level(), hit, damage / 40f);
 		}
-		
-		super.hitBlock(raytraceResultIn);
+		super.hitBlock(hit);
 	}
 
 	@Override
-	protected void doImpactEffects(Material mat, RayTraceResult rayTraceResult, SoundType sound) {
-		//super.doImpactEffects(mat, rayTraceResult, sound);
-		
-		double x = rayTraceResult.hitVec.x;
-    	double y = rayTraceResult.hitVec.y;
-    	double z = rayTraceResult.hitVec.z;
-    	boolean distdelay=true;
-    	
-    	float pitch = 0.0f;
-    	float yaw = 0.0f;
-    	if (rayTraceResult.typeOfHit == Type.BLOCK) {
-    		if (rayTraceResult.sideHit == EnumFacing.UP) {
-    			pitch = -90.0f;
-    		}else if (rayTraceResult.sideHit == EnumFacing.DOWN) {
-    			pitch = 90.0f;
-    		}else {
-    			yaw = rayTraceResult.sideHit.getHorizontalAngle();
-    		}
-    	}else {
-    		pitch = -this.rotationPitch;
-    		yaw = -this.rotationYaw;
-    	}    	
-		
-		//Techguns.proxy.createFX("Impact_IncendiaryBullet", world, x, y, z, 0.0D, 0.0D, 0.0D, pitch, yaw);
-		
-		if (this.showFireTrail) {
-			//this.world.playSound(x, y, z, TGSounds.BULLET_IMPACT_DIRT, SoundCategory.AMBIENT, 1.0f, 1.0f, distdelay);
-			this.sendImpactFX(x, y, z, pitch, yaw, 5, true);
-		}else {
-			int type =-1;
-	    	if(sound==SoundType.STONE) {
-				type=0;
-				
-			} else if(sound==SoundType.WOOD || sound==SoundType.LADDER) {
-				type=1;
-				
-			} else if(sound==SoundType.GLASS) {
-				type=2;
-				
-			} else if(sound==SoundType.METAL || sound==SoundType.ANVIL) {
-				type=3;
-				
-			} else if(sound ==SoundType.GROUND || sound == SoundType.SAND) {
-				type=4;
-			} 
-	    	this.sendImpactFX(x, y, z, pitch, yaw, type, true);
+	protected void doImpactEffects(BlockState state, HitResult hit, SoundType sound) {
+		var loc = hit.getLocation();
+		float pitch = 0.0f;
+		float yaw = 0.0f;
+		if (hit instanceof BlockHitResult bhr) {
+			switch (bhr.getDirection()) {
+				case UP -> pitch = -90.0f;
+				case DOWN -> pitch = 90.0f;
+				default -> yaw = bhr.getDirection().toYRot();
+			}
+		} else {
+			pitch = -this.getXRot();
+			yaw = -this.getYRot();
 		}
-			
+		this.sendImpactFX(loc.x, loc.y, loc.z, pitch, yaw, this.showFireTrail ? 5 : getImpactType(sound), true);
 	}
 
 	@Override
-	public void writeSpawnData(ByteBuf buffer) {
+	public void writeSpawnData(RegistryFriendlyByteBuf buffer) {
 		super.writeSpawnData(buffer);
 		buffer.writeBoolean(showFireTrail);
 	}
 
 	@Override
-	public void readSpawnData(ByteBuf additionalData) {
-		super.readSpawnData(additionalData);
-		this.showFireTrail=additionalData.readBoolean();		
+	public void readSpawnData(RegistryFriendlyByteBuf buffer) {
+		super.readSpawnData(buffer);
+		this.showFireTrail = buffer.readBoolean();
+
+	}
+
+	@Override
+	protected void onClientSpawn() {
 		if (showFireTrail) {
-			ClientProxy.get().createFXOnEntity("IncendiaryShotgunTrail", this);
+			techguns.util.TGFXHooks.createFXOnEntity("IncendiaryShotgunTrail", this);
 		}
 	}
 
-	
-	
-//	@Override
-//	public void onUpdate() {
-//		super.onUpdate();
-//		if (this.showFireTrail && !this.isInWater()) {
-//			this.world.spawnParticle(EnumParticleTypes.FLAME, this.posX - this.motionX * 0.25D,
-//						this.posY - this.motionY * 0.25D, this.posZ - this.motionZ * 0.25D, this.motionX*0.5, this.motionY*0.5,
-//						this.motionZ*0.5);
-//		}
-//	}
+	public boolean showsFireTrail() {
+		return showFireTrail;
+	}
 
-
-
-	public static class Factory implements IProjectileFactory<GenericProjectile>{
-
+	public static class Factory implements IProjectileFactory<GenericProjectile> {
 		protected DamageModifier mod = new DamageModifier().setDmg(1.1f, 0f);
-		
 		protected boolean fireTrail;
-			
+
 		public Factory(boolean fireTrail) {
 			this.fireTrail = fireTrail;
 		}
@@ -164,19 +110,18 @@ public class GenericProjectileIncendiary extends GenericProjectile {
 		public DamageModifier getDamageModifier() {
 			return mod;
 		}
-		
+
 		@Override
-		public GenericProjectileIncendiary createProjectile(GenericGun gun, World world, EntityLivingBase p,
-				float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin,
-				float penetration, boolean blockdamage, EnumBulletFirePos firePos, float radius, double gravity) {
-			return new GenericProjectileIncendiary(world, p, mod.getDamage(damage), speed, TTL, spread, dmgDropStart, dmgDropEnd, mod.getDamage(dmgMin), penetration, blockdamage, firePos, this.fireTrail);
+		public GenericProjectileIncendiary createProjectile(GenericGun gun, Level level, LivingEntity p, float damage, float speed, int TTL,
+				float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos,
+				float radius, double gravity) {
+			return new GenericProjectileIncendiary(level, p, mod.getDamage(damage), speed, TTL, spread, dmgDropStart, dmgDropEnd,
+					mod.getDamage(dmgMin), penetration, blockdamage, firePos, this.fireTrail);
 		}
 
 		@Override
 		public DamageType getDamageType() {
 			return DamageType.FIRE;
 		}
-		
 	}
-	
 }

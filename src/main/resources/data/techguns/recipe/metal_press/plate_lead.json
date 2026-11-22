@@ -1,0 +1,14 @@
+{
+  "type": "techguns:metal_press",
+  "input1": {
+    "tag": "c:ingots/lead"
+  },
+  "input2": {
+    "tag": "c:ingots/lead"
+  },
+  "allow_swap": true,
+  "result": {
+    "id": "techguns:platelead",
+    "count": 2
+  }
+}

@@ -1,44 +1,56 @@
 package techguns.entities.npcs;
 
-import java.util.Random;
-
-import net.minecraft.block.Block;
-import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.init.Items;
-import net.minecraft.init.SoundEvents;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
 import techguns.TGArmors;
 import techguns.TGuns;
-import techguns.Techguns;
+import techguns.items.armors.GenericArmorMultiCamo;
 
+/** 1.12 SkeletonSoldier */
 public class SkeletonSoldier extends GenericNPCUndead {
 
-	public static final ResourceLocation LOOT = new ResourceLocation(Techguns.MODID, "entities/skeletonsoldier");
-	
-	public SkeletonSoldier(World world) {
-		super(world);
-		this.height=1.95f;
+	public SkeletonSoldier(EntityType<? extends SkeletonSoldier> type, Level level) {
+		super(type, level);
 		setTGArmorStats(0f, 0f);
 	}
 
-	@Override
-	protected void applyEntityAttributes() {
-		super.applyEntityAttributes();
-		this.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).setBaseValue(0.25D);
-		this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(25);
-		this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).setBaseValue(4);
-		this.getEntityAttribute(SharedMonsterAttributes.FOLLOW_RANGE).setBaseValue(50.0D);
+	public static AttributeSupplier.Builder createAttributes() {
+		return GenericNPC.createAttributes(0.25D, 25D, 4D, 50D);
 	}
 
-	
-	
+	@Override
+	protected void addRandomArmor(int difficulty) {
+		equip(EquipmentSlot.HEAD, this.random.nextBoolean() ? TGArmors.T1_SCOUT_HELMET.get() : TGArmors.T1_COMBAT_HELMET.get());
+		equip(EquipmentSlot.FEET, this.random.nextBoolean() ? TGArmors.T1_SCOUT_BOOTS.get() : TGArmors.T1_COMBAT_BOOTS.get());
+		equip(EquipmentSlot.MAINHAND, pick(TGuns.REVOLVER.get(), TGuns.THOMPSON.get(), TGuns.HANDCANNON.get()));
+	}
+
+	@Override
+	protected SoundEvent getAmbientSound() {
+		return SoundEvents.SKELETON_AMBIENT;
+	}
+
+	@Override
+	protected SoundEvent getHurtSound(DamageSource src) {
+		return SoundEvents.SKELETON_HURT;
+	}
+
+	@Override
+	protected SoundEvent getDeathSound() {
+		return SoundEvents.SKELETON_DEATH;
+	}
+
+	@Override
+	protected SoundEvent getStepSound() {
+		return SoundEvents.SKELETON_STEP;
+	}
+
 	@Override
 	public float getWeaponPosX() {
 		return -0.06f;
@@ -47,72 +59,5 @@ public class SkeletonSoldier extends GenericNPCUndead {
 	@Override
 	public float getWeaponPosY() {
 		return -0.06f;
-	}
-
-	@Override
-	protected void addRandomArmor(int difficulty) {
-
-		// Armors
-		
-		double chance = 0.5;
-		if (Math.random() <= chance) {
-			this.setItemStackToSlot(EntityEquipmentSlot.HEAD, new ItemStack(TGArmors.t1_scout_Helmet));
-		} else {
-			this.setItemStackToSlot(EntityEquipmentSlot.HEAD, new ItemStack(TGArmors.t1_combat_Helmet));
-		};
-		if (Math.random() <= chance) {
-			this.setItemStackToSlot(EntityEquipmentSlot.FEET, new ItemStack(TGArmors.t1_scout_Boots));
-		} else {
-			this.setItemStackToSlot(EntityEquipmentSlot.FEET, new ItemStack(TGArmors.t1_combat_Boots));
-		};
-		
-		// Weapons
-		Random r = new Random();
-		Item weapon = null;
-		switch (r.nextInt(3)) {
-		case 0:
-			weapon = TGuns.revolver;
-			break;
-		case 1:
-			weapon = TGuns.thompson;
-			break;
-		case 2:
-			weapon = TGuns.handcannon;
-			break;
-		default:
-			weapon = Items.STONE_SHOVEL;
-			break;
-		}
-		if (weapon != null) this.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, new ItemStack(weapon));
-	}
-	
-	@Override
-	public SoundEvent getAmbientSound() {
-		return SoundEvents.ENTITY_SKELETON_AMBIENT;
-	}
-
-	@Override
-	public SoundEvent getHurtSound(DamageSource damageSourceIn) {
-		return SoundEvents.ENTITY_SKELETON_HURT;
-	}
-
-	@Override
-	public SoundEvent getDeathSound() {
-		return SoundEvents.ENTITY_SKELETON_DEATH;
-	}
-
-	public SoundEvent getStepSound() {
-		return SoundEvents.ENTITY_SKELETON_STEP;
-	}
-	
-	@Override
-    protected void playStepSound(BlockPos pos, Block blockIn)
-    {
-        this.playSound(this.getStepSound(), 0.15F, 1.0F);
-    }
-	
-	@Override
-	protected ResourceLocation getLootTable() {
-		return LOOT;
 	}
 }

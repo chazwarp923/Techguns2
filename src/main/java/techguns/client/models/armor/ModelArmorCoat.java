@@ -1,9 +1,9 @@
 package techguns.client.models.armor;
 
-import net.minecraft.client.model.ModelBiped;
-import net.minecraft.client.model.ModelRenderer;
 
-public class ModelArmorCoat extends ModelBiped {
+import techguns.client.models.ModelRenderer;
+
+public class ModelArmorCoat extends ModelBipedTG {
 
 	public ModelRenderer coatback;
 	public ModelRenderer coatLeftLeg;

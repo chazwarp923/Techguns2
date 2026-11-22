@@ -1,19 +1,20 @@
 package techguns.items.guns;
 
-import java.util.List;
+import java.util.function.Supplier;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumActionResult;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import javax.annotation.Nullable;
+
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import techguns.TGSounds;
-import techguns.Techguns;
 import techguns.capabilities.TGExtendedPlayer;
 import techguns.client.audio.TGSoundCategory;
 import techguns.entities.projectiles.EnumBulletFirePos;
@@ -21,188 +22,125 @@ import techguns.entities.projectiles.GenericProjectile;
 import techguns.entities.projectiles.GuidedMissileProjectile;
 import techguns.util.SoundUtil;
 
+/**
+ * Hold right mouse to lock on (client side trace into TGExtendedPlayer.lockOnEntity / lockOnTicks),
+ * left click fires; the locked target is sent to the server with PacketShootGun.
+ */
 public class GuidedMissileLauncher extends GenericGunCharge {
-	
+
 	public static final float LOCK_RANGE = 150.0f;
 	public static final float LOCK_ERROR_THRESHOLD = 0.5f;
-	//public static final int LOCK_TICKS = 10; //ticks required for lock completion
-	//public static final int LOCK_COMPLETE_TICKS = 20; //This is value is used when the lock is complete
 
-	public GuidedMissileLauncher(String name, ChargedProjectileSelector projectile_selector, boolean semiAuto,
-			int minFiretime, int clipsize, int reloadtime, float damage, SoundEvent firesound, SoundEvent reloadsound,
-			int TTL, float accuracy, float fullChargeTime, int ammoConsumedOnFullCharge) {
-		super(name, projectile_selector, semiAuto, minFiretime, clipsize, reloadtime, damage, firesound, reloadsound, TTL,
-				accuracy, fullChargeTime, ammoConsumedOnFullCharge);
+	public GuidedMissileLauncher(ChargedProjectileSelector<? extends GenericProjectile> sel, boolean semiAuto, int minFiretime, int clipsize,
+			int reloadtime, float damage, Supplier<SoundEvent> firesound, Supplier<SoundEvent> reloadsound, int TTL, float accuracy,
+			float fullChargeTime, int ammoConsumedOnFullCharge) {
+		super(sel, semiAuto, minFiretime, clipsize, reloadtime, damage, firesound, reloadsound, TTL, accuracy, fullChargeTime,
+				ammoConsumedOnFullCharge);
 	}
 
 	@Override
-	public void onUsingTick(ItemStack stack, EntityLivingBase player, int count) {
-		super.onUsingTick(stack, player, count);
-		
-		if (player.world.isRemote) {			
-			TGExtendedPlayer epc = TGExtendedPlayer.get((EntityPlayer)player);
-			traceTarget(player);			
-			//Handle sounds
-			if (player instanceof EntityPlayer) {			
-				if (epc.lockOnTicks >= this.lockOnTicks) {
-					if (count % 4 == 0) SoundUtil.playSoundOnEntityGunPosition(player.world, player, TGSounds.LOCKED_BEEP, SOUND_DISTANCE, 1.0F, false, false, TGSoundCategory.PLAYER_EFFECT);
-				}else if (epc.lockOnTicks > 0) {
-					if (count % 4 == 0) SoundUtil.playSoundOnEntityGunPosition(player.world, player, TGSounds.LOCKON_BEEP, SOUND_DISTANCE, 1.0F, false, false, TGSoundCategory.PLAYER_EFFECT);
-				}else {
-					if (count % 12 == 0) SoundUtil.playSoundOnEntityGunPosition(player.world, player, TGSounds.LOCKON_BEEP, SOUND_DISTANCE, 0.5F, false, false, TGSoundCategory.PLAYER_EFFECT);
-				}
+	public void onUseTick(Level level, LivingEntity entity, ItemStack stack, int count) {
+		super.onUseTick(level, entity, stack, count);
+		if (level.isClientSide && entity instanceof Player player) {
+			TGExtendedPlayer epc = TGExtendedPlayer.get(player);
+			traceTarget(player, epc);
+			if (epc.lockOnTicks >= this.lockOnTicks) {
+				if (count % 4 == 0) beep(level, player, TGSounds.LOCKED_BEEP.get(), 1.0f);
+			} else if (epc.lockOnTicks > 0) {
+				if (count % 4 == 0) beep(level, player, TGSounds.LOCKON_BEEP.get(), 1.0f);
+			} else if (count % 12 == 0) {
+				beep(level, player, TGSounds.LOCKON_BEEP.get(), 0.5f);
 			}
 		}
 	}
 
-	@Override
-	protected void startCharge(ItemStack item, World world, EntityPlayer player) {
-		super.startCharge(item, world, player);
-		
-//		TGExtendedPlayer epc = TGExtendedPlayer.get(player);
-//		epc.lockOnEntity = null;
-//		epc.lockOnTicks = -1;
+	private static void beep(Level level, Player player, SoundEvent s, float pitch) {
+		SoundUtil.playSoundOnEntityGunPosition(level, player, s, SOUND_DISTANCE, pitch, false, false, true, TGSoundCategory.PLAYER_EFFECT);
 	}
-	
-	protected void traceTarget(EntityLivingBase shooter) {
-		Vec3d vec3d1 = new Vec3d(shooter.posX, shooter.posY+shooter.getEyeHeight(), shooter.posZ);
-		shooter.getLookVec();
-		Vec3d vec3d = vec3d1.add(shooter.getLookVec().scale(LOCK_RANGE));
-		
-		
-		RayTraceResult raytraceresult = shooter.world.rayTraceBlocks(vec3d1, vec3d, false, true, false);
 
-		
-		//System.out.println("Tracking target...");
-		
-		if (raytraceresult != null) {
-			vec3d = new Vec3d(raytraceresult.hitVec.x, raytraceresult.hitVec.y, raytraceresult.hitVec.z);
+	protected void traceTarget(Player shooter, TGExtendedPlayer epc) {
+		Vec3 start = shooter.getEyePosition();
+		Vec3 end = start.add(shooter.getLookAngle().scale(LOCK_RANGE));
+		HitResult blockHit = shooter.level().clip(new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, shooter));
+		if (blockHit.getType() != HitResult.Type.MISS) {
+			end = blockHit.getLocation();
+		}
+		Entity hit = this.findEntityOnPath(shooter, start, end, epc.lockOnEntity);
+		if (hit instanceof Player p && !shooter.canHarmPlayer(p)) {
+			hit = null;
 		}
 
-		Entity entity = this.findEntityOnPath(shooter, vec3d1, vec3d);
-
-		if (entity != null) {
-			raytraceresult = new RayTraceResult(entity);
-		}
-
-		if (raytraceresult != null && raytraceresult.entityHit instanceof EntityPlayer) {
-			EntityPlayer entityplayer = (EntityPlayer) raytraceresult.entityHit;
-
-			if (shooter instanceof EntityPlayer && !((EntityPlayer) shooter).canAttackPlayer(entityplayer)) {
-				raytraceresult = null;
-			}
-		}
-
-		if (shooter instanceof EntityPlayer ) {
-			TGExtendedPlayer epc = TGExtendedPlayer.get((EntityPlayer)shooter);
-			if (raytraceresult != null && raytraceresult.entityHit != null) {
-				if (epc.lockOnEntity != null && epc.lockOnEntity.isEntityAlive()) {
-					if (epc.lockOnEntity == raytraceresult.entityHit) {
-						epc.lockOnTicks++;
-						if(epc.lockOnTicks >= this.lockOnTicks) {
-							//LOCK COMPLETED!
-							epc.lockOnTicks = this.lockOnTicks+this.lockOnPersistTicks;
-						}
-					}else {
-						if (epc.lockOnTicks > 0) {
-							epc.lockOnTicks--;
-						}else {
-							epc.lockOnEntity = null;
-							epc.lockOnTicks = 0;
-						}
+		if (hit != null) {
+			if (epc.lockOnEntity != null && epc.lockOnEntity.isAlive()) {
+				if (epc.lockOnEntity == hit) {
+					epc.lockOnTicks++;
+					if (epc.lockOnTicks >= this.lockOnTicks) {
+						epc.lockOnTicks = this.lockOnTicks + this.lockOnPersistTicks;
 					}
-				}else {
-					epc.lockOnEntity = raytraceresult.entityHit;
-					epc.lockOnTicks = 1;
-				}
-			}else {
-				if (epc.lockOnEntity != null && !epc.lockOnEntity.isEntityAlive()) {
+				} else if (epc.lockOnTicks > 0) {
+					epc.lockOnTicks--;
+				} else {
 					epc.lockOnEntity = null;
 					epc.lockOnTicks = 0;
-				}else {
-					if (epc.lockOnTicks > 0) {
-						epc.lockOnTicks--;
-					}else {
-						epc.lockOnEntity = null;
-					}
 				}
+			} else {
+				epc.lockOnEntity = hit;
+				epc.lockOnTicks = 1;
 			}
-//			if (epc.lockOnEntity != null) {
-//				System.out.println("Locking on: "+epc.lockOnEntity.getName()+" - Status: "+epc.lockOnTicks);
-//			}
+		} else if (epc.lockOnEntity != null && !epc.lockOnEntity.isAlive()) {
+			epc.lockOnEntity = null;
+			epc.lockOnTicks = 0;
+		} else if (epc.lockOnTicks > 0) {
+			epc.lockOnTicks--;
+		} else {
+			epc.lockOnEntity = null;
 		}
 	}
-	
-	
-	protected Entity findEntityOnPath(EntityLivingBase shooter, Vec3d start, Vec3d end) {
-		Entity entity = null;
-		Vec3d ray = shooter.getLookVec().scale(LOCK_RANGE);
-		List<Entity> list = shooter.world.getEntitiesInAABBexcluding(shooter,
-				shooter.getEntityBoundingBox().expand(ray.x, ray.y, ray.z).grow(1.0D),
-				GenericProjectile.BULLET_TARGETS);
-		double d0 = 0.0D;
-		
-		Entity prevTarget = null;
-		if (shooter instanceof EntityPlayer ) {
-			TGExtendedPlayer epc = TGExtendedPlayer.get((EntityPlayer)shooter);
-			prevTarget = epc.lockOnEntity;
-		}
-		
 
-		for (int i = 0; i < list.size(); ++i) {
-			Entity entity1 = list.get(i);
-
-			AxisAlignedBB axisalignedbb = entity1.getEntityBoundingBox().grow(LOCK_ERROR_THRESHOLD);
-			RayTraceResult raytraceresult = axisalignedbb.calculateIntercept(start, end);
-
-			if (raytraceresult != null) {
-				if (prevTarget == null || entity != prevTarget) {
-					if (entity1 == prevTarget) {
-						entity = prevTarget;
-					}else {		
-						double d1 = start.squareDistanceTo(raytraceresult.hitVec);
-		
-						if (d1 < d0 || d0 == 0.0D) {
-							entity = entity1;
-							d0 = d1;
-						}
-					}
+	/** closest entity on the ray (boxes grown by LOCK_ERROR_THRESHOLD); the previous target wins if it is on the ray */
+	@Nullable
+	protected Entity findEntityOnPath(LivingEntity shooter, Vec3 start, Vec3 end, @Nullable Entity prevTarget) {
+		Entity best = null;
+		double bestDist = Double.MAX_VALUE;
+		AABB area = new AABB(start, end).inflate(1.0D);
+		for (Entity e : shooter.level().getEntities(shooter, area, GenericProjectile.BULLET_TARGETS)) {
+			var clip = e.getBoundingBox().inflate(LOCK_ERROR_THRESHOLD).clip(start, end);
+			if (clip.isPresent()) {
+				if (e == prevTarget) {
+					return e;
+				}
+				double d = start.distanceToSqr(clip.get());
+				if (d < bestDist) {
+					best = e;
+					bestDist = d;
 				}
 			}
 		}
-
-		return entity;
+		return best;
 	}
-	
+
 	@Override
-	protected void spawnProjectile(World world, EntityLivingBase player, ItemStack itemstack, float spread,
-			float offset, float damagebonus, EnumBulletFirePos firePos, Entity target) {
-		IProjectileFactory<GenericProjectile> projectile = this.projectile_selector.getFactoryForType(this.getCurrentAmmoVariantKey(itemstack));
-		
-		GenericProjectile proj = projectile.createProjectile(this, world, player, damage * damagebonus, speed, this.getScaledTTL(), spread, this.damageDropStart,
-				this.damageDropEnd, this.damageMin * damagebonus, this.penetration, getDoBlockDamage(player), firePos, radius, gravity);
-
-		
-		float f=1.0f;
-		if(this.muzzelight) {
-			Techguns.proxy.createLightPulse(proj.posX+player.getLookVec().x*f, proj.posY+player.getLookVec().y*f, proj.posZ+player.getLookVec().z*f, this.light_lifetime, this.light_radius_start, this.light_radius_end, this.light_r, this.light_g, this.light_b);
-		}
+	protected void spawnProjectile(Level level, LivingEntity player, ItemStack itemstack, float spread, float offset, float damagebonus,
+			EnumBulletFirePos firePos, @Nullable Entity target) {
+		IProjectileFactory<? extends GenericProjectile> projectile = this.projectile_selector.getFactoryForType(this.getCurrentAmmoVariantKey(itemstack));
+		GenericProjectile proj = projectile.createProjectile(this, level, player, damage * damagebonus, speed, this.getScaledTTL(), spread,
+				this.damageDropStart, this.damageDropEnd, this.damageMin * damagebonus, this.penetration, getDoBlockDamage(player), firePos, radius,
+				gravity);
 		if (silenced) {
 			proj.setSilenced();
 		}
 		if (offset > 0.0f) {
-			proj.shiftForward(offset/speed); // System.out.println("Shifted
-										// by"+offset);
+			proj.shiftForward(offset / speed);
 		}
-		
-		((GuidedMissileProjectile) proj).target = target;
-		
-		world.spawnEntity(proj);
+		if (proj instanceof GuidedMissileProjectile gm && target != null) {
+			gm.target = target;
+			gm.setGravity(0.0);
+		}
+		level.addFreshEntity(proj);
 	}
-	
+
 	@Override
 	public int consumeAmmoCharge(ItemStack item, float f, boolean creative) {
 		return 0;
 	}
-	
 }

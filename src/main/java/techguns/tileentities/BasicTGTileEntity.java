@@ -1,137 +1,121 @@
 package techguns.tileentities;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.NetworkManager;
-import net.minecraft.network.play.server.SPacketUpdateTileEntity;
-import net.minecraft.server.management.PlayerChunkMapEntry;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.WorldServer;
+import javax.annotation.Nullable;
 
-public class BasicTGTileEntity extends TileEntity {
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
 
-	/**
-	 * Has this tileent rotation saved in the tile?
-	 */
-	protected boolean hasRotation;
-	//How the tile is rotated
-	public byte rotation=0;
-	
-	public BasicTGTileEntity(boolean hasRotation) {
-		super();
+/**
+ * Base of all Techguns block entities (1.12 BasicTGTileEntity). Everything the client needs (rotation, owner,
+ * machine progress, ...) is written by {@link #writeClientData} and sent with the chunk / block update packets.
+ */
+public abstract class BasicTGTileEntity extends BlockEntity implements net.minecraft.world.MenuProvider {
+
+	/** Has this block entity a rotation (0-3, 90 degree steps) saved? */
+	protected final boolean hasRotation;
+	public byte rotation = 0;
+
+	public BasicTGTileEntity(BlockEntityType<?> type, BlockPos pos, BlockState state, boolean hasRotation) {
+		super(type, pos, state);
 		this.hasRotation = hasRotation;
 	}
-	
+
+	@Override
+	public abstract Component getDisplayName();
+
+	/** the gui of this block entity, null if it has none */
+	@Nullable
+	@Override
+	public net.minecraft.world.inventory.AbstractContainerMenu createMenu(int id, net.minecraft.world.entity.player.Inventory inv, Player player) {
+		return null;
+	}
+
 	protected int getUseRangeSquared() {
 		return 64;
 	}
 
-	public boolean isUseableByPlayer(EntityPlayer player) {
-		if (this.world.getTileEntity(this.pos) != this) {
+	public boolean isUseableByPlayer(Player player) {
+		if (this.level == null || this.level.getBlockEntity(this.worldPosition) != this) {
 			return false;
-		} else {
-			return player.getDistanceSq((double) this.pos.getX() + 0.5D, (double) this.pos.getY() + 0.5D,
-					(double) this.pos.getZ() + 0.5D) <= getUseRangeSquared();
 		}
-	}
-	
-	@Override
-	public SPacketUpdateTileEntity getUpdatePacket() {
-		NBTTagCompound tags = new NBTTagCompound();
-		this.writeClientDataToNBT(tags);
-		return new SPacketUpdateTileEntity(pos, 1, tags);
+		return player.distanceToSqr(worldPosition.getX() + 0.5d, worldPosition.getY() + 0.5d, worldPosition.getZ() + 0.5d) <= getUseRangeSquared();
 	}
 
-	@Override
-	public void onDataPacket(NetworkManager net, SPacketUpdateTileEntity packet) {
-		this.readClientDataFromNBT(packet.getNbtCompound());
-	}
-
-	@Override
-	public NBTTagCompound getUpdateTag() {
-		NBTTagCompound tags= super.getUpdateTag();
-		this.writeClientDataToNBT(tags);
-		return tags;
-	}
-
-	@Override
-	public void handleUpdateTag(NBTTagCompound tag) {
-		super.handleUpdateTag(tag);
-		this.readClientDataFromNBT(tag);
-	}
-
-	@Override
-	public NBTTagCompound writeToNBT(NBTTagCompound compound) {
-		this.writeClientDataToNBT(compound);
-		return super.writeToNBT(compound);
-	}
-	
-	@Override
-	public void readFromNBT(NBTTagCompound compound) {
-		this.readClientDataFromNBT(compound);
-		super.readFromNBT(compound);
-	}
-	
-	/**
-	 * write all data the client needs too, to nbt.
-	 * @param compound
-	 * @return
-	 */
-	public void writeClientDataToNBT(NBTTagCompound tags) {
+	/** all data the client needs too */
+	public void writeClientData(CompoundTag tags, HolderLookup.Provider registries) {
 		if (this.hasRotation) {
-			tags.setByte("rotation", this.rotation);
+			tags.putByte("rotation", this.rotation);
 		}
 	}
-	
-	/**
-	 * read all data the client needs from nbt
-	 * @param compound
-	 */
-	public void readClientDataFromNBT(NBTTagCompound tags) {
-		if(this.hasRotation) {
-			this.rotation =(byte) (tags.getByte("rotation") % 4);
+
+	public void readClientData(CompoundTag tags, HolderLookup.Provider registries) {
+		if (this.hasRotation) {
+			this.rotation = (byte) (tags.getByte("rotation") % 4);
 		}
 	}
-	
+
+	@Override
+	protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+		super.saveAdditional(tag, registries);
+		this.writeClientData(tag, registries);
+	}
+
+	@Override
+	protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+		super.loadAdditional(tag, registries);
+		this.readClientData(tag, registries);
+	}
+
+	@Override
+	public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+		CompoundTag tag = new CompoundTag();
+		this.writeClientData(tag, registries);
+		return tag;
+	}
+
+	@Override
+	public void handleUpdateTag(CompoundTag tag, HolderLookup.Provider registries) {
+		this.readClientData(tag, registries);
+	}
+
+	@Nullable
+	@Override
+	public Packet<ClientGamePacketListener> getUpdatePacket() {
+		return ClientboundBlockEntityDataPacket.create(this);
+	}
+
+	@Override
+	public void onDataPacket(net.minecraft.network.Connection net, ClientboundBlockEntityDataPacket pkt, HolderLookup.Provider registries) {
+		this.readClientData(pkt.getTag(), registries);
+	}
+
 	public boolean hasRotation() {
 		return hasRotation;
 	}
-	
+
 	public void rotateTile() {
-		if(!this.world.isRemote && this.hasRotation) {
-			this.rotation = (byte) (this.rotation+1 %4);
+		if (this.level != null && !this.level.isClientSide && this.hasRotation) {
+			this.rotation = (byte) ((this.rotation + 1) % 4);
 			this.needUpdate();
 		}
 	}
-	
-	public void rotateTile(EnumFacing sideHit) {
-		this.rotateTile();
-	}
-	
-	public boolean canBeWrenchRotated() {
-		return true;
-	}
-	
-	public boolean canBeWrenchDismantled() {
-		return true;
-	}
-	
-	/**
-	 * called serverside when this tileent should send out updated to client
-	 */
-	public void needUpdate(){
-		//this.world.markBlockRangeForRenderUpdate(pos, pos);
-		if(!this.world.isRemote) {
-			
-			ChunkPos cp = this.world.getChunkFromBlockCoords(getPos()).getPos();
-			PlayerChunkMapEntry entry = ((WorldServer)this.world).getPlayerChunkMap().getEntry(cp.x, cp.z);
-			if (entry!=null) {
-				entry.sendPacket(this.getUpdatePacket());
-			}
+
+	/** server side: save and send the client data to everyone tracking the chunk */
+	public void needUpdate() {
+		this.setChanged();
+		if (this.level != null && !this.level.isClientSide) {
+			BlockState state = this.getBlockState();
+			this.level.sendBlockUpdated(this.worldPosition, state, state, Block.UPDATE_CLIENTS);
 		}
-		this.markDirty();
 	}
-	
 }

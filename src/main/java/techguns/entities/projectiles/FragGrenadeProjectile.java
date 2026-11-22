@@ -1,66 +1,49 @@
 package techguns.entities.projectiles;
 
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
+import techguns.TGEntities;
 import techguns.api.damagesystem.DamageType;
 import techguns.items.guns.IGrenadeProjectileFactory;
 
+/** Thrown frag grenade. */
 public class FragGrenadeProjectile extends GrenadeProjectile {
 
-	public FragGrenadeProjectile(GrenadeProjectile other, double x, double y, double z) {
-		super(other, x, y, z);
+	public FragGrenadeProjectile(EntityType<? extends FragGrenadeProjectile> type, Level level) {
+		super(type, level);
 	}
 
-	public FragGrenadeProjectile(World worldIn, double posX, double posY, double posZ, float yaw, float pitch,
-			float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage,
-			EnumBulletFirePos leftGun, double gravity, float radius, int bounces) {
-		super(worldIn, posX, posY, posZ, yaw, pitch, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration,
-				blockdamage, leftGun, gravity, radius, bounces);
-		init();
+	public FragGrenadeProjectile(FragGrenadeProjectile other, double x, double y, double z) {
+		super(TGEntities.FRAG_GRENADE.get(), other, x, y, z);
 	}
 
-	public FragGrenadeProjectile(World par2World, EntityLivingBase p, float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin,
-			float penetration, boolean blockdamage, EnumBulletFirePos leftGun, double gravity, float radius,
+	public FragGrenadeProjectile(Level level, LivingEntity p, float damage, float speed, int TTL, float spread, float dmgDropStart,
+			float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, double gravity, float radius,
 			int bounces) {
-		super(par2World, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, leftGun, gravity, radius, bounces);
-		init();
+		super(TGEntities.FRAG_GRENADE.get(), level, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos,
+				gravity, radius, bounces);
+		this.bounces = 2; // 1.12 frag grenades always bounced twice
 	}
 
-	public FragGrenadeProjectile(World worldIn) {
-		super(worldIn);
-		init();
-	}
-	
-	private void init() {
-		this.bounces=2;
-	}
-	
-	
-	
 	@Override
-	protected GrenadeProjectile createBounceProjectile(Vec3d hitvec) {
-		return new Factory().createBounceProjectile(this, hitvec.x, hitvec.y, hitvec.z);
+	protected GrenadeProjectile createBounceProjectile(Vec3 hitVec) {
+		return new FragGrenadeProjectile(this, hitVec.x, hitVec.y, hitVec.z);
 	}
 
 	public static class Factory implements IGrenadeProjectileFactory<FragGrenadeProjectile> {
-
 		@Override
-		public FragGrenadeProjectile createProjectile(World world, EntityLivingBase p, float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage,
-				EnumBulletFirePos leftGun, float radius, double gravity, float charge, int bounces) {
-			return new FragGrenadeProjectile(world, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, leftGun, gravity, radius, bounces);
+		public FragGrenadeProjectile createProjectile(Level level, LivingEntity p, float damage, float speed, int TTL, float spread, float dmgDropStart,
+				float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, float radius, double gravity,
+				float charge, int bounces) {
+			return new FragGrenadeProjectile(level, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage,
+					firePos, gravity, radius, bounces);
 		}
 
 		@Override
 		public DamageType getDamageType() {
 			return DamageType.EXPLOSION;
 		}
-
-		@Override
-		public FragGrenadeProjectile createBounceProjectile(FragGrenadeProjectile proj, double bounceX, double bounceY, double bounceZ) {
-			return new FragGrenadeProjectile(proj, bounceX, bounceY, bounceZ);
-		}
-		
 	}
-
 }

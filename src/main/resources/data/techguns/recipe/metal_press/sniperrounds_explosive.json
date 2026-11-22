@@ -1,0 +1,13 @@
+{
+  "type": "techguns:metal_press",
+  "input1": {
+    "item": "techguns:sniperrounds_incendiary"
+  },
+  "input2": {
+    "item": "techguns:tgx"
+  },
+  "allow_swap": true,
+  "result": {
+    "id": "techguns:sniperrounds_explosive"
+  }
+}

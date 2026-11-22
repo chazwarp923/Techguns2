@@ -1,9 +1,9 @@
 package techguns.client.models.armor;
 
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.MobEffects;
+import techguns.client.models.ModelRenderer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.effect.MobEffects;
 
 public class ModelNightVisionGoggles extends ModelAdditionalSlotBase {
 	// fields
@@ -106,9 +106,9 @@ public class ModelNightVisionGoggles extends ModelAdditionalSlotBase {
 	public void render(float scale, Entity entityIn) {
 
 		boolean on = false;
-		if (entityIn instanceof EntityPlayer) {
-			EntityPlayer ply = (EntityPlayer) entityIn;
-			if (ply.getActivePotionEffect(MobEffects.NIGHT_VISION) != null) {
+		if (entityIn instanceof Player) {
+			Player ply = (Player) entityIn;
+			if (ply.hasEffect(MobEffects.NIGHT_VISION)) {
 				on = true;
 			}
 

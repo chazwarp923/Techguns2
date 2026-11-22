@@ -1,0 +1,16 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:flamethrower"
+  },
+  "results": [
+    {
+      "id": "techguns:plasticsheet",
+      "count": 2
+    },
+    {
+      "id": "minecraft:iron_ingot",
+      "count": 2
+    }
+  ]
+}

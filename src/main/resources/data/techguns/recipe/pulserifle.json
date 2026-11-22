@@ -1,0 +1,35 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "dpc",
+    "brs",
+    " m "
+  ],
+  "key": {
+    "p": {
+      "tag": "c:plates/titanium"
+    },
+    "b": {
+      "item": "techguns:carbonbarrel"
+    },
+    "r": {
+      "item": "techguns:carbonreceiver"
+    },
+    "s": {
+      "item": "techguns:carbonstock"
+    },
+    "c": {
+      "tag": "c:circuits/elite"
+    },
+    "d": {
+      "tag": "c:gems/diamond"
+    },
+    "m": {
+      "item": "techguns:advancedmagazine"
+    }
+  },
+  "result": {
+    "id": "techguns:pulserifle"
+  }
+}

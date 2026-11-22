@@ -1,117 +1,186 @@
 package techguns.plugins.jei;
 
-import mezz.jei.api.IGuiHelper;
-import mezz.jei.api.IJeiHelpers;
+import java.util.ArrayList;
+import java.util.List;
+
 import mezz.jei.api.IModPlugin;
-import mezz.jei.api.IModRegistry;
-import mezz.jei.api.JEIPlugin;
-import mezz.jei.api.ingredients.IIngredientRegistry;
-import mezz.jei.api.recipe.IRecipeCategoryRegistration;
-import mezz.jei.api.recipe.VanillaRecipeCategoryUid;
-import net.minecraft.item.ItemStack;
+import mezz.jei.api.JeiPlugin;
+import mezz.jei.api.helpers.IGuiHelper;
+import mezz.jei.api.registration.IGuiHandlerRegistration;
+import mezz.jei.api.registration.IRecipeCatalystRegistration;
+import mezz.jei.api.registration.IRecipeCategoryRegistration;
+import mezz.jei.api.registration.IRecipeRegistration;
+import mezz.jei.api.registration.IRecipeTransferRegistration;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RecipeManager;
 import techguns.TGBlocks;
 import techguns.Techguns;
-import techguns.blocks.machines.EnumMachineType;
-import techguns.blocks.machines.EnumMultiBlockMachineType;
-import techguns.blocks.machines.EnumOreDrillType;
-import techguns.blocks.machines.EnumSimpleMachineType;
-import techguns.blocks.machines.EnumSimpleMachineType2;
-import techguns.gui.AmmoPressGui;
-import techguns.gui.UpgradeBenchGui;
-import techguns.gui.BlastFurnaceGui;
-import techguns.gui.ChargingStationGui;
-import techguns.gui.ChemLabGui;
-import techguns.gui.FabricatorGui;
-import techguns.gui.GrinderGui;
-import techguns.gui.MetalPressGui;
-import techguns.gui.OreDrillGui;
-import techguns.gui.ReactionChamberGui;
-import techguns.recipes.AmmoSwitchRecipeFactory.AmmoSwitchRecipe;
-import techguns.recipes.MiningToolUpgradeHeadRecipeFactory.MiningToolUpgradeRecipe;
-import techguns.tileentities.BlastFurnaceTileEnt;
-import techguns.tileentities.operation.BlastFurnaceRecipes;
-import techguns.tileentities.operation.BlastFurnaceRecipes.BlastFurnaceRecipe;
+import techguns.client.gui.AmmoPressScreen;
+import techguns.client.gui.BlastFurnaceScreen;
+import techguns.client.gui.GrinderScreen;
+import techguns.client.gui.MetalPressScreen;
+import techguns.gui.TGMenus;
+import techguns.gui.containers.AmmoPressMenu;
+import techguns.gui.containers.BlastFurnaceMenu;
+import techguns.gui.containers.GrinderMenu;
+import techguns.gui.containers.MetalPressMenu;
+import techguns.items.armors.GenericArmor;
+import techguns.recipes.GrinderRecipe;
+import techguns.recipes.TGRecipes;
+import techguns.tileentities.operation.AmmoPressBuildPlans;
 
-
-@JEIPlugin
+/**
+ * JEI integration: a category per machine, the machine blocks as catalysts, click areas on the progress bars and
+ * recipe transfer into the input slots. Every newly ported machine adds its category here.
+ */
+@JeiPlugin
 public class TGJeiPlugin implements IModPlugin {
 
-	public static final String AMMO_PRESS = Techguns.MODID+".ammopress";
-	public static final String METAL_PRESS = Techguns.MODID+".metalpress";
-	public static final String CHEM_LAB = Techguns.MODID+".chemlab";
-	public static final String FABRICATOR = Techguns.MODID+".fabricator";
-	public static final String CAMO_BENCH = Techguns.MODID+".camobench";
-	public static final String CHARGING_STATION = Techguns.MODID+".chargingstation";
-	public static final String REACTION_CHAMBER = Techguns.MODID+".reactionchamber";
-	public static final String ORE_DRILL = Techguns.MODID+".oredrill";
-	public static final String BLAST_FURNACE = Techguns.MODID+".blastfurnace";
-	public static final String GRINDER = Techguns.MODID+".grinder";
-	public static final String UPGRADE_BENCH = Techguns.MODID+".upgradebench";
-	
+	private static final int PLAYER_INV_SLOTS = 36;
+
 	@Override
-	public void registerCategories(IRecipeCategoryRegistration registry) {
-		final IJeiHelpers jeiHelpers = registry.getJeiHelpers();
-		final IGuiHelper guiHelper = jeiHelpers.getGuiHelper();
-		
-		registry.addRecipeCategories(
-					new AmmoPressRecipeCategory(guiHelper),
-					new MetalPressJeiRecipeCategory(guiHelper),
-					new ChemLabJeiRecipeCategory(guiHelper),
-					new FabricatorJeiRecipeCategory(guiHelper),
-					new CamoBenchJeiRecipeCategory(guiHelper),
-					new ChargingStationJeiRecipeCategory(guiHelper),
-					new ReactionChamberJeiRecipeCategory(guiHelper),
-					new OreDrillJeiRecipeCategory(guiHelper),
-					new BlastFurnaceJeiRecipeCategory(guiHelper),
-					new GrinderRecipeCategory(guiHelper),
-					new UpgradeBenchJeiRecipeCategory(guiHelper)
-				);
+	public ResourceLocation getPluginUid() {
+		return Techguns.rl("jei_plugin");
 	}
+
 	@Override
-	public void register(IModRegistry registry) {
-		final IIngredientRegistry ingredientRegistry = registry.getIngredientRegistry();
-		final IJeiHelpers jeiHelpers = registry.getJeiHelpers();
-			
-		registry.handleRecipes(MiningToolUpgradeRecipe.class, recipe -> new MiningToolUpgradeRecipeWrapper(jeiHelpers, recipe), VanillaRecipeCategoryUid.CRAFTING);
-		registry.handleRecipes(AmmoSwitchRecipe.class, recipe -> new AmmoSwitchRecipeWrapper(jeiHelpers, recipe), VanillaRecipeCategoryUid.CRAFTING);
-		
-		registry.addRecipes(AmmoPressJeiRecipe.getRecipes(jeiHelpers), AMMO_PRESS);
-		registry.addRecipes(MetalPressJeiRecipe.getRecipes(jeiHelpers), METAL_PRESS);
-		registry.addRecipes(ChemLabJeiRecipe.getRecipes(jeiHelpers), CHEM_LAB);
-		registry.addRecipes(FabricatorJeiRecipe.getRecipes(jeiHelpers), FABRICATOR);
-		registry.addRecipes(CamoBenchJeiRecipe.getRecipes(jeiHelpers), CAMO_BENCH);
-		registry.addRecipes(ChargingStationJeiRecipe.getRecipes(jeiHelpers), CHARGING_STATION);
-		registry.addRecipes(ReactionChamberJeiRecipe.getRecipes(jeiHelpers), REACTION_CHAMBER);
-		registry.addRecipes(OreDrillJeiRecipe.getRecipes(jeiHelpers, ingredientRegistry), ORE_DRILL);
-		registry.addRecipes(BlastFurnaceJeiRecipe.getRecipes(jeiHelpers), BLAST_FURNACE);
-		registry.addRecipes(GrinderJeiRecipe.getRecipes(jeiHelpers), GRINDER);
-		registry.addRecipes(UpgradeBenchJeiRecipe.getRecipes(jeiHelpers), UPGRADE_BENCH);
-		
-		registry.addRecipeClickArea(AmmoPressGui.class, 119, 36, 19, 22, AMMO_PRESS);
-		registry.addRecipeClickArea(MetalPressGui.class, 119, 36, 19, 22, METAL_PRESS);
-		registry.addRecipeClickArea(ChemLabGui.class, 80, 15, 52, 30, CHEM_LAB);
-		registry.addRecipeClickArea(FabricatorGui.class, 20, 52, 96, 12, FABRICATOR);
-		//registry.addRecipeClickArea(OreDrillGui.class, 30, 45, 20, 20, ORE_DRILL);
-		//NO CLICKAREA for camobench
-		registry.addRecipeClickArea(ChargingStationGui.class, 38, 18, 28, 12, CHARGING_STATION);
-		registry.addRecipeClickArea(ReactionChamberGui.class, 66, 60, 102, 14, REACTION_CHAMBER);
-		registry.addRecipeClickArea(BlastFurnaceGui.class, 18, 52, 90, 12, BLAST_FURNACE);
-		registry.addRecipeClickArea(GrinderGui.class, 30, 38, 43, 23, GRINDER);
-		registry.addRecipeClickArea(UpgradeBenchGui.class, 73, 40, 38, 30, UPGRADE_BENCH);
-		
-		registry.addRecipeCatalyst(new ItemStack(TGBlocks.BASIC_MACHINE,1,TGBlocks.BASIC_MACHINE.getMetaFromState(TGBlocks.BASIC_MACHINE.getDefaultState().withProperty(TGBlocks.BASIC_MACHINE.MACHINE_TYPE, EnumMachineType.AMMO_PRESS))), AMMO_PRESS);
-		registry.addRecipeCatalyst(new ItemStack(TGBlocks.BASIC_MACHINE,1,TGBlocks.BASIC_MACHINE.getMetaFromState(TGBlocks.BASIC_MACHINE.getDefaultState().withProperty(TGBlocks.BASIC_MACHINE.MACHINE_TYPE, EnumMachineType.METAL_PRESS))), METAL_PRESS);
-		registry.addRecipeCatalyst(new ItemStack(TGBlocks.BASIC_MACHINE,1,TGBlocks.BASIC_MACHINE.getMetaFromState(TGBlocks.BASIC_MACHINE.getDefaultState().withProperty(TGBlocks.BASIC_MACHINE.MACHINE_TYPE, EnumMachineType.CHEM_LAB))), CHEM_LAB);
-		registry.addRecipeCatalyst(new ItemStack(TGBlocks.MULTIBLOCK_MACHINE,1,TGBlocks.MULTIBLOCK_MACHINE.getMetaFromState(TGBlocks.MULTIBLOCK_MACHINE.getDefaultState().withProperty(TGBlocks.MULTIBLOCK_MACHINE.MACHINE_TYPE, EnumMultiBlockMachineType.FABRICATOR_CONTROLLER))), FABRICATOR);
-		registry.addRecipeCatalyst(new ItemStack(TGBlocks.SIMPLE_MACHINE,1,TGBlocks.SIMPLE_MACHINE.getMetaFromState(TGBlocks.SIMPLE_MACHINE.getDefaultState().withProperty(TGBlocks.SIMPLE_MACHINE.MACHINE_TYPE, EnumSimpleMachineType.CAMO_BENCH))), CAMO_BENCH);
-		registry.addRecipeCatalyst(new ItemStack(TGBlocks.SIMPLE_MACHINE,1,TGBlocks.SIMPLE_MACHINE.getMetaFromState(TGBlocks.SIMPLE_MACHINE.getDefaultState().withProperty(TGBlocks.SIMPLE_MACHINE.MACHINE_TYPE, EnumSimpleMachineType.CHARGING_STATION))), CHARGING_STATION);
-		registry.addRecipeCatalyst(new ItemStack(TGBlocks.MULTIBLOCK_MACHINE,1,TGBlocks.MULTIBLOCK_MACHINE.getMetaFromState(TGBlocks.MULTIBLOCK_MACHINE.getDefaultState().withProperty(TGBlocks.MULTIBLOCK_MACHINE.MACHINE_TYPE, EnumMultiBlockMachineType.REACTIONCHAMBER_CONTROLLER))), REACTION_CHAMBER);
-		registry.addRecipeCatalyst(new ItemStack(TGBlocks.ORE_DRILL_BLOCK,1,TGBlocks.ORE_DRILL_BLOCK.getMetaFromState(TGBlocks.ORE_DRILL_BLOCK.getDefaultState().withProperty(TGBlocks.ORE_DRILL_BLOCK.MACHINE_TYPE, EnumOreDrillType.CONTROLLER))), ORE_DRILL);
-		registry.addRecipeCatalyst(new ItemStack(TGBlocks.SIMPLE_MACHINE,1,TGBlocks.SIMPLE_MACHINE.getMetaFromState(TGBlocks.SIMPLE_MACHINE.getDefaultState().withProperty(TGBlocks.SIMPLE_MACHINE.MACHINE_TYPE, EnumSimpleMachineType.BLAST_FURNACE))), BLAST_FURNACE);
-		registry.addRecipeCatalyst(new ItemStack(TGBlocks.SIMPLE_MACHINE2,1,TGBlocks.SIMPLE_MACHINE2.getMetaFromState(TGBlocks.SIMPLE_MACHINE2.getDefaultState().withProperty(TGBlocks.SIMPLE_MACHINE2.MACHINE_TYPE, EnumSimpleMachineType2.GRINDER))), GRINDER);
-		registry.addRecipeCatalyst(new ItemStack(TGBlocks.SIMPLE_MACHINE2,1,TGBlocks.SIMPLE_MACHINE2.getMetaFromState(TGBlocks.SIMPLE_MACHINE2.getDefaultState().withProperty(TGBlocks.SIMPLE_MACHINE2.MACHINE_TYPE, EnumSimpleMachineType2.ARMOR_BENCH))), UPGRADE_BENCH);
+	public void registerCategories(IRecipeCategoryRegistration reg) {
+		IGuiHelper gui = reg.getJeiHelpers().getGuiHelper();
+		reg.addRecipeCategories(new TGJeiCategories.AmmoPress(gui), new TGJeiCategories.MetalPress(gui), new TGJeiCategories.BlastFurnace(gui),
+				new TGJeiCategories.Grinder(gui), new TGJeiCategories.ChargingStation(gui), new TGJeiCategories.Fabricator(gui), new TGJeiCategories.ReactionChamber(gui), new TGJeiCategories.OreDrill(gui), new TGJeiCategories.ChemLab(gui), new TGJeiCategories.CamoBench(gui),
+				new TGJeiCategories.UpgradeBench(gui));
 	}
-	
-	
-	
+
+	@Override
+	public void registerRecipes(IRecipeRegistration reg) {
+		reg.addIngredientInfo(java.util.List.of(new net.minecraft.world.item.ItemStack(TGBlocks.TG_SPAWNER.get()),
+				new net.minecraft.world.item.ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(techguns.Techguns.rl("tg_spawner_soldier_spawn")))),
+				mezz.jei.api.constants.VanillaTypes.ITEM_STACK, net.minecraft.network.chat.Component.translatable("techguns.jei.tg_spawner.info"));
+		reg.addIngredientInfo(new net.minecraft.world.item.ItemStack(techguns.TGuns.BIOGUN.get()), mezz.jei.api.constants.VanillaTypes.ITEM_STACK,
+				net.minecraft.network.chat.Component.translatable("techguns.jei.bioblob.info"));
+		reg.addIngredientInfo(new net.minecraft.world.item.ItemStack(TGBlocks.TURRET.get()), mezz.jei.api.constants.VanillaTypes.ITEM_STACK,
+				net.minecraft.network.chat.Component.translatable("techguns.jei.turret.info"));
+		var level = Minecraft.getInstance().level;
+		if (level == null) {
+			return;
+		}
+		RecipeManager rm = level.getRecipeManager();
+		reg.addRecipes(TGJeiCategories.METAL_PRESS, rm.getAllRecipesFor(TGRecipes.METAL_PRESS.get()));
+		reg.addRecipes(TGJeiCategories.BLAST_FURNACE, rm.getAllRecipesFor(TGRecipes.BLAST_FURNACE.get()));
+		// fuel / oil recipes only show when a mod adds fluids to the techguns:fuel / techguns:oil tags
+		reg.addRecipes(TGJeiCategories.CHEM_LAB, rm.getAllRecipesFor(TGRecipes.CHEM_LAB.get()).stream()
+				.filter(r -> r.value().fluidInput()
+						.map(f -> java.util.Arrays.stream(f.getFluids()).anyMatch(fs -> fs.getFluid().isSource(fs.getFluid().defaultFluidState())))
+						.orElse(true))
+				.toList());
+		reg.addRecipes(TGJeiCategories.CAMO_BENCH, rm.getAllRecipesFor(TGRecipes.CAMO_BENCH.get()));
+		reg.addRecipes(TGJeiCategories.UPGRADE_BENCH, rm.getAllRecipesFor(TGRecipes.UPGRADE_BENCH.get()));
+		reg.addRecipes(TGJeiCategories.FABRICATOR, rm.getAllRecipesFor(TGRecipes.FABRICATOR.get()));
+		reg.addIngredientInfo(java.util.List.of(new net.minecraft.world.item.ItemStack(TGBlocks.FABRICATOR_CONTROLLER.get()), new net.minecraft.world.item.ItemStack(TGBlocks.FABRICATOR_HOUSING.get()), new net.minecraft.world.item.ItemStack(TGBlocks.FABRICATOR_GLASS.get())),
+				mezz.jei.api.constants.VanillaTypes.ITEM_STACK, net.minecraft.network.chat.Component.translatable("techguns.jei.multiblock.fabricator"));
+		reg.addRecipes(TGJeiCategories.REACTION_CHAMBER, rm.getAllRecipesFor(TGRecipes.REACTION_CHAMBER.get()));
+		reg.addRecipes(TGJeiCategories.ORE_DRILL, TGJeiCategories.OreDrillRecipe.all());
+		reg.addIngredientInfo(java.util.List.of(new net.minecraft.world.item.ItemStack(TGBlocks.OREDRILL_CONTROLLER.get()), new net.minecraft.world.item.ItemStack(TGBlocks.OREDRILL_ENGINE.get()),
+				new net.minecraft.world.item.ItemStack(TGBlocks.OREDRILL_ROD.get()), new net.minecraft.world.item.ItemStack(TGBlocks.OREDRILL_FRAME.get()), new net.minecraft.world.item.ItemStack(TGBlocks.OREDRILL_SCAFFOLD.get())),
+				mezz.jei.api.constants.VanillaTypes.ITEM_STACK, net.minecraft.network.chat.Component.translatable("techguns.jei.multiblock.oredrill"));
+		reg.addIngredientInfo(java.util.List.of(new net.minecraft.world.item.ItemStack(TGBlocks.EXPLOSIVE_CHARGE.get()),
+				new net.minecraft.world.item.ItemStack(TGBlocks.EXPLOSIVE_CHARGE_ADVANCED.get())), mezz.jei.api.constants.VanillaTypes.ITEM_STACK,
+				net.minecraft.network.chat.Component.translatable("techguns.jei.explosivecharge.info"));
+		reg.addIngredientInfo(TGBlocks.MILITARY_CRATES.values().stream().map(b -> new net.minecraft.world.item.ItemStack(b.get())).toList(),
+				mezz.jei.api.constants.VanillaTypes.ITEM_STACK, net.minecraft.network.chat.Component.translatable("techguns.jei.militarycrate.info"));
+		reg.addIngredientInfo(java.util.List.of(new net.minecraft.world.item.ItemStack(TGBlocks.DOOR3x3_METAL.get()),
+				new net.minecraft.world.item.ItemStack(TGBlocks.DOOR3x3_HANGAR.get()), new net.minecraft.world.item.ItemStack(TGBlocks.DOOR3x3_HANGAR_DOWN.get()),
+				new net.minecraft.world.item.ItemStack(TGBlocks.DOOR3x3_NETHER.get())), mezz.jei.api.constants.VanillaTypes.ITEM_STACK,
+				net.minecraft.network.chat.Component.translatable("techguns.jei.door3x3.info"));
+		reg.addIngredientInfo(java.util.List.of(new net.minecraft.world.item.ItemStack(techguns.TGItems.RAD_AWAY.get()),
+				new net.minecraft.world.item.ItemStack(techguns.TGItems.RAD_PILLS.get())), mezz.jei.api.constants.VanillaTypes.ITEM_STACK,
+				net.minecraft.network.chat.Component.translatable("techguns.jei.radiation.info"));
+		java.util.List<mezz.jei.api.recipe.vanilla.IJeiBrewingRecipe> brewing = new java.util.ArrayList<>();
+		int brewId = 0;
+		for (techguns.radiation.RadBrewingRecipe r : techguns.radiation.RadiationEvents.brewingRecipes()) {
+			java.util.List<net.minecraft.world.item.ItemStack> ingredients = java.util.List.of(r.ingredient().getItems());
+			if (ingredients.isEmpty()) {
+				continue;
+			}
+			for (net.minecraft.world.item.Item container : new net.minecraft.world.item.Item[] { net.minecraft.world.item.Items.POTION,
+					net.minecraft.world.item.Items.SPLASH_POTION, net.minecraft.world.item.Items.LINGERING_POTION }) {
+				brewing.add(reg.getVanillaRecipeFactory().createBrewingRecipe(ingredients,
+						net.minecraft.world.item.alchemy.PotionContents.createItemStack(container, r.input()),
+						net.minecraft.world.item.alchemy.PotionContents.createItemStack(container, r.output()), techguns.Techguns.rl("brewing/rad_" + brewId++)));
+			}
+		}
+		reg.addRecipes(mezz.jei.api.constants.RecipeTypes.BREWING, brewing);
+		reg.addIngredientInfo(TGBlocks.ORE_CLUSTERS.values().stream().map(b -> new net.minecraft.world.item.ItemStack(b.get())).toList(),
+				mezz.jei.api.constants.VanillaTypes.ITEM_STACK, net.minecraft.network.chat.Component.translatable("techguns.jei.orecluster.info"));
+		reg.addIngredientInfo(java.util.List.of(new net.minecraft.world.item.ItemStack(TGBlocks.REACTIONCHAMBER_CONTROLLER.get()), new net.minecraft.world.item.ItemStack(TGBlocks.REACTIONCHAMBER_HOUSING.get()), new net.minecraft.world.item.ItemStack(TGBlocks.REACTIONCHAMBER_GLASS.get())),
+				mezz.jei.api.constants.VanillaTypes.ITEM_STACK, net.minecraft.network.chat.Component.translatable("techguns.jei.multiblock.reactionchamber"));
+		reg.addRecipes(TGJeiCategories.CHARGING_STATION, rm.getAllRecipesFor(TGRecipes.CHARGING_STATION.get()));
+
+		List<TGJeiCategories.AmmoPressDisplay> plans = new ArrayList<>();
+		for (int i = 0; i < AmmoPressBuildPlans.PLAN_COUNT; i++) {
+			plans.add(new TGJeiCategories.AmmoPressDisplay(i));
+		}
+		reg.addRecipes(TGJeiCategories.AMMO_PRESS, plans);
+
+		List<TGJeiCategories.GrinderDisplay> grinder = new ArrayList<>();
+		rm.getAllRecipesFor(TGRecipes.GRINDER.get()).forEach(h -> grinder.add(TGJeiCategories.GrinderDisplay.of(h.value())));
+		for (Item item : BuiltInRegistries.ITEM) {
+			if (item instanceof GenericArmor) {
+				ItemStack armor = new ItemStack(item);
+				List<ItemStack> mats = GrinderRecipe.getArmorOutputs(armor);
+				if (!mats.isEmpty()) {
+					grinder.add(new TGJeiCategories.GrinderDisplay(List.of(armor),
+							mats.stream().map(m -> new GrinderRecipe.ChanceOutput(m, 1f)).toList(), true));
+				}
+			}
+		}
+		reg.addRecipes(TGJeiCategories.GRINDER, grinder);
+	}
+
+	@Override
+	public void registerRecipeCatalysts(IRecipeCatalystRegistration reg) {
+		reg.addRecipeCatalyst(TGBlocks.AMMO_PRESS.get(), TGJeiCategories.AMMO_PRESS);
+		reg.addRecipeCatalyst(TGBlocks.METAL_PRESS.get(), TGJeiCategories.METAL_PRESS);
+		reg.addRecipeCatalyst(TGBlocks.BLAST_FURNACE.get(), TGJeiCategories.BLAST_FURNACE);
+		reg.addRecipeCatalyst(TGBlocks.GRINDER.get(), TGJeiCategories.GRINDER);
+		reg.addRecipeCatalyst(TGBlocks.CHEM_LAB.get(), TGJeiCategories.CHEM_LAB);
+		reg.addRecipeCatalyst(TGBlocks.CAMO_BENCH.get(), TGJeiCategories.CAMO_BENCH);
+		reg.addRecipeCatalyst(TGBlocks.UPGRADE_BENCH.get(), TGJeiCategories.UPGRADE_BENCH);
+		reg.addRecipeCatalyst(TGBlocks.FABRICATOR_CONTROLLER.get(), TGJeiCategories.FABRICATOR);
+		reg.addRecipeCatalyst(TGBlocks.REACTIONCHAMBER_CONTROLLER.get(), TGJeiCategories.REACTION_CHAMBER);
+		reg.addRecipeCatalyst(TGBlocks.OREDRILL_CONTROLLER.get(), TGJeiCategories.ORE_DRILL);
+		reg.addRecipeCatalyst(TGBlocks.CHARGING_STATION.get(), TGJeiCategories.CHARGING_STATION);
+	}
+
+	@Override
+	public void registerGuiHandlers(IGuiHandlerRegistration reg) {
+		reg.addRecipeClickArea(AmmoPressScreen.class, 119, 36, 19, 22, TGJeiCategories.AMMO_PRESS);
+		reg.addRecipeClickArea(MetalPressScreen.class, 119, 36, 19, 22, TGJeiCategories.METAL_PRESS);
+		reg.addRecipeClickArea(BlastFurnaceScreen.class, 19, 53, 90, 11, TGJeiCategories.BLAST_FURNACE);
+		reg.addRecipeClickArea(GrinderScreen.class, 31, 39, 42, 22, TGJeiCategories.GRINDER);
+		reg.addRecipeClickArea(techguns.client.gui.ChemLabScreen.class, 81, 17, 50, 30, TGJeiCategories.CHEM_LAB);
+		reg.addRecipeClickArea(techguns.client.gui.UpgradeBenchScreen.class, 72, 47, 40, 16, TGJeiCategories.UPGRADE_BENCH);
+		reg.addRecipeClickArea(techguns.client.gui.FabricatorScreen.class, 21, 53, 91, 11, TGJeiCategories.FABRICATOR);
+		reg.addRecipeClickArea(techguns.client.gui.OreDrillScreen.class, 74, 16, 27, 39, TGJeiCategories.ORE_DRILL);
+		reg.addRecipeClickArea(techguns.client.gui.ReactionChamberScreen.class, 55, 17, 34, 16, TGJeiCategories.REACTION_CHAMBER);
+		reg.addRecipeClickArea(techguns.client.gui.ChargingStationScreen.class, 39, 19, 27, 10, TGJeiCategories.CHARGING_STATION);
+	}
+
+	@Override
+	public void registerRecipeTransferHandlers(IRecipeTransferRegistration reg) {
+		// menu slots: machine slots first (inputs at the start), then the player inventory
+		reg.addRecipeTransferHandler(AmmoPressMenu.class, TGMenus.AMMO_PRESS.get(), TGJeiCategories.AMMO_PRESS, 0, 3, 5, PLAYER_INV_SLOTS);
+		reg.addRecipeTransferHandler(MetalPressMenu.class, TGMenus.METAL_PRESS.get(), TGJeiCategories.METAL_PRESS, 0, 2, 4, PLAYER_INV_SLOTS);
+		reg.addRecipeTransferHandler(BlastFurnaceMenu.class, TGMenus.BLAST_FURNACE.get(), TGJeiCategories.BLAST_FURNACE, 0, 2, 4, PLAYER_INV_SLOTS);
+		reg.addRecipeTransferHandler(GrinderMenu.class, TGMenus.GRINDER.get(), TGJeiCategories.GRINDER, 0, 1, 11, PLAYER_INV_SLOTS);
+		reg.addRecipeTransferHandler(techguns.gui.containers.ChemLabMenu.class, TGMenus.CHEM_LAB.get(), TGJeiCategories.CHEM_LAB, 0, 3, 5, PLAYER_INV_SLOTS);
+		reg.addRecipeTransferHandler(techguns.gui.containers.FabricatorMenu.class, TGMenus.FABRICATOR.get(), TGJeiCategories.FABRICATOR, 0, 4, 6, 36);
+		reg.addRecipeTransferHandler(techguns.gui.containers.ReactionChamberMenu.class, TGMenus.REACTION_CHAMBER.get(), TGJeiCategories.REACTION_CHAMBER, 0, 2, 6, 36);
+		reg.addRecipeTransferHandler(techguns.gui.containers.ChargingStationMenu.class, TGMenus.CHARGING_STATION.get(), TGJeiCategories.CHARGING_STATION, 0, 1, 3,
+				PLAYER_INV_SLOTS);
+	}
 }

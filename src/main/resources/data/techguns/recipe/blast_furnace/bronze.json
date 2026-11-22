@@ -1,0 +1,16 @@
+{
+  "type": "techguns:blast_furnace",
+  "input1": {
+    "tag": "c:ingots/copper",
+    "count": 3
+  },
+  "input2": {
+    "tag": "c:ingots/tin"
+  },
+  "result": {
+    "id": "techguns:ingotbronze",
+    "count": 4
+  },
+  "power_per_tick": 10,
+  "time": 100
+}

@@ -1,39 +1,32 @@
 package techguns.items.additionalslots;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraftforge.fml.common.gameevent.TickEvent.PlayerTickEvent;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import techguns.TGItems;
 import techguns.api.tginventory.TGSlotType;
 import techguns.capabilities.TGExtendedPlayer;
 import techguns.items.armors.TGArmorBonus;
 
-public class ItemNightVisionGoggles extends ItemTGSpecialSlotAmmo {
+/** Face slot: night vision, uses charge while enabled. Reloads with redstone batteries. */
+public class ItemNightVisionGoggles extends ItemTGSpecialSlot {
 
-	public ItemNightVisionGoggles(String unlocalizedName, int camoCount,int dur) {
-		super(unlocalizedName, TGSlotType.FACESLOT, camoCount,dur, TGItems.REDSTONE_BATTERY, TGItems.REDSTONE_BATTERY_EMPTY);
+	public ItemNightVisionGoggles(int camoCount, int dur) {
+		super(TGSlotType.FACESLOT, camoCount, dur, TGItems.REDSTONE_BATTERY, TGItems.REDSTONE_BATTERY_EMPTY);
 	}
 
 	@Override
-	public void onPlayerTick(ItemStack item, PlayerTickEvent event) {
-		if(item.getItemDamage()<item.getMaxDamage()){
-			TGExtendedPlayer extendedPlayer = TGExtendedPlayer.get(event.player);
-			if(extendedPlayer.enableNightVision){
-				item.setItemDamage(item.getItemDamage()+1);
+	public void onPlayerTick(ItemStack item, Player ply) {
+		if (hasCharge(item)) {
+			if (TGExtendedPlayer.get(ply).enableNightVision) {
+				useCharge(item, 1);
 			}
 		} else {
-			this.tryReloadAndRepair(item, event.player);
+			this.tryReloadAndRepair(item, ply);
 		}
-	}
-	
-	@Override
-	public float getBonus(TGArmorBonus type,ItemStack stack, boolean consume, EntityPlayer player){
-		if(type==TGArmorBonus.NIGHTVISION){
-			if (stack.getItemDamage()< stack.getMaxDamage()){
-				return 1.0f;
-			}
-		}
-		return 0.0f;
 	}
 
+	@Override
+	public float getBonus(TGArmorBonus type, ItemStack stack, boolean consume, Player player) {
+		return type == TGArmorBonus.NIGHTVISION && hasCharge(stack) ? 1.0f : 0.0f;
+	}
 }

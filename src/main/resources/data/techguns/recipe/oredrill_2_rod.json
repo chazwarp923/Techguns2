@@ -1,0 +1,27 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:oredrill_rod"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ipi",
+    "ipi",
+    "ipi"
+  ],
+  "key": {
+    "p": {
+      "tag": "c:plates/iron"
+    },
+    "i": {
+      "tag": "c:ingots/iron"
+    }
+  },
+  "result": {
+    "id": "techguns:oredrill_rod",
+    "count": 4
+  }
+}

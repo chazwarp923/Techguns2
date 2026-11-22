@@ -1,826 +1,502 @@
 package techguns.tileentities;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Random;
+import java.util.Map;
 
-import li.cil.oc.api.machine.Arguments;
-import li.cil.oc.api.machine.Callback;
-import li.cil.oc.api.machine.Context;
-import li.cil.oc.api.network.SimpleComponent;
-import net.minecraft.block.Block;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.SoundEvents;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.server.management.PlayerChunkMapEntry;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumParticleTypes;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TextComponentTranslation;
-import net.minecraft.world.WorldServer;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidEvent;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidTank;
-import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
-import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
-import net.minecraftforge.fml.common.Optional;
-import net.minecraftforge.fml.common.network.NetworkRegistry.TargetPoint;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
-import net.minecraftforge.fml.relauncher.ReflectionHelper;
-import techguns.TGBlocks;
-import techguns.TGPackets;
+import javax.annotation.Nullable;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.Containers;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import net.neoforged.neoforge.capabilities.BlockCapability;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.FluidUtil;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+import techguns.TGBlockEntities;
 import techguns.TGSounds;
-import techguns.Techguns;
-import techguns.api.tginventory.ITGSpecialSlot;
-import techguns.api.tginventory.TGSlotType;
-import techguns.blocks.machines.MultiBlockMachine;
-import techguns.blocks.machines.multiblocks.ReactionChamberDefinition;
-import techguns.blocks.machines.multiblocks.SlavePos;
-import techguns.gui.ButtonConstants;
-import techguns.packets.PacketSpawnParticle;
-import techguns.packets.PacketUpdateTileEntTanks;
-import techguns.tileentities.operation.FluidTankPlus;
-import techguns.tileentities.operation.ITileEntityFluidTanks;
+import techguns.blocks.machines.multiblocks.ReactionChamberSchematic;
+import techguns.gui.containers.ReactionChamberMenu;
+import techguns.recipes.ReactionChamberRecipe;
+import techguns.recipes.ReactionChamberRecipe.RiskType;
 import techguns.tileentities.operation.ItemStackHandlerPlus;
-import techguns.tileentities.operation.MachineSlotItem;
+import techguns.tileentities.operation.MachineOperation;
 import techguns.tileentities.operation.ReactionBeamFocus;
 import techguns.tileentities.operation.ReactionChamberOperation;
-import techguns.tileentities.operation.ReactionChamberRecipe;
-import techguns.tileentities.operation.ReactionChamberRecipe.RiskType;
 
-@Optional.Interface(iface="li.cil.oc.api.network.SimpleComponent", modid="opencomputers")
-public class ReactionChamberTileEntMaster extends MultiBlockMachineTileEntMaster implements ITileEntityFluidTanks, SimpleComponent {
+/**
+ * Reaction chamber controller (1.12 ReactionChamberTileEntMaster). The tank is filled up to the liquid level setting
+ * (buckets), a reaction starts when input, focus, fluid level and intensity match a recipe. Failed reactions may
+ * break the item or blow up the chamber.
+ */
+public class ReactionChamberTileEntMaster extends MultiBlockMachineTileEntMaster implements IFluidTankTile {
 
-	public FluidTank inputTank;
-	public static final int CAPACITY_INPUT_TANK=10*Fluid.BUCKET_VOLUME;
-	
-	public static final int SLOT_INPUT=0;
-	public static final int SLOT_FOCUS=1;
-	public static final int SLOT_OUTPUT=2;
-	public static final int OUTPUT_SLOTS_COUNT=4;
-	
-	public static final int BUTTON_ID_LIQUIDLEVEL_INC=ButtonConstants.BUTTON_ID_REDSTONE+1;
-	public static final int BUTTON_ID_LIQUIDLEVEL_DEC=ButtonConstants.BUTTON_ID_REDSTONE+2;
-	public static final int BUTTON_ID_INTENSITY_INC=ButtonConstants.BUTTON_ID_REDSTONE+3;
-	public static final int BUTTON_ID_INTENSTIY_DEC=ButtonConstants.BUTTON_ID_REDSTONE+4;
-	public static final int BUTTON_ID_DUMPTANK=ButtonConstants.BUTTON_ID_REDSTONE+5;
-	
-	public static Field playerChunkMapEntry_Players = ObfuscationReflectionHelper.findField(PlayerChunkMapEntry.class, "field_187283_c"); //ReflectionHelper.findField(PlayerChunkMapEntry.class, "players","field_187283_c");
-	
-	protected byte intensity=0;
-	protected byte liquidLevel=0;
-	
-	public MachineSlotItem input;
-	
-	public boolean fluidsChanged=false;
-	
-	public ReactionChamberTileEntMaster() {
-		super(6, 1000000);
-		
-		this.inputTank = new ReactionChamberFluidTank(this,CAPACITY_INPUT_TANK);
+	public static final int CAPACITY_INPUT_TANK = ReactionChamberRecipe.MAX_LEVEL * 1000;
 
-		this.inventory = new ItemStackHandlerPlus(6) {
+	public static final int SLOT_INPUT = 0;
+	public static final int SLOT_FOCUS = 1;
+	public static final int SLOT_OUTPUT = 2;
+	public static final int OUTPUT_SLOTS_COUNT = 4;
 
+	public static final int BUTTON_ID_LIQUIDLEVEL_INC = BUTTON_ID_REDSTONE + 1;
+	public static final int BUTTON_ID_LIQUIDLEVEL_DEC = BUTTON_ID_REDSTONE + 2;
+	public static final int BUTTON_ID_INTENSITY_INC = BUTTON_ID_REDSTONE + 3;
+	public static final int BUTTON_ID_INTENSITY_DEC = BUTTON_ID_REDSTONE + 4;
+	public static final int BUTTON_ID_DUMPTANK = BUTTON_ID_REDSTONE + 5;
+
+	protected int intensity = 0;
+	protected int liquidLevel = 0;
+	protected boolean fluidsChanged = false;
+
+	public final ReactionChamberTank inputTank = new ReactionChamberTank();
+
+	public ReactionChamberTileEntMaster(BlockPos pos, BlockState state) {
+		super(TGBlockEntities.REACTION_CHAMBER.get(), pos, state, 2 + OUTPUT_SLOTS_COUNT, 1000000);
+	}
+
+	@Override
+	protected ItemStackHandlerPlus createInventory(int size) {
+		return new ItemStackHandlerPlus(size) {
 			@Override
 			protected void onContentsChanged(int slot) {
-				super.onContentsChanged(slot);
-				setContentsChanged(true);
+				onInventoryChanged(slot);
+				if (slot <= SLOT_FOCUS) {
+					// the renderer shows input and focus
+					fluidsChanged = true;
+				}
 			}
 
 			@Override
 			protected boolean allowItemInSlot(int slot, ItemStack stack) {
-				if(slot <=SLOT_FOCUS) {
-					return isItemValidForSlot(slot, stack);
-				} else {//if(slot>=SLOT_OUTPUT && slot < SLOT_OUTPUT+OUTPUT_SLOTS_COUNT)
-					return false;
-				}
-				//return false;
+				return slot == SLOT_INPUT || (slot == SLOT_FOCUS && ReactionBeamFocus.get(stack) != null);
 			}
-			
+
 			@Override
 			protected boolean allowExtractFromSlot(int slot, int amount) {
-				return slot >= SLOT_OUTPUT && slot < SLOT_OUTPUT+OUTPUT_SLOTS_COUNT;
+				return slot >= SLOT_OUTPUT && slot < SLOT_OUTPUT + OUTPUT_SLOTS_COUNT;
 			}
 		};
-		
-		input = new MachineSlotItem(this, SLOT_INPUT);
-		
-	}
-	
-	public boolean isItemValidForSlot(int slot, ItemStack item) {
-		if(slot==SLOT_INPUT){
-			return true;
-		} else if (slot==SLOT_FOCUS) {
-			return ReactionBeamFocus.getBeamFocus(item)!=null;
-		}
-		return false;
 	}
 
 	@Override
-	public boolean hasCapability(Capability<?> capability, EnumFacing facing) {
-		return capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY || super.hasCapability(capability, facing);
-	}
-	
-	@Override
-	public <T> T getCapability(Capability<T> capability, EnumFacing facing) {
-		return capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY ? (T)inputTank : super.getCapability(capability, facing);
+	public AbstractContainerMenu createMenu(int id, Inventory inv, Player player) {
+		return new ReactionChamberMenu(id, inv, this);
 	}
 
 	@Override
-	public AxisAlignedBB getRenderBoundingBox() {
-		if(this.isFormed()) {
-			BlockPos p = this.getPos();
-			EnumFacing left = multiblockDirection.rotateY();
-			
-			BlockPos other = p.offset(multiblockDirection, 3).offset(left, 2).offset(EnumFacing.UP,4);
-			BlockPos first = p.offset(multiblockDirection.getOpposite(),1).offset(left.getOpposite(),2).offset(EnumFacing.DOWN,1);
-			return new AxisAlignedBB(first,other);
-		} else {
-			return super.getRenderBoundingBox();
+	public Component getDisplayName() {
+		return Component.translatable("techguns.container.reactionchamber");
+	}
+
+	@Override
+	protected MachineOperation createEmptyOperation() {
+		return new ReactionChamberOperation();
+	}
+
+	@Nullable
+	public ReactionChamberOperation getCurrentReaction() {
+		return this.currentOperation instanceof ReactionChamberOperation op ? op : null;
+	}
+
+	public ItemStack getFocus() {
+		return this.inventory.getStackInSlot(SLOT_FOCUS);
+	}
+
+	public ItemStack getInput() {
+		return this.inventory.getStackInSlot(SLOT_INPUT);
+	}
+
+	public int getIntensity() {
+		return intensity;
+	}
+
+	public int getLiquidLevel() {
+		return liquidLevel;
+	}
+
+	public void setIntensity(int intensity) {
+		this.intensity = intensity;
+	}
+
+	public void setLiquidLevel(int liquidLevel) {
+		this.liquidLevel = liquidLevel;
+	}
+
+	public int getValidSlotForItemInMachine(ItemStack stack) {
+		return ReactionBeamFocus.get(stack) != null ? SLOT_FOCUS : SLOT_INPUT;
+	}
+
+	/* ---- multiblock ---- */
+
+	/** side connectors take items and fluids, the top connector energy (1.12 ReactionChamberTileEntSlave) */
+	@Override
+	public boolean forwardsCapability(int slaveType, BlockCapability<?, ?> cap) {
+		if (slaveType == ReactionChamberSchematic.TYPE_SIDE_CONNECTOR) {
+			return cap == Capabilities.ItemHandler.BLOCK || cap == Capabilities.FluidHandler.BLOCK;
+		}
+		return slaveType == ReactionChamberSchematic.TYPE_ENERGY_CONNECTOR && cap == Capabilities.EnergyStorage.BLOCK;
+	}
+
+	public static final double BOTTOM_DIFF = 0.25d;
+	public static final double MIDDLE_DIFF = 0.45d;
+	public static final double HEIGHT_DIFF = 0.35d;
+
+	/** formed part shapes by offset from the bottom center block (1.12 ReactionChamberDefinition.boundingBoxes) */
+	private static final Map<Long, VoxelShape> SHAPES = new HashMap<>();
+
+	private static void shape(int x, int y, int z, double x1, double y1, double z1, double x2, double y2, double z2) {
+		SHAPES.put(BlockPos.asLong(x, y, z), Shapes.box(x1, y1, z1, x2, y2, z2));
+	}
+
+	static {
+		double b = BOTTOM_DIFF, m = MIDDLE_DIFF, h = 1 - HEIGHT_DIFF;
+		shape(-1, 0, -1, b, 0, b, 1, 1, 1);
+		shape(1, 0, -1, 0, 0, b, 1 - b, 1, 1);
+		shape(-1, 0, 1, b, 0, 0, 1, 1, 1 - b);
+		shape(1, 0, 1, 0, 0, 0, 1 - b, 1, 1 - b);
+		for (int y = 1; y <= 3; y++) {
+			double top = y == 3 ? h : 1;
+			shape(-1, y, -1, m, 0, m, 1, top, 1);
+			shape(1, y, -1, 0, 0, m, 1 - m, top, 1);
+			shape(-1, y, 1, m, 0, 0, 1, top, 1 - m);
+			shape(1, y, 1, 0, 0, 0, 1 - m, top, 1 - m);
+			shape(-1, y, 0, m, 0, 0, 1, top, 1);
+			shape(1, y, 0, 0, 0, 0, 1 - m, top, 1);
+			shape(0, y, -1, 0, 0, m, 1, top, 1);
+			shape(0, y, 1, 0, 0, 0, 1, top, 1 - m);
 		}
 	}
 
 	@Override
-	public void readClientDataFromNBT(NBTTagCompound tags) {
-		super.readClientDataFromNBT(tags);
-		
-		NBTTagCompound inputTankTags = tags.getCompoundTag("inputTank");
-		this.inputTank.readFromNBT(inputTankTags);
-		
-		this.intensity= tags.getByte("intensity");
-		this.liquidLevel=tags.getByte("liquidLevel");
-		
-		if(tags.hasKey("inputSlot")) {
-			ItemStack inputSlot = new ItemStack(tags.getCompoundTag("inputSlot"));
-			this.inventory.setStackInSlot(SLOT_INPUT, inputSlot);
-		} else {
-			this.inventory.setStackInSlot(SLOT_INPUT, ItemStack.EMPTY);
-		}
-		
-		if(tags.hasKey("focusSlot")) {
-			ItemStack focusSlot = new ItemStack(tags.getCompoundTag("focusSlot"));
-			this.inventory.setStackInSlot(SLOT_FOCUS, focusSlot);
-		} else {
-			this.inventory.setStackInSlot(SLOT_FOCUS, ItemStack.EMPTY);
-		}
+	public VoxelShape getSlaveShape(int slaveType, BlockPos slavePos) {
+		BlockPos center = worldPosition.relative(getMultiblockDirection());
+		VoxelShape s = SHAPES.get(BlockPos.asLong(slavePos.getX() - center.getX(), slavePos.getY() - center.getY(), slavePos.getZ() - center.getZ()));
+		return s != null ? s : Shapes.block();
+	}
+
+	/** bottom block in the middle of the chamber, the reaction happens above it */
+	public BlockPos getCenterPos() {
+		return worldPosition.relative(getMultiblockDirection());
+	}
+
+	/* ---- tank ---- */
+
+	@Override
+	public IFluidHandler getFluidHandler() {
+		return inputTank;
 	}
 
 	@Override
-	public void writeClientDataToNBT(NBTTagCompound tags) {
-		super.writeClientDataToNBT(tags);
-		
-		NBTTagCompound inputTankTags = new NBTTagCompound();
-		this.inputTank.writeToNBT(inputTankTags);
-		tags.setTag("inputTank", inputTankTags);
-		
-		tags.setByte("intensity", this.intensity);
-		tags.setByte("liquidLevel", this.liquidLevel);
-		
-		if (!this.input.get().isEmpty()) {
-			NBTTagCompound inputSlot = new NBTTagCompound();
-			this.input.get().writeToNBT(inputSlot);
-			tags.setTag("inputSlot", inputSlot);
+	public boolean onFluidContainerInteract(Player player, InteractionHand hand) {
+		if (!this.isUseableByPlayer(player)) {
+			return false;
 		}
-		if (!this.inventory.getStackInSlot(SLOT_FOCUS).isEmpty()) {
-			NBTTagCompound focusSlot = new NBTTagCompound();
-			this.inventory.getStackInSlot(SLOT_FOCUS).writeToNBT(focusSlot);
-			tags.setTag("focusSlot", focusSlot);
-		}
-		
-		
+		return FluidUtil.interactWithFluidHandler(player, hand, this.inputTank);
 	}
 
-	@Override
-	public void readOperationFromNBT(NBTTagCompound tags) {
-		if(tags.hasKey("operation")) {			
-			this.currentOperation=new ReactionChamberOperation(tags,this);
-		} else {
-			this.currentOperation=null;
+	/** the tank only fills up to the liquid level setting and only gives away what is above it */
+	public class ReactionChamberTank extends FluidTank {
+		public ReactionChamberTank() {
+			super(CAPACITY_INPUT_TANK);
+		}
+
+		private int fillCapacity() {
+			return liquidLevel * 1000;
+		}
+
+		@Override
+		public int fill(FluidStack resource, FluidAction action) {
+			int room = fillCapacity() - getFluidAmount();
+			if (resource.isEmpty() || room <= 0) {
+				return 0;
+			}
+			return super.fill(resource.copyWithAmount(Math.min(room, resource.getAmount())), action);
+		}
+
+		@Override
+		public FluidStack drain(int maxDrain, FluidAction action) {
+			int above = Math.max(0, getFluidAmount() - fillCapacity());
+			return super.drain(Math.min(maxDrain, above), action);
+		}
+
+		/** remove fluid ignoring the level setting */
+		public void removeInternal(int amount) {
+			if (!fluid.isEmpty()) {
+				fluid.shrink(amount);
+				if (fluid.isEmpty()) {
+					fluid = FluidStack.EMPTY;
+				}
+				onContentsChanged();
+			}
+		}
+
+		@Override
+		protected void onContentsChanged() {
+			fluidsChanged = true;
+			setContentsChanged(true);
+			setChanged();
 		}
 	}
-	
-	@Override
-	public ITextComponent getDisplayName() {
-		return new TextComponentTranslation(Techguns.MODID+".container.reactionchamber", new Object[0]);
-	}
-	
+
+	/* ---- operation ---- */
+
 	@Override
 	protected int getNeededPower() {
 		return 0;
 	}
-	
+
+	/** power is drawn once per reaction tick */
+	public boolean consumeReactionPower(int amount) {
+		return this.consumePower(amount);
+	}
+
 	@Override
-	public void update() {
-		if(!world.isRemote&&this.fluidsChanged) {
-			this.fluidsChanged=false;
-			this.needFluidUpdate();
+	protected void tick() {
+		if (this.level == null) {
+			return;
 		}
-		if (this.isRedstoneEnabled()){
-			ReactionChamberOperation currentReaction = this.getCurrentReaction();
-			if (currentReaction != null && currentReaction.getRecipe()!=null) {
-				
-				this.progress++;
-				boolean state = currentReaction.tick(this.intensity,this.liquidLevel,this.world.isRemote,this,currentReaction.getRecipe().RFTick);
-				
-				if (!this.world.isRemote && state) {
-					if (currentReaction.isSuccess()){
-						
-						if (!this.world.isRemote) {
-							this.finishedOperation();
-						}
-						this.progress = 0;
-						this.totaltime = 0;
-						this.currentOperation = null;
-						
-						if (!this.world.isRemote){
-							checkAndStartOperation();
-						}
-						
-					} else if (currentReaction.isFailure(this)){
-						
-						RiskType risk = currentReaction.getRecipe().risk;
-						
-						this.progress = 0;
-						this.totaltime = 0;
-						this.currentOperation = null;
-						
-						if (risk == RiskType.EXPLOSION_LOW){
-							this.explode(0);
-						} else if (risk == RiskType.EXPLOSION_MEDIUM){
-							this.explode(1);
-						}
-						
-					
-						if(!RiskType.isFatal(risk)) {
-							if (!this.world.isRemote){
-								checkAndStartOperation();
-							}
-						}
-						
-					} 
+		boolean client = this.level.isClientSide;
+		if (!client && this.fluidsChanged) {
+			this.fluidsChanged = false;
+			this.needUpdate();
+		}
+		if (!this.isRedstoneEnabled() || !this.enabled()) {
+			return;
+		}
+		ReactionChamberOperation op = getCurrentReaction();
+		if (op != null) {
+			ReactionChamberRecipe rec = op.getRecipe(level);
+			if (rec == null) {
+				// recipe removed by a datapack reload
+				if (!client) {
+					clearOperation();
 					this.needUpdate();
 				}
-				if (this.world.isRemote){
-					if (this.getCurrentReaction().nextTick==ReactionChamberOperation.RECIPE_TICKRATE-1){
-						this.playReactionTickSound(currentReaction.required_intensity== this.intensity);
+				return;
+			}
+			this.progress++;
+			boolean changed = op.tick(this, rec, level.random);
+			if (!client && changed) {
+				if (op.isSuccess(rec)) {
+					this.finishedOperation();
+					clearOperation();
+					this.checkAndStartOperation();
+				} else if (this.progress >= this.totaltime) {
+					clearOperation();
+					if (rec.risk() == RiskType.EXPLOSION_LOW) {
+						this.explode(0);
+					} else if (rec.risk() == RiskType.EXPLOSION_MEDIUM) {
+						this.explode(1);
 					}
 				}
-
-			}  else {
-
-				if(!this.world.isRemote && this.contentsChanged) {
-					checkAndStartOperation();
-					if(this.currentOperation!=null) {
-						this.needUpdate();
-					}
-				}
-
+				this.needUpdate();
+			}
+			if (client && op.nextTick == ReactionChamberOperation.RECIPE_TICKRATE - 1) {
+				this.playReactionTickSound(op.requiredIntensity == this.intensity);
+			}
+		} else if (!client && this.contentsChanged) {
+			this.checkAndStartOperation();
+			if (this.currentOperation != null) {
+				this.needUpdate();
 			}
 		}
+	}
+
+	private void clearOperation() {
+		this.progress = 0;
+		this.totaltime = 0;
+		this.currentOperation = null;
+	}
+
+	public ReactionChamberRecipe.Input recipeInput() {
+		return new ReactionChamberRecipe.Input(getInput(), getFocus(), inputTank.getFluid(), liquidLevel, intensity);
 	}
 
 	@Override
 	protected void checkAndStartOperation() {
-		this.contentsChanged=false;
-		
-		ReactionChamberRecipe rec = ReactionChamberRecipe.getMatchingRecipe(this.inventory.getStackInSlot(SLOT_INPUT), this.inventory.getStackInSlot(SLOT_FOCUS), this.inputTank.getFluid(), this.liquidLevel, this.intensity);
-		if (rec!=null){
-			
-			if (rec.RFTick<=this.energy.getEnergyStored()){
-			
-				this.currentOperation = new ReactionChamberOperation(rec,this);
-				
-				this.input.consume(1);
-				this.totaltime = rec.ticks*ReactionChamberOperation.RECIPE_TICKRATE;
-				this.progress=0;
-				
-			} else {
-				this.contentsChanged=true; //need check start next time
-			}
+		this.setContentsChanged(false);
+		var found = ReactionChamberRecipe.find(level, recipeInput());
+		if (found.isEmpty()) {
+			return;
 		}
+		ReactionChamberRecipe rec = found.get().value();
+		if (rec.power() > this.energy.getEnergyStored() && !techguns.TGConfig.machinesNeedNoPower) {
+			// try again next tick
+			this.setContentsChanged(true);
+			return;
+		}
+		this.currentOperation = new ReactionChamberOperation(found.get(), getInput());
+		this.inventory.extractWithoutCheck(SLOT_INPUT, 1, false);
+		this.totaltime = rec.ticks() * ReactionChamberOperation.RECIPE_TICKRATE;
+		this.progress = 0;
+		// consuming the input marked the contents changed again
+		this.setContentsChanged(false);
 	}
 
 	@Override
 	protected void finishedOperation() {
-		this.mergeOutput();
+		ReactionChamberOperation op = getCurrentReaction();
+		ReactionChamberRecipe rec = op != null ? op.getRecipe(level) : null;
+		if (rec == null) {
+			return;
+		}
+		for (ItemStack result : rec.results()) {
+			ItemStack rest = result.copy();
+			for (int s = SLOT_OUTPUT; s < SLOT_OUTPUT + OUTPUT_SLOTS_COUNT && !rest.isEmpty(); s++) {
+				rest = this.inventory.insertItemNoCheck(s, rest, false);
+			}
+			if (!rest.isEmpty()) {
+				Containers.dropItemStack(level, worldPosition.getX() + 0.5d, worldPosition.getY() + 0.5d, worldPosition.getZ() + 0.5d, rest);
+			}
+		}
+		if (rec.liquidConsumption() > 0) {
+			this.inputTank.removeInternal(rec.liquidConsumption());
+		}
 	}
 
-	private void mergeOutput(){
-		ArrayList<ItemStack> outputs = this.getCurrentReaction().getRecipe().outputs;
-		
-		for (int i=0;i<outputs.size();i++){
-			ItemStack output = outputs.get(i).copy();
-			
-			
-			int leftover = output.getCount();
-			int s  =SLOT_OUTPUT;
-			ItemStack out = ItemStack.EMPTY;
-			while(leftover>0&& s<SLOT_OUTPUT+OUTPUT_SLOTS_COUNT) {
-				out = this.inventory.insertItemNoCheck(s, output, false);
-				if(!out.isEmpty()) {
-					leftover=out.getCount();
-					if(leftover>0) {
-						output=out;
-						s++;
-					}
-				} else {
-					leftover=0;
-				}
-			}
-			
-			if(leftover>0) {
-				this.world.spawnEntity(new EntityItem(this.world, this.pos.getX()+0.5d, this.pos.getY()+0.5d, this.pos.getZ()+0.5d, out));
-			}
-
-		}
-		
-		if(this.getCurrentReaction().getRecipe().liquidConsumtion>0){
-			((ReactionChamberFluidTank)this.inputTank).removeInternal(this.getCurrentReaction().getRecipe().liquidConsumtion);
-		}
-		
-	}
-	
 	@Override
 	protected void playAmbientSound() {
 	}
-	
+
 	protected void playReactionTickSound(boolean goodTick) {
-	
-		ItemStack focusitem = this.inventory.getStackInSlot(SLOT_FOCUS);
-		BlockPos pos = this.pos.offset(multiblockDirection);
-		
-		if(focusitem!=null){
-			ReactionBeamFocus focus = ReactionBeamFocus.getBeamFocus(focusitem);
-			if (focus!=null){
-				world.playSound(pos.getX(), pos.getY(), pos.getZ(), focus.getSound(), SoundCategory.BLOCKS, 1.0F, 1.0F, true );
-			}
+		BlockPos pos = getCenterPos().above();
+		ReactionBeamFocus focus = ReactionBeamFocus.get(getFocus());
+		double x = pos.getX() + 0.5d, y = pos.getY() + 0.5d, z = pos.getZ() + 0.5d;
+		if (focus != null) {
+			level.playLocalSound(x, y, z, focus.sound().get(), SoundSource.BLOCKS, 1.0f, 1.0f, true);
 		}
+		for (int i = 0; i < 4; i++) {
+			level.addParticle(ParticleTypes.EFFECT, pos.getX() + level.random.nextFloat(), pos.getY() + level.random.nextFloat(),
+					pos.getZ() + level.random.nextFloat(), 0, 1, 0);
+		}
+		level.playLocalSound(x, y, z, goodTick ? TGSounds.REACTION_CHAMBER_BEEP.get() : TGSounds.REACTION_CHAMBER_WARNING.get(), SoundSource.BLOCKS, 1.0f,
+				1.0f, true);
+	}
 
-		Random rng = new Random();
-		for(int i=0; i<4;i++){
-			world.spawnParticle(EnumParticleTypes.SPELL, pos.getX() + rng.nextFloat(), pos.getY() + rng.nextFloat(), pos.getZ() + rng.nextFloat(), 0, 1, 0);
+	/** failed reaction: 0 - the chamber center bursts, 1 - explosion that removes the whole glass */
+	protected void explode(int type) {
+		if (level == null || level.isClientSide) {
+			return;
 		}
-			
-		if (goodTick){
-			world.playSound(pos.getX(),pos.getY(), pos.getZ(), TGSounds.REACTION_CHAMBER_BEEP, SoundCategory.BLOCKS, 1.0F, 1.0F, true );
+		Direction dir = getMultiblockDirection();
+		FluidStack fluid = inputTank.getFluid();
+		BlockState fluidBlock = fluid.isEmpty() ? Blocks.AIR.defaultBlockState() : fluid.getFluid().defaultFluidState().createLegacyBlock();
+		BlockPos masterPos = worldPosition;
+		BlockPos centerPos = masterPos.relative(dir).above();
+		double cx = centerPos.getX() + 0.5d, cy = centerPos.getY() + 0.5d, cz = centerPos.getZ() + 0.5d;
+
+		this.onMultiBlockBreak();
+		List<BlockPos> remove = new ArrayList<>();
+		remove.add(centerPos);
+		if (type == 0) {
+			for (Direction d : Direction.Plane.HORIZONTAL) {
+				remove.add(centerPos.relative(d));
+			}
 		} else {
-			world.playSound(pos.getX(), pos.getY(), pos.getZ(), TGSounds.REACTION_CHAMBER_WARNING, SoundCategory.BLOCKS, 1.0F, 1.0F, true );
+			Direction left = dir.getClockWise();
+			BlockPos.betweenClosed(masterPos.relative(left).above(), masterPos.relative(left.getOpposite()).relative(dir, 2).above(2))
+					.forEach(p -> remove.add(p.immutable()));
 		}
-	}
-	
-	@Override
-	protected MultiBlockMachine getMachineBlockType() {
-		return TGBlocks.MULTIBLOCK_MACHINE;
-	}
+		remove.forEach(p -> level.setBlock(p, Blocks.AIR.defaultBlockState(), 3));
 
-	@Override
-	public AxisAlignedBB getBBforSlave(BlockPos slavePos) {
-		if(multiblockDirection!=null) {
-			BlockPos center = this.getPos().offset(multiblockDirection,1);
-			SlavePos sp = new SlavePos(slavePos, center);
-			AxisAlignedBB bb = ReactionChamberDefinition.boundingBoxes.get(sp);
-			if(bb!=null) {
-				return bb;
+		if (type == 0) {
+			level.setBlock(centerPos, fluidBlock, 3);
+			if (level instanceof net.minecraft.server.level.ServerLevel sl) {
+				sl.sendParticles(ParticleTypes.EXPLOSION_EMITTER, cx, cy, cz, 1, 0, 0, 0, 0);
 			}
-		}
-		return Block.FULL_BLOCK_AABB;
-	}
-
-	public int getValidSlotForItemInMachine(ItemStack stack) {
-		if(!stack.isEmpty() && stack.getItem() instanceof ITGSpecialSlot) {
-			ITGSpecialSlot itm = (ITGSpecialSlot) stack.getItem();
-			if(itm.getSlot(stack)==TGSlotType.REACTION_CHAMBER_FOCUS && ReactionBeamFocus.getBeamFocus(stack) !=null) {
-				return SLOT_FOCUS;
-			}
-		}
-		return SLOT_INPUT;
-	}
-
-	@Override
-	public boolean consumePower(int amount) {
-		return super.consumePower(amount);
-	}
-
-	public byte getIntensity() {
-		return intensity;
-	}
-
-	public byte getLiquidLevel() {
-		return liquidLevel;
-	}
-
-	public void setIntensity(byte intensity) {
-		this.intensity = intensity;
-	}
-
-	public void setLiquidLevel(byte liquidLevel) {
-		this.liquidLevel = liquidLevel;
-	}
-
-	public ReactionChamberOperation getCurrentReaction() {
-		if(this.currentOperation==null) {
-			return null;
-		}
-		return (ReactionChamberOperation) this.currentOperation;
-	}
-	
-	protected void explode(int type){
-		EnumFacing dir = this.multiblockDirection;
-		
-		if (!this.world.isRemote){
-			
-			Block fluidBlock = null;
-			if (this.inputTank.getFluid()!=null){
-				fluidBlock = this.inputTank.getFluid().getFluid().getBlock();
-			}
-			
-			BlockPos masterPos = this.getPos().toImmutable();
-			BlockPos centerPos = masterPos.offset(dir).up();
-
-			this.onMultiBlockBreak();
-			
-			this.world.setBlockToAir(centerPos);
-			
-			ArrayList<BlockPos> blocksToRemove = new ArrayList<>();
-			
-			if (type==0){
-		
-				blocksToRemove.add(centerPos.offset(EnumFacing.SOUTH));
-				blocksToRemove.add(centerPos.offset(EnumFacing.NORTH));
-				blocksToRemove.add(centerPos.offset(EnumFacing.WEST));
-				blocksToRemove.add(centerPos.offset(EnumFacing.EAST));
-
-			} else if (type==1){
-				BlockPos pos = masterPos.toImmutable();
-				
-				EnumFacing left = dir.rotateY();
-				BlockPos pos1 = pos.offset(left).up();
-				
-				BlockPos pos2 = pos.offset(left.getOpposite()).offset(dir,2).up(2);
-				
-				BlockPos.getAllInBox(pos1, pos2).forEach(p -> blocksToRemove.add(p));
-			}
-			
-			if (type==0 && fluidBlock!=null){
-				this.world.setBlockState(centerPos, fluidBlock.getDefaultState(), 3);
-			} else if (type==0) {
-				this.world.setBlockState(centerPos, Blocks.AIR.getDefaultState(), 3);
-			}
-			
-			blocksToRemove.forEach(b -> {
-					this.world.setBlockState(b, Blocks.AIR.getDefaultState(),3);
-				});
-					
-						
-			if (type == 0){
-			
-				TGPackets.network.sendToAllAround(new PacketSpawnParticle("FragGrenadeExplosion", centerPos.getX()+0.5d, centerPos.getY()+0.5d, centerPos.getZ()+0.5d), new TargetPoint(this.world.provider.getDimension(), centerPos.getX()+0.5d, centerPos.getY()+0.5d, centerPos.getZ()+0.5d, 50.0f));
-				this.world.playSound((EntityPlayer)null, centerPos.getX()+0.5d, centerPos.getY()+0.5d, centerPos.getZ()+0.5d, SoundEvents.ENTITY_GENERIC_EXPLODE, SoundCategory.BLOCKS, 4.0F, (1.0F + (this.world.rand.nextFloat() - this.world.rand.nextFloat()) * 0.2F) * 0.7F);
-
-			} else if (type == 1){
-				//int radius=4;
-				//TGPackets.network.sendToAllAround(new PacketSpawnParticle("RocketExplosion", centerPos.x+0.5d, centerPos.y+0.5d, centerPos.z+0.5d), new TargetPoint(this.worldObj.provider.dimensionId, centerPos.x+0.5d, centerPos.y+0.5d, centerPos.z+0.5d, 50.0f));
-				//ProjectileExplosion explosion = new ProjectileExplosion(worldObj, centerPos.x+0.5d, centerPos.y+0.5d, centerPos.z+0.5d, null, radius, 25, radius*0.5f, radius*1.5f);
-				//explosion.setExplosionSound("techguns:effects.explosion1");
-				//explosion.doExplosion(true, null);
-				
-				// EntityTNTPrimed entitytntprimed = new EntityTNTPrimed(this.worldObj, centerPos.x+0.5d, centerPos.y+0.5d, centerPos.z+0.5d, null);
-	            // this.worldObj.spawnEntityInWorld(entitytntprimed);
-				
-				this.world.createExplosion(null, centerPos.getX()+0.5d, centerPos.getY()+0.5d, centerPos.getZ()+0.5d, 4, true);
-			}
-			 
-			if (type==1 && fluidBlock!=null){
-				this.world.setBlockState(centerPos, fluidBlock.getDefaultState(), 3);
-				this.world.setBlockState(centerPos.up(), Blocks.AIR.getDefaultState(), 3);
-				this.world.setBlockState(centerPos.down(), Blocks.GRAVEL.getDefaultState(), 3);
-			}
-			
-			this.energy.setEnergyStored(0);
-			this.inputTank.setFluid(null);
-			
-			ItemStack content = this.input.get();
-			if (!content.isEmpty()){
-				this.inventory.setStackInSlot(SLOT_INPUT, ItemStack.EMPTY);
-				this.world.spawnEntity(new EntityItem(this.world, centerPos.getX()+0.5d, centerPos.getY()+0.5d, centerPos.getZ()+0.5d, content));
-			}
-			
-			this.needUpdate();
-		}
-	}
-	
-	@Override
-	public void buttonClicked(int id, EntityPlayer ply, String data) {
-		if(id<=ButtonConstants.BUTTON_ID_REDSTONE){
-			super.buttonClicked(id, ply, data);
+			level.playSound(null, cx, cy, cz, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 4.0f,
+					(1.0f + (level.random.nextFloat() - level.random.nextFloat()) * 0.2f) * 0.7f);
 		} else {
-			if (this.isUseableByPlayer(ply)){
-				switch(id){
-					case BUTTON_ID_LIQUIDLEVEL_INC: 
-						if (this.liquidLevel<10){
-							this.liquidLevel++;
-							this.contentsChanged=true;
-						}
-						break;
-					case BUTTON_ID_LIQUIDLEVEL_DEC:
-						if (this.liquidLevel>0){
-							this.liquidLevel--;
-							this.contentsChanged=true;
-						}
-						break;
-					case BUTTON_ID_INTENSITY_INC: 
-						if (this.intensity<10){
-							this.intensity++;
-							this.contentsChanged=true;
-						}
-						break;
-					case BUTTON_ID_INTENSTIY_DEC: 
-						if (this.intensity>0){
-							this.intensity--;
-							this.contentsChanged=true;
-						}
-						break;
-					case BUTTON_ID_DUMPTANK: //drain input tank
-						dumpLiquid();
-						break;
-				}
+			level.explode(null, cx, cy, cz, 4f, Level.ExplosionInteraction.BLOCK);
+			if (!fluid.isEmpty()) {
+				level.setBlock(centerPos, fluidBlock, 3);
+				level.setBlock(centerPos.above(), Blocks.AIR.defaultBlockState(), 3);
+				level.setBlock(centerPos.below(), Blocks.GRAVEL.defaultBlockState(), 3);
 			}
 		}
-	}
-
-	private void dumpLiquid(){
-		this.inputTank.setFluid(null);
-		this.contentsChanged=true;
+		this.energy.setEnergyStored(0);
+		this.inputTank.setFluid(FluidStack.EMPTY);
+		ItemStack content = getInput();
+		if (!content.isEmpty()) {
+			this.inventory.setStackInSlot(SLOT_INPUT, ItemStack.EMPTY);
+			Containers.dropItemStack(level, cx, cy, cz, content);
+		}
 		this.needUpdate();
 	}
-	
-	protected class ReactionChamberFluidTank extends FluidTankPlus {
 
-		protected ReactionChamberTileEntMaster tile;
-		public ReactionChamberFluidTank(ReactionChamberTileEntMaster tile, int capacity) {
-			super(tile, capacity);
-			this.setTileEntity(tile);
-			this.tile=tile;
+	/* ---- gui ---- */
+
+	@Override
+	public void buttonClicked(int id, Player ply) {
+		if (id <= BUTTON_ID_REDSTONE) {
+			super.buttonClicked(id, ply);
+			return;
 		}
-		private int getFillCapacity() {
-			return tile.liquidLevel*Fluid.BUCKET_VOLUME;
+		if (!this.isUseableByPlayer(ply)) {
+			return;
 		}
-		
-		@Override
-		protected void onContentsChanged() {
-			super.onContentsChanged();
-			tile.fluidsChanged=true;
-		}
-		
-		@Override
-		public int fillInternal(FluidStack resource, boolean doFill) {
-			int fillCapacity = getFillCapacity();
-			  if (resource == null || resource.amount <= 0)
-		        {
-		            return 0;
-		        }
-
-		        if (!doFill)
-		        {
-		            if (fluid == null)
-		            {
-		                return Math.min(fillCapacity, resource.amount);
-		            }
-
-		            if (!fluid.isFluidEqual(resource))
-		            {
-		                return 0;
-		            }
-
-		            return Math.min(fillCapacity - fluid.amount, resource.amount);
-		        }
-
-		        if (fluid == null)
-		        {
-		            fluid = new FluidStack(resource, Math.min(fillCapacity, resource.amount));
-
-		            onContentsChanged();
-
-		            if (tile != null)
-		            {
-		                FluidEvent.fireEvent(new FluidEvent.FluidFillingEvent(fluid, tile.getWorld(), tile.getPos(), this, fluid.amount));
-		            }
-		            return fluid.amount;
-		        }
-
-		        if (!fluid.isFluidEqual(resource))
-		        {
-		            return 0;
-		        }
-		        int filled = fillCapacity - fluid.amount;
-
-		        if (resource.amount < filled)
-		        {
-		            fluid.amount += resource.amount;
-		            filled = resource.amount;
-		        }
-		        else
-		        {
-		            fluid.amount = fillCapacity;
-		        }
-		        
-		        if (filled>0) {
-		        	onContentsChanged();
-		        }
-		        
-		        if (tile != null)
-		        {
-		            FluidEvent.fireEvent(new FluidEvent.FluidFillingEvent(fluid, tile.getWorld(), tile.getPos(), this, filled));
-		        }
-		        return filled;
-		}
-		
-		/**
-		 * remove passed amount from the tank
-		 * @param amount
-		 */
-		void removeInternal(int amount) {
-			if(fluid!=null) {
-				fluid.amount-=amount;
-				if(fluid.amount<=0) {
-					fluid=null;
-				}
+		int max = ReactionChamberRecipe.MAX_LEVEL;
+		switch (id) {
+			case BUTTON_ID_LIQUIDLEVEL_INC -> this.liquidLevel = Math.min(max, this.liquidLevel + 1);
+			case BUTTON_ID_LIQUIDLEVEL_DEC -> this.liquidLevel = Math.max(0, this.liquidLevel - 1);
+			case BUTTON_ID_INTENSITY_INC -> this.intensity = Math.min(max, this.intensity + 1);
+			case BUTTON_ID_INTENSITY_DEC -> this.intensity = Math.max(0, this.intensity - 1);
+			case BUTTON_ID_DUMPTANK -> this.inputTank.setFluid(FluidStack.EMPTY);
+			default -> {
+				return;
 			}
 		}
-		
-		@Override
-		public FluidStack drainInternal(int maxDrain, boolean doDrain) {			
-			int maxDrainAmount = Math.max(fluid.amount - tile.liquidLevel*Fluid.BUCKET_VOLUME,0);
-			int drainAmount = Math.min(maxDrainAmount, maxDrain);
-			
-			  if (fluid == null || drainAmount <= 0)
-		        {
-		            return null;
-		        }
-
-		        int drained = drainAmount;
-		        if (fluid.amount < drained)
-		        {
-		            drained = fluid.amount;
-		        }
-
-		        FluidStack stack = new FluidStack(fluid, drained);
-		        if (doDrain)
-		        {
-		            fluid.amount -= drained;
-		            if (fluid.amount <= 0)
-		            {
-		                fluid = null;
-		            }
-
-		            this.onContentsChanged();
-
-		            if (tile != null)
-		            {
-		                FluidEvent.fireEvent(new FluidEvent.FluidDrainingEvent(fluid, tile.getWorld(), tile.getPos(), this, drained));
-		            }
-		        }
-		        return stack;
-		}
-		
+		this.setContentsChanged(true);
+		this.setChanged();
+		this.needUpdate();
 	}
+
+	/* ---- save / sync ---- */
 
 	@Override
-	public boolean shouldRenderInPass(int pass) {
-		if(this.formed) {
-			if(pass==1 && this.inputTank.getFluidAmount()>0) {
-				return true;
-			}
-			return pass==0 && this.isWorking(); //return super.shouldRenderInPass(pass);
-		}
-		return false;
-	}
-
-	@Override
-	public void saveTanksToNBT(NBTTagCompound tags) {
-		NBTTagCompound inputTankTags = new NBTTagCompound();
-		this.inputTank.writeToNBT(inputTankTags);
-		tags.setTag("inputTank", inputTankTags);
-	}
-
-	@Override
-	public void loadTanksFromNBT(NBTTagCompound tags) {
-		NBTTagCompound inputTank = tags.getCompoundTag("inputTank");
-		this.inputTank.readFromNBT(inputTank);
-	}
-	
-	public void needFluidUpdate() {
-		if (!this.world.isRemote) {
-			
-			ChunkPos cp = this.world.getChunkFromBlockCoords(getPos()).getPos();
-			PlayerChunkMapEntry entry = ((WorldServer) this.world).getPlayerChunkMap().getEntry(cp.x, cp.z);
-			if(entry !=null ) {
-				try {
-					List<EntityPlayerMP> players = (List<EntityPlayerMP>) playerChunkMapEntry_Players.get(entry);
-					IMessage packet = new PacketUpdateTileEntTanks(this, this.getPos());
-					for (EntityPlayerMP entityplayermp : players) {
-						TGPackets.network.sendTo(packet, entityplayermp);
-					}
-				} catch (IllegalArgumentException e) {
-					e.printStackTrace();
-				} catch (IllegalAccessException e) {
-					e.printStackTrace();
-				}
-			}
-
+	public void readClientData(CompoundTag tags, HolderLookup.Provider registries) {
+		super.readClientData(tags, registries);
+		this.inputTank.setFluid(FluidStack.EMPTY);
+		this.inputTank.readFromNBT(registries, tags.getCompound("inputTank"));
+		this.intensity = tags.getByte("intensity");
+		this.liquidLevel = tags.getByte("liquidLevel");
+		if (level != null && level.isClientSide) {
+			// the renderer shows input and focus
+			this.inventory.setStackInSlot(SLOT_INPUT, ItemStack.parseOptional(registries, tags.getCompound("inputSlot")));
+			this.inventory.setStackInSlot(SLOT_FOCUS, ItemStack.parseOptional(registries, tags.getCompound("focusSlot")));
 		}
 	}
 
-
-	/* OpenComputers Integration */
 	@Override
-	@Optional.Method(modid="opencomputers")
-	public String getComponentName(){
-		return "tg2_reactionchamber";
-	}
-
-	@Optional.Method(modid="opencomputers")
-	@Callback(doc = "function(int:liquidLimit):boolean -- sets the liquid limit for the input tank", direct = false)
-	public Object[] setLiquidLevel(Context context, Arguments args) {
-		if(args.count() < 1)
-			return new Object[]{ false, "no liquid level specified" };
-
-		byte newLiquidLevel = (byte) Math.max(0, Math.min(args.checkInteger(0), 10));
-
-		setLiquidLevel(newLiquidLevel);
-		return new Object[]{ getLiquidLevel() == newLiquidLevel };
-	}
-
-	@Optional.Method(modid="opencomputers")
-	@Callback(doc = "function():int -- returns the liquid limit", direct = false)
-	public Object[] getLiquidLevel(Context context, Arguments args) {
-		return new Object[]{ getLiquidLevel() };
-	}
-
-	@Optional.Method(modid="opencomputers")
-	@Callback(doc = "function(int:intensity):boolean -- sets the intensity level", direct = false)
-	public Object[] setIntensity(Context context, Arguments args) {
-		if(args.count() < 1)
-			return new Object[]{ false, "no intensity level specified" };
-
-		byte newIntensity = (byte) Math.max(0, Math.min(args.checkInteger(0), 10));
-
-		setIntensity(newIntensity);
-		return new Object[]{ getIntensity() == newIntensity };
-	}
-
-
-	@Optional.Method(modid="opencomputers")
-	@Callback(doc = "function():int -- returns the intensity level", direct = false)
-	public Object[] getIntensity(Context context, Arguments args) {
-		return new Object[]{ getIntensity() };
-	}
-
-	@Optional.Method(modid="opencomputers")
-	@Callback(doc = "function():boolean -- dumps the liquid in the input tank", direct = false)
-	public Object[] dumpLiquid(Context context, Arguments args) {
-		dumpLiquid();
-		return new Object[]{ inputTank.getFluid() == null };
-	}
-
-	@Optional.Method(modid="opencomputers")
-	@Callback(doc = "function():boolean -- returns the stored energy", direct = false)
-	public Object[] getEnergyStored(Context context, Arguments args) {
-		return new Object[]{ getEnergyStorage().getEnergyStored() };
-	}
-
-	@Optional.Method(modid="opencomputers")
-	@Callback(doc = "function():boolean -- returns the size of the internal energy buffer", direct = false)
-	public Object[] getMaxEnergyStored(Context context, Arguments args) {
-		return new Object[]{ getEnergyStorage().getMaxEnergyStored() };
-	}
-
-	@Optional.Method(modid="opencomputers")
-	@Callback(doc = "function():table -- returns statistics about the current reaction", direct = false)
-	public Object[] getReactionStats(Context context, Arguments args) {
-		HashMap<String, Object> data = new HashMap<>();
-		data.put("validRecipe", getCurrentReaction() != null);
-
-		if(getCurrentReaction() != null) {
-			data.put("preferedIntensity", getCurrentReaction().getCurrentPreferedIntensity());
-			data.put("progress", progress);
-			data.put("duration", totaltime);
-			data.put("energyPerTick", getCurrentReaction().getPowerPerTick());
+	public void writeClientData(CompoundTag tags, HolderLookup.Provider registries) {
+		super.writeClientData(tags, registries);
+		tags.put("inputTank", this.inputTank.writeToNBT(registries, new CompoundTag()));
+		tags.putByte("intensity", (byte) this.intensity);
+		tags.putByte("liquidLevel", (byte) this.liquidLevel);
+		if (!getInput().isEmpty()) {
+			tags.put("inputSlot", getInput().save(registries));
 		}
-
-		return new Object[] { data };
+		if (!getFocus().isEmpty()) {
+			tags.put("focusSlot", getFocus().save(registries));
+		}
 	}
-
 }

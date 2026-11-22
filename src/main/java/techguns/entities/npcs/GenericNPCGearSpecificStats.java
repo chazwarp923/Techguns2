@@ -1,75 +1,32 @@
 package techguns.entities.npcs;
 
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.item.ItemArmor;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import techguns.damagesystem.DamageSystem;
 import techguns.damagesystem.TGDamageSource;
 import techguns.items.armors.GenericArmor;
 
+/** NPCs whose armor value comes from the armor they wear (1.12 GenericNPCGearSpecificStats). */
 public abstract class GenericNPCGearSpecificStats extends GenericNPC {
 
-	public GenericNPCGearSpecificStats(World world) {
-		super(world);
+	protected GenericNPCGearSpecificStats(EntityType<? extends GenericNPCGearSpecificStats> type, Level level) {
+		super(type, level);
 	}
-	
+
 	@Override
 	public float getTotalArmorAgainstType(TGDamageSource dmgsrc) {
-		Iterable<ItemStack> inv = this.getArmorInventoryList();
-		//ItemStack[] inv = new ItemStack[]{this.getEquipmentInSlot(1),this.getEquipmentInSlot(2),this.getEquipmentInSlot(3),this.getEquipmentInSlot(4)};
-		float totalArmor=0.0f;
-		for (ItemStack stack: inv){
-			if(!stack.isEmpty() && stack.getItem() instanceof ItemArmor){
-				
-				if(stack.getItem() instanceof GenericArmor){
-					GenericArmor genArmor = (GenericArmor) stack.getItem();
-					float armorvalue = genArmor.getArmorValue(stack, dmgsrc.damageType);
-					totalArmor+=armorvalue;
-				} else {
-					ItemArmor armor = (ItemArmor) stack.getItem();
-					float armorvalue = armor.getArmorMaterial().getDamageReductionAmount(armor.armorType);
-					armorvalue = DamageSystem.getArmorAgainstDamageTypeDefault(this, armorvalue, dmgsrc.damageType);
-					totalArmor+=armorvalue;
-				}
+		float total = 0f;
+		for (EquipmentSlot slot : new EquipmentSlot[] { EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET }) {
+			ItemStack stack = this.getItemBySlot(slot);
+			if (stack.getItem() instanceof GenericArmor ga) {
+				total += ga.getArmorValue(stack, dmgsrc.damageType);
+			} else if (stack.getItem() instanceof ArmorItem a) {
+				total += DamageSystem.getArmorAgainstDamageTypeDefault(this, a.getDefense(), dmgsrc.damageType);
 			}
 		}
-		
-		return totalArmor;
+		return total;
 	}
-
-	@Override
-	public float getPenetrationResistance(TGDamageSource dmgsrc) {
-		Iterable<ItemStack> inv = this.getArmorInventoryList();
-		float res=0.0f;
-		for (ItemStack stack: inv){
-			if(!stack.isEmpty() && stack.getItem() instanceof GenericArmor){	
-				GenericArmor genArmor = (GenericArmor) stack.getItem();
-				float antipen = genArmor.getPenetrationResistance();
-				res+=antipen;
-			}
-		}
-		return res;
-	}
-
-	
-	
-	@Override
-	public float getToughnessAfterPentration(EntityLivingBase elb, TGDamageSource src) {
-		Iterable<ItemStack> inv = this.getArmorInventoryList();
-		float t=0.0f;
-		for (ItemStack stack: inv){
-			if(!stack.isEmpty() && stack.getItem() instanceof GenericArmor){	
-				GenericArmor genArmor = (GenericArmor) stack.getItem();
-				float dt = genArmor.toughness-(Math.max(src.armorPenetration-genArmor.getPenetrationResistance(), 0f));
-				t+=Math.max(dt, 0f);
-			} else if (!stack.isEmpty() && stack.getItem() instanceof ItemArmor) {
-				ItemArmor a = (ItemArmor) stack.getItem();
-				float dt = a.toughness- src.armorPenetration;
-				t+=Math.max(dt, 0f);
-			}
-		}
-		return t;
-	}
-
 }

@@ -1,0 +1,32 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:repair_bench"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "pmp",
+    "ici",
+    "iii"
+  ],
+  "key": {
+    "p": {
+      "tag": "c:plates/iron"
+    },
+    "c": {
+      "tag": "c:player_workstations/crafting_tables"
+    },
+    "i": {
+      "tag": "c:nuggets/iron"
+    },
+    "m": {
+      "item": "techguns:mechanicalpartsiron"
+    }
+  },
+  "result": {
+    "id": "techguns:repair_bench"
+  }
+}

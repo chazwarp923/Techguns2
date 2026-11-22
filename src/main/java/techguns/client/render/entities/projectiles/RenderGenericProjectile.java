@@ -1,98 +1,81 @@
 package techguns.client.render.entities.projectiles;
 
-import net.minecraft.client.renderer.BufferBuilder;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
-import net.minecraft.util.ResourceLocation;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
+
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import techguns.Techguns;
 import techguns.entities.projectiles.GenericProjectile;
 
-public class RenderGenericProjectile<T extends GenericProjectile> extends Render<T> {
+/** Bullet: four quads in a cross shape along the flight direction (1.12.2 RenderGenericProjectile). */
+public class RenderGenericProjectile<T extends GenericProjectile> extends EntityRenderer<T> {
 
-	private static final ResourceLocation bulletTextures = new ResourceLocation(Techguns.MODID,"textures/entity/bullet1.png"); //previously was bullet.png
+	public static final ResourceLocation BULLET = Techguns.rl("textures/entity/bullet1.png");
+	public static final ResourceLocation BULLET_BLUE = Techguns.rl("textures/entity/bullet_blue.png");
+	public static final ResourceLocation STONE_BULLET = Techguns.rl("textures/entity/handgunbullet.png");
 
-	public RenderGenericProjectile(RenderManager renderManager) {
-		super(renderManager);
+	public static final ResourceLocation LASER = Techguns.rl("textures/fx/laser3.png");
+
+	private final ResourceLocation texture;
+	private boolean additive = false;
+
+	public RenderGenericProjectile(EntityRendererProvider.Context ctx) {
+		this(ctx, BULLET);
+	}
+
+	public RenderGenericProjectile(EntityRendererProvider.Context ctx, ResourceLocation texture) {
+		super(ctx);
+		this.texture = texture;
+	}
+
+	/** 1.12 RenderBlasterProjectile: additive blending, no lighting */
+	public RenderGenericProjectile<T> setAdditive() {
+		this.additive = true;
+		return this;
 	}
 
 	@Override
-	protected ResourceLocation getEntityTexture(GenericProjectile entity) {
-		return bulletTextures;
+	public ResourceLocation getTextureLocation(T entity) {
+		return texture;
 	}
 
-	
-	protected void enableGLStates() {
-	    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-        GlStateManager.disableLighting();
-	}
-	
-	protected void disableGLStates() {
-        GlStateManager.enableLighting();
-	}
-	
 	@Override
-	public void doRender(T entity, double x, double y, double z, float entityYaw, float partialTicks) {
+	public void render(T entity, float entityYaw, float partialTicks, PoseStack ps, MultiBufferSource buffers, int packedLight) {
+		if (entity.tickCount < 2 && !(entity.tickCount >= 1 && partialTicks > 0.25f)) {
+			return;
+		}
+		ps.pushPose();
+		ps.mulPose(Axis.YP.rotationDegrees(Mth.lerp(partialTicks, entity.yRotO, entity.getYRot()) - 90.0F));
+		ps.mulPose(Axis.ZP.rotationDegrees(Mth.lerp(partialTicks, entity.xRotO, entity.getXRot())));
 
-		 if (entity.ticksExisted >=2 || (entity.ticksExisted<2 && partialTicks>0.25f)){
-		    	
-	    	 this.bindEntityTexture(entity);
-	         GlStateManager.pushMatrix();
-	         
-	         this.enableGLStates();
-	         
-	         GlStateManager.translate((float)x, (float)y, (float)z);
-	         GlStateManager.rotate(entity.rotationYaw-90, 0.0F, 1.0F, 0.0F);
-	         GlStateManager.rotate(entity.rotationPitch, 0.0F, 0.0F, 1.0F);
-	         Tessellator tessellator = Tessellator.getInstance();
-	         BufferBuilder bufferbuilder = tessellator.getBuffer();
-	         //byte b0 = 0;
-//	         float u1 = 0.0F;
-//	         float u2 = 0.5F;
-//	         float v1 = (float)(0 + b0 * 10) / 32.0F;
-//	         float v2 = (float)(5 + b0 * 10) / 32.0F;
-	         float u1 = 0.0f;
-	         float u2 = 1.0f;
-	         float v1 = 0.0f;
-	         float v2 = 1.0f;
-	         //float f6 = 0.0F;
-	         //float f7 = 0.15625F;
-	         //float f8 = (float)(5 + b0 * 10) / 32.0F;
-	         //float f9 = (float)(10 + b0 * 10) / 32.0F;
-	         float f10 = 0.0125F;
-	         GlStateManager.enableRescaleNormal();
+		float f10 = 0.0125F;
+		ps.mulPose(Axis.XP.rotationDegrees(45.0F));
+		ps.scale(f10, f10, f10);
 
-	         GlStateManager.rotate(45.0F, 1.0F, 0.0F, 0.0F);
-	         GlStateManager.scale(f10, f10, f10);
-
-	         double length = 8.0D; //Actually, this is half of length/width
-	         double width = 2.0D;
-	         
-	         for (int i = 0; i < 4; ++i)
-	         {
-	        	 GlStateManager.rotate(90.0F, 1.0F, 0.0F, 0.0F);
-	        	 GlStateManager.glNormal3f(0.0F, 0.0F, f10);
-	        	 
-
-	        	 bufferbuilder.begin(7, DefaultVertexFormats.POSITION_TEX);
-	        	 
-	        	 bufferbuilder.pos(-length, -width, 0.0D).tex(u1,v1).endVertex();
-	        	 bufferbuilder.pos(length, -width, 0.0D).tex(u2,v1).endVertex();
-	        	 bufferbuilder.pos(length, width, 0.0D).tex(u2,v2).endVertex();
-	        	 bufferbuilder.pos(-length, width, 0.0D).tex(u1,v2).endVertex();
-
-	        	 tessellator.draw();
-	         }
-
-	         GlStateManager.disableRescaleNormal();
-	         
-	         this.disableGLStates();
-	         
-	         GlStateManager.popMatrix();
-    	 }
-		
+		float length = 8.0f; // half of length/width
+		float width = 2.0f;
+		VertexConsumer vc = buffers.getBuffer(additive ? techguns.client.render.gl.TGRenderTypes.additive(getTextureLocation(entity)) : RenderType.entityCutoutNoCull(getTextureLocation(entity)));
+		int light = 0xF000F0;
+		for (int i = 0; i < 4; ++i) {
+			ps.mulPose(Axis.XP.rotationDegrees(90.0F));
+			PoseStack.Pose pose = ps.last();
+			vertex(vc, pose, -length, -width, 0f, 1f, light);
+			vertex(vc, pose, length, -width, 1f, 1f, light);
+			vertex(vc, pose, length, width, 1f, 0f, light);
+			vertex(vc, pose, -length, width, 0f, 0f, light);
+		}
+		ps.popPose();
+		super.render(entity, entityYaw, partialTicks, ps, buffers, packedLight);
 	}
-	
+
+	private static void vertex(VertexConsumer vc, PoseStack.Pose pose, float x, float y, float u, float v, int light) {
+		vc.addVertex(pose, x, y, 0f).setColor(-1).setUv(u, 1f - v).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 0, 1);
+	}
 }

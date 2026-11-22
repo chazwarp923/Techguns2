@@ -1,64 +1,57 @@
 package techguns.tileentities;
 
-import net.minecraft.block.BlockHorizontal;
-import net.minecraft.init.SoundEvents;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumParticleTypes;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TextComponentTranslation;
-import net.minecraftforge.fluids.FluidStack;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
+import techguns.TGBlockEntities;
 import techguns.TGItems;
-import techguns.TGSounds;
-import techguns.Techguns;
-import techguns.blocks.machines.BasicMachine;
-import techguns.gui.ButtonConstants;
-import techguns.tileentities.operation.BlastFurnaceRecipes;
-import techguns.tileentities.operation.ChemLabRecipes;
-import techguns.tileentities.operation.FabricatorRecipe;
+import techguns.blocks.machines.BlockMachineFacing;
+import techguns.gui.containers.BlastFurnaceMenu;
+import techguns.recipes.BlastFurnaceRecipe;
 import techguns.tileentities.operation.ItemStackHandlerPlus;
 import techguns.tileentities.operation.MachineOperation;
 import techguns.tileentities.operation.MachineSlotItem;
-import techguns.tileentities.operation.MetalPressRecipes;
-import techguns.util.ItemUtil;
 
+/** Blast furnace: 2 inputs -> techguns:blast_furnace recipe result (1.12 BlastFurnaceTileEnt). */
 public class BlastFurnaceTileEnt extends BasicMachineTileEnt {
 
-	public static final int SLOT_INPUT1=0;
-	public static final int SLOT_INPUT2=1;
-	public static final int SLOT_OUTPUT=2;
-	public static final int SLOT_UPGRADE=3;
-	
-	public MachineSlotItem input1;
-	public MachineSlotItem input2;
-	
-	public BlastFurnaceTileEnt() {
-		super(4, false, 40000);
-		
-		input1 = new MachineSlotItem(this, SLOT_INPUT1);
-		input2 = new MachineSlotItem(this, SLOT_INPUT2);
-		
-		this.inventory = new ItemStackHandlerPlus(4) {
+	public static final int SLOT_INPUT1 = 0;
+	public static final int SLOT_INPUT2 = 1;
+	public static final int SLOT_OUTPUT = 2;
+	public static final int SLOT_UPGRADE = 3;
 
+	public final MachineSlotItem input1 = new MachineSlotItem(this, SLOT_INPUT1);
+	public final MachineSlotItem input2 = new MachineSlotItem(this, SLOT_INPUT2);
+
+	public BlastFurnaceTileEnt(BlockPos pos, BlockState state) {
+		super(TGBlockEntities.BLAST_FURNACE.get(), pos, state, 4, false, 40000);
+	}
+
+	@Override
+	protected ItemStackHandlerPlus createInventory(int size) {
+		return new ItemStackHandlerPlus(size) {
 			@Override
 			protected void onContentsChanged(int slot) {
-				super.onContentsChanged(slot);
-				setContentsChanged(true);
+				onInventoryChanged(slot);
 			}
 
 			@Override
 			protected boolean allowItemInSlot(int slot, ItemStack stack) {
-				switch (slot) {
-				case SLOT_INPUT1:
-				case SLOT_INPUT2:
-					return isItemValidForSlot(slot, stack);
-				case SLOT_OUTPUT:
-					return false;
-				case SLOT_UPGRADE:
-					return TGItems.isMachineUpgrade(stack);
-				}
-				return false;
+				return switch (slot) {
+					case SLOT_INPUT1 -> BlastFurnaceRecipe.hasRecipeWithInputForSlot(level, stack, 0);
+					case SLOT_INPUT2 -> BlastFurnaceRecipe.hasRecipeWithInputForSlot(level, stack, 1);
+					case SLOT_UPGRADE -> TGItems.isMachineUpgrade(stack);
+					default -> false;
+				};
 			}
 
 			@Override
@@ -68,153 +61,97 @@ public class BlastFurnaceTileEnt extends BasicMachineTileEnt {
 		};
 	}
 
-	
-	
-	
 	@Override
-	public ITextComponent getDisplayName() {
-		return new TextComponentTranslation(Techguns.MODID+".container.blast_furnace", new Object[0]);
+	public AbstractContainerMenu createMenu(int id, Inventory inv, Player player) {
+		return new BlastFurnaceMenu(id, inv, this);
 	}
 
-
-	protected boolean isItemValidForSlot(int slot, ItemStack stack) {
-		if(slot==SLOT_INPUT1){
-			return BlastFurnaceRecipes.hasRecipeWithInputForSlot(stack,0);
-		} else if (slot==SLOT_INPUT2){
-			return BlastFurnaceRecipes.hasRecipeWithInputForSlot(stack,1);
-		} 
-		return false;
+	@Override
+	public Component getDisplayName() {
+		return Component.translatable("techguns.container.blast_furnace");
 	}
-	
-	
+
 	public int getValidSlotForItemInMachine(ItemStack stack) {
-		if(BlastFurnaceRecipes.hasRecipeWithInputForSlot(stack,0)){
+		if (BlastFurnaceRecipe.hasRecipeWithInputForSlot(level, stack, 0)) {
 			return SLOT_INPUT1;
 		}
-		if(BlastFurnaceRecipes.hasRecipeWithInputForSlot(stack,1)){
+		if (BlastFurnaceRecipe.hasRecipeWithInputForSlot(level, stack, 1)) {
 			return SLOT_INPUT2;
 		}
-		if (TGItems.isMachineUpgrade(stack)) {
-			return SLOT_UPGRADE;
-		}
-		
-		return -1;
+		return TGItems.isMachineUpgrade(stack) ? SLOT_UPGRADE : -1;
 	}
-	
+
+	/** per stack, the base class multiplies with the stack multiplier */
 	@Override
 	protected int getNeededPower() {
-		if(this.currentOperation!=null) {
-			return this.currentOperation.getPowerPerTick();
+		if (this.currentOperation == null) {
+			return 0;
 		}
-		return 0;
+		return this.currentOperation.getPowerPerTick() / this.currentOperation.getStackMultiplier();
 	}
 
 	@Override
 	protected void checkAndStartOperation() {
-		
-		MachineOperation op = BlastFurnaceRecipes.getOutputFor(this);
-		
 		this.setContentsChanged(false);
-		
-
-		if (op != null && canOutput(op)) {
-			
-			//check multiplier
-			
-			int maxStack=this.getMaxMachineUpgradeMultiplier(SLOT_UPGRADE);
-			
-			int multiplier=1;
-			//try higher stacksize
-			int i;
-			for (i=maxStack;i>1;--i){
-				op.setStackMultiplier(i);
-				if(this.canOutput(op) && canConsume(op)){
-					multiplier=i;
-					break;
-				}
-			}
-			
-			op.setStackMultiplier(multiplier);
-		
-			this.input1.consume(op.getNeededAmountItem(SLOT_INPUT1));
-			this.input2.consume(op.getNeededAmountItem(SLOT_INPUT2));
-			
-			this.currentOperation = op;
-			this.progress = 0;
-			this.totaltime = op.getTime();
-
-			if (!this.world.isRemote) {
-				this.needUpdate();
+		var found = BlastFurnaceRecipe.find(level, input1.get(), input2.get());
+		if (found.isEmpty()) {
+			return;
+		}
+		BlastFurnaceRecipe r = found.get().value();
+		if (!canOutput(r.result(), SLOT_OUTPUT)) {
+			return;
+		}
+		int n1 = r.input1().count();
+		int n2 = r.input2().count();
+		int maxStack = this.getMaxMachineUpgradeMultiplier(SLOT_UPGRADE);
+		int multiplier = 1;
+		for (int i = maxStack; i > 1; --i) {
+			if (canOutput(r.result().copyWithCount(r.result().getCount() * i), SLOT_OUTPUT) && input1.canConsume(n1 * i) && input2.canConsume(n2 * i)) {
+				multiplier = i;
+				break;
 			}
 		}
+		ItemStack in1 = input1.getTypeWithSize(n1);
+		ItemStack in2 = input2.getTypeWithSize(n2);
+		input1.consume(n1 * multiplier);
+		input2.consume(n2 * multiplier);
+		this.currentOperation = new MachineOperation(r.result().copy(), in1, in2).setPowerPerTick(r.powerPerTick()).setStackMultiplier(multiplier);
+		this.progress = 0;
+		this.totaltime = r.time();
+		this.needUpdate();
 	}
 
-	protected boolean canOutput(MachineOperation output) {
-		if (this.canOutput(output.getItemOutput0(),SLOT_OUTPUT)){
-			return true;
-		}
-		return false;
-	}
-
-	protected boolean canConsume(MachineOperation output) {
-		int multi = output.getStackMultiplier();
-		ItemStack in1 = output.getInputs().get(0);
-		ItemStack in2 = output.getInputs().get(1);
-		
-		return this.input1.canConsumeWithMultiplier(in1,multi) &&
-			   this.input2.canConsumeWithMultiplier(in2,multi);
-	}
-	
 	@Override
 	protected void finishedOperation() {
-		if (this.inventory.getStackInSlot(SLOT_OUTPUT).isEmpty()) {
-			this.inventory.setStackInSlot(SLOT_OUTPUT, currentOperation.getItemOutput0());
-		} else {
-			this.inventory.insertItemNoCheck(SLOT_OUTPUT, currentOperation.getItemOutput0(), false);
-		}
+		this.inventory.insertItemNoCheck(SLOT_OUTPUT, currentOperation.getItemOutput0(), false);
 	}
 
-	@SuppressWarnings("incomplete-switch")
+	public Direction getFacing() {
+		BlockState state = this.getBlockState();
+		return state.hasProperty(BlockMachineFacing.FACING) ? state.getValue(BlockMachineFacing.FACING) : Direction.NORTH;
+	}
+
 	@Override
 	protected void playAmbientSound() {
-		if(this.world.isRemote) {
-
-			if(this.progress%35==0) {
-				world.playSound(this.getPos().getX(), this.getPos().getY(), this.getPos().getZ(), SoundEvents.BLOCK_FURNACE_FIRE_CRACKLE,SoundCategory.BLOCKS, 0.75f, 1f, true );
-			}
-			if (this.progress%20==0) {
-				float p = this.world.rand.nextFloat()*0.15f;
-				world.playSound(this.getPos().getX(), this.getPos().getY(), this.getPos().getZ(), SoundEvents.BLOCK_FIRE_AMBIENT,SoundCategory.BLOCKS, 0.75f, 0.5f+p, true );
-			
-		        EnumFacing enumfacing = world.getBlockState(getPos()).getValue(BlockHorizontal.FACING);
-		        double d0 = (double)pos.getX() + 0.5D;
-		        double d1 = (double)pos.getY() + this.world.rand.nextDouble() * 6.0D / 16.0D + 3.0D/16.0D;
-		        double d2 = (double)pos.getZ() + 0.5D;
-		        double d3 = 0.52D;
-		        double d4 = this.world.rand.nextDouble() * 0.6D - 0.3D;
-		
-		        switch (enumfacing)
-		        {
-		            case WEST:
-		                world.spawnParticle(EnumParticleTypes.SMOKE_NORMAL, d0 - 0.52D, d1, d2 + d4, 0.0D, 0.0D, 0.0D);
-		                world.spawnParticle(EnumParticleTypes.FLAME, d0 - 0.52D, d1, d2 + d4, 0.0D, 0.0D, 0.0D);
-		                break;
-		            case EAST:
-		                world.spawnParticle(EnumParticleTypes.SMOKE_NORMAL, d0 + 0.52D, d1, d2 + d4, 0.0D, 0.0D, 0.0D);
-		                world.spawnParticle(EnumParticleTypes.FLAME, d0 + 0.52D, d1, d2 + d4, 0.0D, 0.0D, 0.0D);
-		                break;
-		            case NORTH:
-		                world.spawnParticle(EnumParticleTypes.SMOKE_NORMAL, d0 + d4, d1, d2 - 0.52D, 0.0D, 0.0D, 0.0D);
-		                world.spawnParticle(EnumParticleTypes.FLAME, d0 + d4, d1, d2 - 0.52D, 0.0D, 0.0D, 0.0D);
-		                break;
-		            case SOUTH:
-		                world.spawnParticle(EnumParticleTypes.SMOKE_NORMAL, d0 + d4, d1, d2 + 0.52D, 0.0D, 0.0D, 0.0D);
-		                world.spawnParticle(EnumParticleTypes.FLAME, d0 + d4, d1, d2 + 0.52D, 0.0D, 0.0D, 0.0D);
-		                break;
-		        }
-			}
+		if (this.level == null) {
+			return;
+		}
+		RandomSource rand = this.level.random;
+		double x = worldPosition.getX() + 0.5d;
+		double y = worldPosition.getY();
+		double z = worldPosition.getZ() + 0.5d;
+		if (this.progress % 35 == 0) {
+			level.playLocalSound(x, y, z, SoundEvents.FURNACE_FIRE_CRACKLE, SoundSource.BLOCKS, 0.75f, 1f, true);
+		}
+		if (this.progress % 20 == 0) {
+			level.playLocalSound(x, y, z, SoundEvents.FIRE_AMBIENT, SoundSource.BLOCKS, 0.75f, 0.5f + rand.nextFloat() * 0.15f, true);
+			Direction f = getFacing();
+			double py = y + rand.nextDouble() * 6.0d / 16.0d + 3.0d / 16.0d;
+			double side = rand.nextDouble() * 0.6d - 0.3d;
+			double px = x + f.getStepX() * 0.52d + (f.getAxis() == Direction.Axis.Z ? side : 0);
+			double pz = z + f.getStepZ() * 0.52d + (f.getAxis() == Direction.Axis.X ? side : 0);
+			level.addParticle(ParticleTypes.SMOKE, px, py, pz, 0, 0, 0);
+			level.addParticle(ParticleTypes.FLAME, px, py, pz, 0, 0, 0);
 		}
 	}
-
-	
 }

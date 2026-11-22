@@ -1,57 +1,40 @@
 package techguns.client.render.entities.projectiles;
 
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.util.ResourceLocation;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import techguns.Techguns;
-import techguns.client.render.TGRenderHelper;
-import techguns.client.render.TGRenderHelper.RenderType;
 import techguns.entities.projectiles.BioGunProjectile;
 
-public class RenderBioGunProjectile extends RenderTextureProjectile<BioGunProjectile>{
+/** Camera facing additive goo sprite, bigger with higher charge level (1.12 RenderBioGunProjectile). */
+public class RenderBioGunProjectile extends RenderBeamBase<BioGunProjectile> {
 
-	public RenderBioGunProjectile(RenderManager renderManager) {
-		super(renderManager);
-		textureLoc = new ResourceLocation(Techguns.MODID,"textures/entity/bioblob.png");
-		baseSize=0.15f;
-		scale=1.0f;
+	private static final float BASE_SIZE = 0.15f;
+
+	public RenderBioGunProjectile(EntityRendererProvider.Context ctx) {
+		super(ctx, Techguns.rl("textures/entity/bioblob.png"));
 	}
 
 	@Override
-	public void doRender(BioGunProjectile entity, double x, double y, double z, float entityYaw, float partialTicks) {
-		float scale = 1.0f;
-		switch (entity.level) {
-		case 1:
-			scale = 1.25f;
-			break;
-		case 2:
-			scale = 2.5f;
-			break;
-		case 3:
-			scale = 4.0f;
-			break;
-		}
-		
-		  GlStateManager.pushMatrix();
-
-		  GlStateManager.translate(x, y, z);
-		  GlStateManager.enableRescaleNormal();
-		  GlStateManager.scale(baseSize*scale, baseSize*scale, baseSize*scale);
-		  
-		  //GlStateManager.disableLighting();
-		  TGRenderHelper.enableBlendMode(RenderType.ADDITIVE);
-		  
-          this.bindEntityTexture(entity);
-          Tessellator tessellator = Tessellator.getInstance();
-          this.drawProjectile(tessellator);
-          
-          TGRenderHelper.disableBlendMode(RenderType.ADDITIVE);
-          
-          //GlStateManager.enableLighting();
-          
-          GlStateManager.disableRescaleNormal();
-          GlStateManager.popMatrix();
-		
+	public void render(BioGunProjectile entity, float entityYaw, float ptt, PoseStack ps, MultiBufferSource buffers, int packedLight) {
+		float scale = switch (entity.chargeLevel) {
+			case 1 -> 1.25f;
+			case 2 -> 2.5f;
+			case 3 -> 4.0f;
+			default -> 1.0f;
+		};
+		ps.pushPose();
+		float s = BASE_SIZE * scale;
+		ps.scale(s, s, s);
+		ps.mulPose(this.entityRenderDispatcher.cameraOrientation());
+		PoseStack.Pose pose = ps.last();
+		VertexConsumer vc = additive(buffers, texture);
+		v(vc, pose, -0.5, -0.25, 0, 0, 1, 1f);
+		v(vc, pose, 0.5, -0.25, 0, 1, 1, 1f);
+		v(vc, pose, 0.5, 0.75, 0, 1, 0, 1f);
+		v(vc, pose, -0.5, 0.75, 0, 0, 0, 1f);
+		ps.popPose();
 	}
 }

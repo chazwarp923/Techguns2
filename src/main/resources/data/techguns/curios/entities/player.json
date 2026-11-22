@@ -1,0 +1,12 @@
+{
+  "entities": [
+    "player"
+  ],
+  "slots": [
+    "head",
+    "back",
+    "hands",
+    "techguns_ammo",
+    "techguns_food"
+  ]
+}

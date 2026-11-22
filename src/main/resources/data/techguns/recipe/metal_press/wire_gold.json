@@ -1,0 +1,14 @@
+{
+  "type": "techguns:metal_press",
+  "input1": {
+    "tag": "c:ingots/gold"
+  },
+  "input2": {
+    "tag": "c:ingots/gold"
+  },
+  "allow_swap": true,
+  "result": {
+    "id": "techguns:goldwire",
+    "count": 2
+  }
+}

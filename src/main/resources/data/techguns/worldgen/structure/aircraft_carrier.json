@@ -1,0 +1,13 @@
+{
+  "type": "techguns:legacy",
+  "biomes": "#minecraft:is_ocean",
+  "step": "surface_structures",
+  "spawn_overrides": {},
+  "terrain_adaptation": "none",
+  "structures": [
+    {
+      "name": "aircraft_carrier",
+      "weight": 1
+    }
+  ]
+}

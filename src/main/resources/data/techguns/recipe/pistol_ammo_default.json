@@ -1,0 +1,15 @@
+{
+  "type": "techguns:ammo_change_crafting",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "techguns:pistol"
+    },
+    {
+      "item": "techguns:pistolmagazine"
+    }
+  ],
+  "result": {
+    "id": "techguns:pistol"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:lasergun"
+  },
+  "results": [
+    {
+      "id": "techguns:ingotobsidiansteel",
+      "count": 2
+    },
+    {
+      "id": "techguns:plasticsheet",
+      "count": 2
+    },
+    {
+      "id": "minecraft:redstone",
+      "count": 20
+    },
+    {
+      "id": "minecraft:gold_ingot",
+      "count": 3
+    }
+  ]
+}

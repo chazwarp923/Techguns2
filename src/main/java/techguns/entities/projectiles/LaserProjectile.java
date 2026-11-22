@@ -1,76 +1,58 @@
 package techguns.entities.projectiles;
 
-import net.minecraft.block.SoundType;
-import net.minecraft.block.material.Material;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
-import techguns.TGPackets;
-import techguns.Techguns;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import techguns.TGEntities;
 import techguns.api.damagesystem.DamageType;
 import techguns.damagesystem.TGDamageSource;
-import techguns.deatheffects.EntityDeathUtils.DeathType;
+import techguns.deatheffects.DeathType;
 import techguns.items.guns.GenericGun;
 import techguns.items.guns.IProjectileFactory;
 import techguns.packets.PacketSpawnParticle;
+import techguns.packets.TGPackets;
 
-public class LaserProjectile extends AbstractBeamProjectile{
+/** Laser rifle / laser pistol beam. */
+public class LaserProjectile extends AbstractBeamProjectile {
 
-	public LaserProjectile(World worldIn, double posX, double posY, double posZ, float yaw, float pitch, float damage,
-			float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration,
-			boolean blockdamage, EnumBulletFirePos leftGun) {
-		super(worldIn, posX, posY, posZ, yaw, pitch, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration,
-				blockdamage, leftGun);
-		trace();
-	}
-	
-	public LaserProjectile(World par2World, EntityLivingBase p, float damage, float speed, int TTL, float spread,
-			float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos leftGun) {
-		super(par2World, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, leftGun);
-		trace();
+	public LaserProjectile(EntityType<? extends LaserProjectile> type, Level level) {
+		super(type, level);
 	}
 
-	public LaserProjectile(World worldIn) {
-		super(worldIn);
+	public LaserProjectile(Level level, LivingEntity p, float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd,
+			float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos) {
+		super(TGEntities.LASER.get(), level, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos);
+		trace();
 	}
 
 	@Override
-	protected void doImpactEffects(Material mat, RayTraceResult rayTraceResult, SoundType sound) {
-		if(!world.isRemote) {
-			Vec3d hitVec = rayTraceResult.hitVec;
-			TGPackets.network.sendToAllAround(new PacketSpawnParticle("LaserGunImpact", hitVec.x, hitVec.y, hitVec.z), TGPackets.targetPointAroundEnt(this, 35.0f));		
-		}
-		//Techguns.proxy.createFX("LaserGunImpact", world, hitVec.x, hitVec.y, hitVec.z,0,0,0);
-	}
-	
-//	protected void createImpactEffect(Vec3d hitVec) {
-//		TGPackets.network.sendToAllAround(new PacketSpawnParticle("LaserGunImpact", hitVec.x, hitVec.y, hitVec.z), TGPackets.targetPointAroundEnt(this, 35.0f));
-//	}
-	
-	@Override
-	public void onUpdate() {
-		--this.ticksToLive;
-		if (this.ticksToLive<=0){
-			this.setDead();
+	protected void doImpactEffects(BlockState state, HitResult hit, SoundType sound) {
+		if (!this.level().isClientSide) {
+			Vec3 hitVec = hit.getLocation();
+			TGPackets.sendToAllAround(new PacketSpawnParticle("LaserGunImpact", hitVec.x, hitVec.y, hitVec.z), this.level(), hitVec.x, hitVec.y,
+					hitVec.z, 35.0);
 		}
 	}
-	
+
 	@Override
 	protected TGDamageSource getProjectileDamageSource() {
 		TGDamageSource src = TGDamageSource.causeEnergyDamage(this, this.shooter, DeathType.LASER);
-    	src.goreChance = 1.0f;
-    	src.armorPenetration = this.penetration;
-    	src.setNoKnockback();
-    	return src;
+		src.goreChance = 1.0f;
+		src.armorPenetration = this.penetration;
+		src.setNoKnockback();
+		return src;
 	}
-	
+
 	public static class Factory implements IProjectileFactory<LaserProjectile> {
 		@Override
-		public LaserProjectile createProjectile(GenericGun gun, World world, EntityLivingBase p, float damage, float speed,
-				int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration,
-				boolean blockdamage, EnumBulletFirePos firePos, float radius, double gravity) {
-			return new LaserProjectile(world, p, damage, speed, 7, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos);
+		public LaserProjectile createProjectile(GenericGun gun, Level level, LivingEntity p, float damage, float speed, int TTL, float spread,
+				float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, float radius,
+				double gravity) {
+			return new LaserProjectile(level, p, damage, speed, 7, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos);
 		}
 
 		@Override
@@ -78,11 +60,4 @@ public class LaserProjectile extends AbstractBeamProjectile{
 			return DamageType.ENERGY;
 		}
 	}
-
-	@Override
-	public boolean shouldRenderInPass(int pass) {
-		return pass==1;
-	}
-	
-	
 }

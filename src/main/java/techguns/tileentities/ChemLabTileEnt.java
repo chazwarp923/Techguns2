@@ -1,459 +1,359 @@
 package techguns.tileentities;
 
-import java.util.Random;
-
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.EnumParticleTypes;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TextComponentTranslation;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidActionResult;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidTank;
-import net.minecraftforge.fluids.FluidUtil;
-import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
-import net.minecraftforge.fluids.capability.FluidTankPropertiesWrapper;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fluids.capability.IFluidHandlerItem;
-import net.minecraftforge.fluids.capability.IFluidTankProperties;
-import net.minecraftforge.items.CapabilityItemHandler;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.oredict.OreDictionary;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.FluidUtil;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+import techguns.TGBlockEntities;
 import techguns.TGItems;
 import techguns.TGSounds;
-import techguns.Techguns;
-import techguns.gui.ButtonConstants;
-import techguns.tileentities.operation.ChemLabRecipes;
-import techguns.tileentities.operation.FluidTankPlus;
-import techguns.tileentities.operation.ITileEntityFluidTanks;
+import techguns.gui.containers.ChemLabMenu;
+import techguns.recipes.ChemLabRecipe;
 import techguns.tileentities.operation.ItemStackHandlerPlus;
 import techguns.tileentities.operation.MachineOperation;
-import techguns.tileentities.operation.MachineSlotFluid;
 import techguns.tileentities.operation.MachineSlotItem;
-import techguns.util.ItemUtil;
 
-public class ChemLabTileEnt extends BasicMachineTileEnt implements ITileEntityFluidTanks{
+/**
+ * Chemical laboratory (1.12 ChemLabTileEnt): two inputs, a bottle slot and an input tank make an item and / or a fluid
+ * in the output tank. Fluid pipes fill the input tank and drain the output tank, or the input tank in drain mode.
+ */
+public class ChemLabTileEnt extends BasicMachineTileEnt implements IFluidTankTile {
 
-	private Random rng = new Random();
-	
-	protected static final float SOUND_VOLUME=0.65f;
-	
-	public static final int BUTTON_ID_DUMP_INPUT = ButtonConstants.BUTTON_ID_REDSTONE+1;
-	public static final int BUTTON_ID_DUMP_OUTPUT = ButtonConstants.BUTTON_ID_REDSTONE+2;
-	public static final int BUTTON_ID_TOGGLE_DRAIN = ButtonConstants.BUTTON_ID_REDSTONE+3;	
-	
-	public ChemLabFluidHandler fluidHandler;
-	
-	public FluidTank inputTank;
-	public FluidTank outputTank;
-	
-	protected boolean drainInput=false;
-	
-	public static final int SLOT_INPUT1=0;
-	public static final int SLOT_INPUT2=1;
-	public static final int SLOT_BOTTLE=2;
-	public static final int SLOT_OUTPUT=3;
-	public static final int SLOT_UPGRADE=4;
-	
-	public MachineSlotItem input1;
-	public MachineSlotItem input2;
-	public MachineSlotItem input_bottle;
-	
-	public MachineSlotFluid input_fluid;
-	
-	public static final int CAPACITY_INPUT_TANK=8*Fluid.BUCKET_VOLUME;
-	public static final int CAPACITY_OUTPUT_TANK=16*Fluid.BUCKET_VOLUME;
-	
-	public ChemLabTileEnt() {
-		super(5, true, 20000);
-		
-		this.inputTank = new FluidTankPlus(this,CAPACITY_INPUT_TANK);
-		this.inputTank.setTileEntity(this);
-		
-		this.outputTank = new FluidTankPlus(this,CAPACITY_OUTPUT_TANK);
-		this.outputTank.setTileEntity(this);
-		
-		this.fluidHandler= new ChemLabFluidHandler(this);
-		
-		input1 = new MachineSlotItem(this, SLOT_INPUT1);
-		input2 = new MachineSlotItem(this, SLOT_INPUT2);
-		input_bottle = new MachineSlotItem(this, SLOT_BOTTLE);
-		input_fluid = new MachineSlotFluid(inputTank);
-		
-		this.inventory = new ItemStackHandlerPlus(5) {
+	protected static final float SOUND_VOLUME = 0.65f;
 
+	public static final int BUTTON_ID_DUMP_INPUT = BUTTON_ID_REDSTONE + 1;
+	public static final int BUTTON_ID_DUMP_OUTPUT = BUTTON_ID_REDSTONE + 2;
+	public static final int BUTTON_ID_TOGGLE_DRAIN = BUTTON_ID_REDSTONE + 3;
+
+	public static final int SLOT_INPUT1 = 0;
+	public static final int SLOT_INPUT2 = 1;
+	public static final int SLOT_BOTTLE = 2;
+	public static final int SLOT_OUTPUT = 3;
+	public static final int SLOT_UPGRADE = 4;
+
+	public static final int CAPACITY_INPUT_TANK = 8 * 1000;
+	public static final int CAPACITY_OUTPUT_TANK = 16 * 1000;
+
+	public final MachineSlotItem input1 = new MachineSlotItem(this, SLOT_INPUT1);
+	public final MachineSlotItem input2 = new MachineSlotItem(this, SLOT_INPUT2);
+	public final MachineSlotItem inputBottle = new MachineSlotItem(this, SLOT_BOTTLE);
+
+	public final FluidTank inputTank = new FluidTank(CAPACITY_INPUT_TANK) {
+		@Override
+		protected void onContentsChanged() {
+			onTankChanged();
+		}
+	};
+	public final FluidTank outputTank = new FluidTank(CAPACITY_OUTPUT_TANK) {
+		@Override
+		protected void onContentsChanged() {
+			onTankChanged();
+		}
+	};
+	public final IFluidHandler fluidHandler = new ChemLabFluidHandler();
+
+	protected boolean drainInput = false;
+
+	public ChemLabTileEnt(BlockPos pos, BlockState state) {
+		super(TGBlockEntities.CHEM_LAB.get(), pos, state, 5, true, 20000);
+	}
+
+	@Override
+	protected ItemStackHandlerPlus createInventory(int size) {
+		return new ItemStackHandlerPlus(size) {
 			@Override
 			protected void onContentsChanged(int slot) {
-				super.onContentsChanged(slot);
-				setContentsChanged(true);
+				onInventoryChanged(slot);
 			}
 
 			@Override
 			protected boolean allowItemInSlot(int slot, ItemStack stack) {
-				switch (slot) {
-				case SLOT_INPUT1:
-				case SLOT_INPUT2:
-				case SLOT_BOTTLE:
-					return isItemValidForSlot(slot, stack);
-				case SLOT_OUTPUT:
-					return false;
-				case SLOT_UPGRADE:
-					return TGItems.isMachineUpgrade(stack);
-				}
-				return false;
+				return switch (slot) {
+					case SLOT_INPUT1, SLOT_INPUT2, SLOT_BOTTLE -> isItemValidForSlot(slot, stack);
+					case SLOT_UPGRADE -> TGItems.isMachineUpgrade(stack);
+					default -> false;
+				};
 			}
-			
+
 			@Override
 			protected boolean allowExtractFromSlot(int slot, int amount) {
 				return slot == SLOT_OUTPUT;
 			}
 		};
-		
+	}
+
+	protected void onTankChanged() {
+		this.setContentsChanged(true);
+		this.setChanged();
 	}
 
 	@Override
-	public ITextComponent getDisplayName() {
-		return new TextComponentTranslation(Techguns.MODID+".container.chemlab", new Object[0]);
+	public AbstractContainerMenu createMenu(int id, Inventory inv, Player player) {
+		return new ChemLabMenu(id, inv, this);
 	}
 
 	@Override
-	public boolean hasCapability(Capability<?> capability, EnumFacing facing) {
-		return capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY || super.hasCapability(capability, facing);
+	public Component getDisplayName() {
+		return Component.translatable("techguns.container.chemlab");
 	}
-	
+
 	@Override
-	public <T> T getCapability(Capability<T> capability, EnumFacing facing) {
-		return capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY ? (T)fluidHandler : super.getCapability(capability, facing);
+	public IFluidHandler getFluidHandler() {
+		return fluidHandler;
 	}
-	
+
 	public boolean isItemValidForSlot(int slot, ItemStack item) {
-		if(slot==SLOT_BOTTLE){
-			return ChemLabRecipes.allowInFlaskSlot(item);
-		} else if(slot==SLOT_INPUT1 && this.input1.get().isEmpty() && this.input2.get().isEmpty()){
-			return !ChemLabRecipes.allowInFlaskSlot(item) && ChemLabRecipes.hasRecipeUsing(item);
-		} else if (slot==SLOT_INPUT1 && this.input1.get().isEmpty() && !this.input2.get().isEmpty()){
-			return !ChemLabRecipes.allowInFlaskSlot(item) && ChemLabRecipes.allowAsInput2(this.input2.get(), item);
-		} else if (slot==SLOT_INPUT1 && !this.input1.get().isEmpty()){
-			return ItemUtil.isItemEqual(this.input1.get(), item);
-		} else if (slot==SLOT_INPUT2 && !this.input1.get().isEmpty()){
-			return !ChemLabRecipes.allowInFlaskSlot(item) && ChemLabRecipes.allowAsInput2(this.input1.get(), item);
-		} else if (slot==SLOT_INPUT2 && !this.input2.get().isEmpty()){
-			return ItemUtil.isItemEqual(this.input2.get(), item);
+		if (slot == SLOT_BOTTLE) {
+			return ChemLabRecipe.allowInBottleSlot(level, item);
 		}
-		
-		return false;
-	}
-
-	
-	@Override
-	public void readClientDataFromNBT(NBTTagCompound tags) {
-		super.readClientDataFromNBT(tags);
-		drainInput=tags.getBoolean("drainInput");
-		
-		NBTTagCompound inputTankTags = tags.getCompoundTag("inputTank");
-		this.inputTank.readFromNBT(inputTankTags);
-		
-		NBTTagCompound outputTankTags = tags.getCompoundTag("outputTank");
-		this.outputTank.readFromNBT(outputTankTags);
-	}
-
-	@Override
-	public void writeClientDataToNBT(NBTTagCompound tags) {
-		super.writeClientDataToNBT(tags);
-		tags.setBoolean("drainInput", this.drainInput);
-		
-		NBTTagCompound inputTankTags = new NBTTagCompound();
-		this.inputTank.writeToNBT(inputTankTags);
-		tags.setTag("inputTank", inputTankTags);
-		
-		NBTTagCompound outputTankTags = new NBTTagCompound();
-		this.outputTank.writeToNBT(outputTankTags);
-		tags.setTag("outputTank", outputTankTags);
-	}
-
-	@Override
-	protected int getNeededPower() {
-		if(this.currentOperation!=null) {
-			return this.currentOperation.getPowerPerTick();
+		if (ChemLabRecipe.allowInBottleSlot(level, item)) {
+			return false;
 		}
-		return 0;
-	}
-
-	protected boolean canOutput(MachineOperation output) {
-		if (this.canOutput(output.getItemOutput0(),SLOT_OUTPUT)){
-			// check liquid output
-			FluidStack out = output.getFluidOutput0();
-			if (out==null) {
-				return true;
-			} else {
-				return this.outputTank.canFillFluidType(out) && this.outputTank.fill(out, false)==out.amount;
+		ItemStack s1 = input1.get();
+		ItemStack s2 = input2.get();
+		if (slot == SLOT_INPUT1) {
+			if (!s1.isEmpty()) {
+				return ItemStack.isSameItemSameComponents(s1, item);
 			}
+			return s2.isEmpty() ? ChemLabRecipe.hasRecipeUsing(level, item) : ChemLabRecipe.allowAsInput2(level, s2, item);
+		}
+		if (slot == SLOT_INPUT2) {
+			if (!s2.isEmpty()) {
+				return ItemStack.isSameItemSameComponents(s2, item);
+			}
+			return !s1.isEmpty() && ChemLabRecipe.allowAsInput2(level, s1, item);
 		}
 		return false;
 	}
-	
-	protected boolean canConsume(MachineOperation output) {
-		int multi = output.getStackMultiplier();
-		ItemStack in1 = output.getInputs().get(0);
-		ItemStack in2 = output.getInputs().get(1);
-		ItemStack bottle = output.getInputs().get(2);
-		
-		FluidStack fluidIn =null;
-		int amount=0;
-		if (!output.getFluid_inputs().isEmpty()) {
-			fluidIn = output.getFluid_inputs().get(0);
-			if (fluidIn!=null) {
-				amount=fluidIn.amount;
-			}
-		}
-		
-		return this.input1.canConsumeWithMultiplier(in1,multi) &&
-			   this.input2.canConsumeWithMultiplier(in2,multi) &&
-			   this.input_bottle.canConsumeWithMultiplier(bottle,multi) && 
-			   this.input_fluid.canConsume(amount*multi);
-	}
-	
-	protected void consume(MachineOperation output) {
-		this.input1.consume(output.getNeededAmountItem(SLOT_INPUT1));
-		this.input2.consume(output.getNeededAmountItem(SLOT_INPUT2));
-		this.input_bottle.consume(output.getNeededAmountItem(SLOT_BOTTLE));
-		
-		this.input_fluid.consume(output.getNeededAmountFluid(0));
-	}
-	
-	@Override
-	protected void checkAndStartOperation() {
-		this.setContentsChanged(false);
-		MachineOperation op = ChemLabRecipes.getOutputFor(this);
-	
-		if (op != null && canOutput(op)) {
-			
-			//check multiplier
-			
-			int maxStack=this.getMaxMachineUpgradeMultiplier(SLOT_UPGRADE);
-			
-			int multiplier=1;
-			//try higher stacksize
-			int i;
-			for (i=maxStack;i>1;--i){
-				op.setStackMultiplier(i);
-				if(this.canOutput(op) && canConsume(op)){
-					multiplier=i;
-					break;
-				}
-				
-			}
-			
-			op.setStackMultiplier(multiplier);
-			
-			//drain
-			this.consume(op);
-			
-			this.currentOperation = op;
-			this.progress = 0;
-			this.totaltime = 100;
-
-			if (!this.world.isRemote) {
-				this.needUpdate();
-			}
-		}
-	}
-
-	@Override
-	protected void finishedOperation() {
-
-		ItemStack itemOut = this.currentOperation.getItemOutput0();
-		if (!itemOut.isEmpty()) {
-			if (!this.inventory.getStackInSlot(SLOT_OUTPUT).isEmpty()) {
-				this.inventory.insertItemNoCheck(SLOT_OUTPUT, itemOut, false);
-				//this.inventory.getStackInSlot(SLOT_OUTPUT).grow(itemOut.getCount());
-			} else {
-				this.inventory.setStackInSlot(SLOT_OUTPUT, itemOut);
-			}
-		}
-		
-		FluidStack fluidOut = this.currentOperation.getFluidOutput0();
-		if(fluidOut!=null) {
-			this.outputTank.fillInternal(fluidOut, true);
-		}
-
-	}
-
-	@Override
-	protected void playAmbientSound() {
-		int soundTick1 = 1;
-		int halfTime = (Math.round((float) totaltime * 0.5f));
-		if (this.progress == soundTick1 || this.progress == soundTick1 + halfTime) {
-			//worldObj.playSound(this.xCoord, this.yCoord, this.zCoord, "techguns:machines.chemlabWork", 1.0F, 1.0F, true);
-			world.playSound(this.getPos().getX(), this.getPos().getY(), this.getPos().getZ(), TGSounds.CHEM_LAB_WORK,SoundCategory.BLOCKS, SOUND_VOLUME, 1.0F, true );
-		}
-
-		if ( this.world.isRemote) {
-			int delay = 10;
-			if (this.progress % delay == 0) {
-				world.spawnParticle(EnumParticleTypes.SPELL, this.getPos().getX()+0.5d + rng.nextFloat(), this.getPos().getY()+0.5d + rng.nextFloat(), this.getPos().getZ()+0.5d + rng.nextFloat(), 0, 1, 0);
-			}
-		}
-
-	}
-	
-	public FluidStack getCurrentInputFluid() {
-		return this.inputTank.getFluid();
-	}
-	
-	public FluidStack getCurrentOutputFluid() {
-		return this.outputTank.getFluid();
-	}
-	
-	
 
 	public int getValidSlotForItemInMachine(ItemStack item) {
-		if (ChemLabRecipes.allowInFlaskSlot(item)) {
-			if (this.input_bottle.get().isEmpty()) {
-				return SLOT_BOTTLE;
-			} else if (OreDictionary.itemMatches(this.input_bottle.get(), item, true)) {
-				return SLOT_BOTTLE;
-			}
-		} else if (!this.input1.get().isEmpty() && OreDictionary.itemMatches(this.input1.get(), item, true)) {
-			return SLOT_INPUT1;
-		} else if (!this.input2.get().isEmpty() && OreDictionary.itemMatches(this.input2.get(), item, true)) {
-			return SLOT_INPUT2;
-		} else if (this.input1.get().isEmpty() && ChemLabRecipes.hasRecipeUsing(item)) {
-			return SLOT_INPUT1;
-		} else if (!this.input1.get().isEmpty() && this.input2.get().isEmpty() && (ChemLabRecipes.allowAsInput2(this.input1.get(), item))) {
-			return SLOT_INPUT2;
-		} else if (TGItems.isMachineUpgrade(item)) {
+		if (TGItems.isMachineUpgrade(item)) {
 			return SLOT_UPGRADE;
+		}
+		for (int slot : new int[] { SLOT_BOTTLE, SLOT_INPUT1, SLOT_INPUT2 }) {
+			if (isItemValidForSlot(slot, item)) {
+				return slot;
+			}
 		}
 		return -1;
 	}
 
+	/** per stack, the base class multiplies with the stack multiplier */
 	@Override
-	public void saveTanksToNBT(NBTTagCompound tags) {
-		NBTTagCompound inputTankTags = new NBTTagCompound();
-		this.inputTank.writeToNBT(inputTankTags);
-		tags.setTag("inputTank", inputTankTags);
-		
-		NBTTagCompound outputTankTags = new NBTTagCompound();
-		this.outputTank.writeToNBT(outputTankTags);
-		tags.setTag("outputTank", outputTankTags);
+	protected int getNeededPower() {
+		if (this.currentOperation == null) {
+			return 0;
+		}
+		return this.currentOperation.getPowerPerTick() / this.currentOperation.getStackMultiplier();
+	}
+
+	protected boolean canOutput(MachineOperation op) {
+		if (!this.canOutput(op.getItemOutput0(), SLOT_OUTPUT)) {
+			return false;
+		}
+		FluidStack out = op.getFluidOutput0();
+		return out.isEmpty() || outputTank.fill(out, IFluidHandler.FluidAction.SIMULATE) == out.getAmount();
+	}
+
+	protected boolean canConsume(MachineOperation op) {
+		int multi = op.getStackMultiplier();
+		return input1.canConsumeWithMultiplier(op.getInputs().get(0), multi) && input2.canConsumeWithMultiplier(op.getInputs().get(1), multi)
+				&& inputBottle.canConsumeWithMultiplier(op.getInputs().get(2), multi)
+				&& inputTank.getFluidAmount() >= op.getNeededAmountFluid(0);
+	}
+
+	protected void consume(MachineOperation op) {
+		input1.consume(op.getNeededAmountItem(0));
+		input2.consume(op.getNeededAmountItem(1));
+		inputBottle.consume(op.getNeededAmountItem(2));
+		int fluid = op.getNeededAmountFluid(0);
+		if (fluid > 0) {
+			inputTank.drain(fluid, IFluidHandler.FluidAction.EXECUTE);
+		}
+	}
+
+	protected MachineOperation createOperation(ChemLabRecipe r, ChemLabRecipe.Match match) {
+		boolean swapped = match == ChemLabRecipe.Match.VALID_SWAPPED;
+		ItemStack s1 = swapped ? input2.get() : input1.get();
+		ItemStack s2 = swapped ? input1.get() : input2.get();
+		// inputs in slot order
+		ItemStack in1 = s1.copyWithCount(ChemLabRecipe.count(r.input1()));
+		ItemStack in2 = s2.copyWithCount(ChemLabRecipe.count(r.input2()));
+		if (swapped) {
+			ItemStack t = in1;
+			in1 = in2;
+			in2 = t;
+		}
+		ItemStack bottle = inputBottle.get().copyWithCount(ChemLabRecipe.count(r.bottle()));
+		MachineOperation op = new MachineOperation(r.result().copy(), in1, in2, bottle);
+		op.getFluidInputs().add(r.fluidInput().map(f -> inputTank.getFluid().copyWithAmount(f.amount())).orElse(FluidStack.EMPTY));
+		op.getFluidOutputs().add(r.fluidResult().copy());
+		return op.setPowerPerTick(r.powerPerTick());
 	}
 
 	@Override
-	public void loadTanksFromNBT(NBTTagCompound tags) {
-		NBTTagCompound inputTank = tags.getCompoundTag("inputTank");
-		this.inputTank.readFromNBT(inputTank);
-		
-		NBTTagCompound outputTank = tags.getCompoundTag("outputTank");
-		this.outputTank.readFromNBT(outputTank);
+	protected void checkAndStartOperation() {
+		this.setContentsChanged(false);
+		ChemLabRecipe.Input in = new ChemLabRecipe.Input(input1.get(), input2.get(), inputBottle.get(), inputTank.getFluid());
+		var found = ChemLabRecipe.find(level, in);
+		if (found.isEmpty()) {
+			return;
+		}
+		ChemLabRecipe r = found.get().value();
+		MachineOperation op = createOperation(r, r.match(in));
+		if (!canOutput(op)) {
+			return;
+		}
+		int maxStack = this.getMaxMachineUpgradeMultiplier(SLOT_UPGRADE);
+		int multiplier = 1;
+		for (int i = maxStack; i > 1; --i) {
+			op.setStackMultiplier(i);
+			if (canOutput(op) && canConsume(op)) {
+				multiplier = i;
+				break;
+			}
+		}
+		op.setStackMultiplier(multiplier);
+		this.consume(op);
+		this.currentOperation = op;
+		this.progress = 0;
+		this.totaltime = ChemLabRecipe.TIME;
+		this.needUpdate();
+	}
+
+	@Override
+	protected void finishedOperation() {
+		ItemStack out = currentOperation.getItemOutput0();
+		if (!out.isEmpty()) {
+			this.inventory.insertItemNoCheck(SLOT_OUTPUT, out, false);
+		}
+		FluidStack fluidOut = currentOperation.getFluidOutput0();
+		if (!fluidOut.isEmpty()) {
+			outputTank.fill(fluidOut, IFluidHandler.FluidAction.EXECUTE);
+		}
+	}
+
+	@Override
+	protected void playAmbientSound() {
+		if (this.level == null) {
+			return;
+		}
+		int half = Math.round(totaltime * 0.5f);
+		double x = worldPosition.getX() + 0.5d, y = worldPosition.getY() + 0.5d, z = worldPosition.getZ() + 0.5d;
+		if (this.progress == 1 || this.progress == 1 + half) {
+			level.playLocalSound(x, y, z, TGSounds.CHEM_LAB_WORK.get(), SoundSource.BLOCKS, SOUND_VOLUME, 1.0f, true);
+		}
+		if (this.progress % 10 == 0) {
+			RandomSource rng = level.random;
+			level.addParticle(ParticleTypes.EFFECT, x + rng.nextFloat() - 0.5d, y + rng.nextFloat() * 0.5d, z + rng.nextFloat() - 0.5d, 0, 1, 0);
+		}
 	}
 
 	public byte getDrainMode() {
-		return (byte) (this.drainInput?1:0);
+		return (byte) (this.drainInput ? 1 : 0);
 	}
-	
-	@Override
-	public void buttonClicked(int id, EntityPlayer ply, String data) {
-		if(id<BUTTON_ID_DUMP_INPUT){
-			super.buttonClicked(id, ply, data);
-		} else {
-			if (this.isUseableByPlayer(ply)){
-				switch(id){
-					case BUTTON_ID_DUMP_INPUT: //drain input
-						this.inputTank.setFluid(null);
-						this.needUpdate();
-						break;
-					case BUTTON_ID_DUMP_OUTPUT: //drain output
-						this.outputTank.setFluid(null);
-						this.needUpdate();
-						break;
-					case BUTTON_ID_TOGGLE_DRAIN: //toogle drain
-						this.drainInput=!this.drainInput;
-						this.needUpdate();
-						break;
-				}
-			}
-		}
-	}
-	
-	public static class ChemLabFluidHandler implements IFluidHandler {
 
-		private ChemLabTileEnt tile;
-		protected IFluidTankProperties[] tankProperties;
-		
-		public ChemLabFluidHandler(ChemLabTileEnt tile) {
-			super();
-			this.tile = tile;
-		}
-
-		@Override
-		public IFluidTankProperties[] getTankProperties() {
-			if ( tankProperties == null) {
-				this.tankProperties =  new IFluidTankProperties[]{new FluidTankPropertiesWrapper(tile.inputTank), new FluidTankPropertiesWrapper(tile.outputTank)};
-			}
-			return tankProperties;
-		}
-
-		@Override
-		public int fill(FluidStack resource, boolean doFill) {
-			return tile.inputTank.fill(resource, doFill);
-		}
-
-		@Override
-		public FluidStack drain(FluidStack resource, boolean doDrain) {
-			if(!tile.drainInput) {
-				return tile.outputTank.drain(resource, doDrain);
-			} else {
-				return tile.inputTank.drain(resource, doDrain);
-			}
-		}
-
-		@Override
-		public FluidStack drain(int maxDrain, boolean doDrain) {
-			if(!tile.drainInput) {
-				return tile.outputTank.drain(maxDrain, doDrain);
-			} else {
-				return tile.inputTank.drain(maxDrain, doDrain);
-			}
-		}
+	public void setDrainMode(boolean drainInput) {
+		this.drainInput = drainInput;
 	}
 
 	@Override
-	public boolean onFluidContainerInteract(EntityPlayer player, EnumHand hand, IFluidHandlerItem fluidhandleritem, ItemStack stack) {
-		if(!this.isUseableByPlayer(player)) return false;
-		
-		boolean interacted = false;
-		
-		if(this.drainInput) {
-			interacted = FluidUtil.interactWithFluidHandler(player, hand, this.inputTank);
-		} else {
-			
-			IItemHandler playerInventory = player.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
-            if (playerInventory != null)
-            {
-                FluidActionResult fluidActionResult = FluidUtil.tryFillContainerAndStow(stack, this.outputTank, playerInventory, Integer.MAX_VALUE, player,true);
-                if (!fluidActionResult.isSuccess())
-                {
-                    fluidActionResult = FluidUtil.tryEmptyContainerAndStow(stack, this.inputTank, playerInventory, Integer.MAX_VALUE, player, true);
-                }
-
-                if (fluidActionResult.isSuccess())
-                {
-                    player.setHeldItem(hand, fluidActionResult.getResult());
-                    interacted=true;
-                }
-            }	
-			
+	public void buttonClicked(int id, Player ply) {
+		if (id < BUTTON_ID_DUMP_INPUT) {
+			super.buttonClicked(id, ply);
+			return;
 		}
-		
-		return interacted;
-
+		if (!this.isUseableByPlayer(ply)) {
+			return;
+		}
+		switch (id) {
+			case BUTTON_ID_DUMP_INPUT -> inputTank.setFluid(FluidStack.EMPTY);
+			case BUTTON_ID_DUMP_OUTPUT -> outputTank.setFluid(FluidStack.EMPTY);
+			case BUTTON_ID_TOGGLE_DRAIN -> this.drainInput = !this.drainInput;
+			default -> {
+				return;
+			}
+		}
+		this.setContentsChanged(true);
+		this.needUpdate();
 	}
-	
+
+	@Override
+	public boolean onFluidContainerInteract(Player player, InteractionHand hand) {
+		if (!this.isUseableByPlayer(player)) {
+			return false;
+		}
+		return FluidUtil.interactWithFluidHandler(player, hand, this.fluidHandler);
+	}
+
+	@Override
+	public void readClientData(CompoundTag tags, HolderLookup.Provider registries) {
+		super.readClientData(tags, registries);
+		this.drainInput = tags.getBoolean("drainInput");
+		this.inputTank.readFromNBT(registries, tags.getCompound("inputTank"));
+		this.outputTank.readFromNBT(registries, tags.getCompound("outputTank"));
+	}
+
+	@Override
+	public void writeClientData(CompoundTag tags, HolderLookup.Provider registries) {
+		super.writeClientData(tags, registries);
+		tags.putBoolean("drainInput", this.drainInput);
+		tags.put("inputTank", this.inputTank.writeToNBT(registries, new CompoundTag()));
+		tags.put("outputTank", this.outputTank.writeToNBT(registries, new CompoundTag()));
+	}
+
+	/** pipes fill the input tank and drain the output tank, or the input tank in drain mode */
+	private class ChemLabFluidHandler implements IFluidHandler {
+		private FluidTank drainTank() {
+			return drainInput ? inputTank : outputTank;
+		}
+
+		@Override
+		public int getTanks() {
+			return 2;
+		}
+
+		@Override
+		public FluidStack getFluidInTank(int tank) {
+			return tank == 0 ? inputTank.getFluid() : outputTank.getFluid();
+		}
+
+		@Override
+		public int getTankCapacity(int tank) {
+			return tank == 0 ? CAPACITY_INPUT_TANK : CAPACITY_OUTPUT_TANK;
+		}
+
+		@Override
+		public boolean isFluidValid(int tank, FluidStack stack) {
+			return tank == 0;
+		}
+
+		@Override
+		public int fill(FluidStack resource, FluidAction action) {
+			return inputTank.fill(resource, action);
+		}
+
+		@Override
+		public FluidStack drain(FluidStack resource, FluidAction action) {
+			return drainTank().drain(resource, action);
+		}
+
+		@Override
+		public FluidStack drain(int maxDrain, FluidAction action) {
+			return drainTank().drain(maxDrain, action);
+		}
+	}
 }

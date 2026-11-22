@@ -1,0 +1,15 @@
+{
+  "type": "techguns:ammo_change_crafting",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "techguns:ak47"
+    },
+    {
+      "item": "techguns:assaultriflemagazine_incendiary"
+    }
+  ],
+  "result": {
+    "id": "techguns:ak47"
+  }
+}

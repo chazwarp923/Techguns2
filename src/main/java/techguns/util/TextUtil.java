@@ -1,16 +1,18 @@
 package techguns.util;
 
-import net.minecraft.client.resources.I18n;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import techguns.Techguns;
 
-public class TextUtil {
-	public static String trans(String key){
-		return I18n.format(key, new Object[0]);
+public final class TextUtil {
+	private TextUtil() {}
+
+	/** Translatable component in the techguns namespace, e.g. transTG("gun.tooltip.ammo") -> "techguns.gun.tooltip.ammo". */
+	public static MutableComponent transTG(String key, Object... args) {
+		return Component.translatable(Techguns.MODID + "." + key, args);
 	}
-	/**
-	 * Trans with prefixing MODID.
-	 */
-	public static String transTG(String key){
-		return I18n.format(Techguns.MODID+"."+key, new Object[0]);
+
+	public static MutableComponent trans(String key, Object... args) {
+		return Component.translatable(key, args);
 	}
 }

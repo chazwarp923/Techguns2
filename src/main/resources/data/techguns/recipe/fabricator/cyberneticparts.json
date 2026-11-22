@@ -1,0 +1,18 @@
+{
+  "type": "techguns:fabricator",
+  "input": {
+    "item": "minecraft:soul_sand"
+  },
+  "wires": {
+    "tag": "c:wires/gold"
+  },
+  "powder": {
+    "tag": "c:dusts/redstone"
+  },
+  "plate": {
+    "tag": "c:plates/plastic"
+  },
+  "result": {
+    "id": "techguns:cyberneticparts"
+  }
+}

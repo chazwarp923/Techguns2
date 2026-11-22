@@ -1,123 +1,96 @@
 package techguns.blocks;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.block.state.BlockFaceShape;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.NonNullList;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-import net.minecraftforge.event.RegistryEvent.Register;
-import net.minecraftforge.fml.common.registry.GameRegistry;
-import techguns.Techguns;
-import techguns.entities.npcs.ArmySoldier;
-import techguns.entities.npcs.ZombieSoldier;
+import javax.annotation.Nullable;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import com.mojang.serialization.MapCodec;
+import techguns.TGBlockEntities;
+import techguns.TGEntities;
 import techguns.tileentities.TGSpawnerTileEnt;
 
-public class BlockTGSpawner extends GenericBlockMetaEnum<EnumMonsterSpawnerType> {
-	
-	public BlockTGSpawner(String name) {
-		super(name, Material.ROCK, EnumMonsterSpawnerType.class);
-		this.setBlockUnbreakable();
-	}
+/** 1.12 BlockTGSpawner: unbreakable dungeon spawner (a hole in the floor, or a soldier spawn marker). */
+public class BlockTGSpawner extends BaseEntityBlock {
 
-	protected static final AxisAlignedBB BB = new AxisAlignedBB(2/16d, 0, 2/16d, 14/16d, 2/16d, 14/16d);
-	
-	
-	
-	@Override
-	public void registerBlock(Register<Block> event) {
-		super.registerBlock(event);
-		GameRegistry.registerTileEntity(TGSpawnerTileEnt.class, Techguns.MODID+":"+"TGSpawner");
-	}
+	public enum Type implements StringRepresentable {
+		HOLE, SOLDIER_SPAWN;
 
-	@Override
-	public boolean hasTileEntity(IBlockState state) {
-		return true;
-	}
-
-	@Override
-	public TileEntity createTileEntity(World world, IBlockState state) {
-		return new TGSpawnerTileEnt();
-	}
-
-	@Override
-	public boolean isFullBlock(IBlockState state) {
-		return false;
-	}
-
-	@Override
-	public boolean isFullCube(IBlockState state) {
-		return false;
-	}
-
-	@Override
-	public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos) {
-		return BB;
-	}
-
-	@Override
-	public AxisAlignedBB getCollisionBoundingBox(IBlockState blockState, IBlockAccess worldIn, BlockPos pos) {
-		return NULL_AABB;
-	}
-
-	@Override
-	public boolean isOpaqueCube(IBlockState state) {
-		return false;
-	}
-
-	@Override
-	public void getDrops(NonNullList<ItemStack> drops, IBlockAccess world, BlockPos pos, IBlockState state,
-			int fortune) {
-	}
-
-	@Override
-	public void onBlockPlacedBy(World worldIn, BlockPos pos, IBlockState state, EntityLivingBase placer,
-			ItemStack stack) {
-		TileEntity tile = worldIn.getTileEntity(pos);
-		if(tile!=null && tile instanceof TGSpawnerTileEnt) {
-			TGSpawnerTileEnt spawner = (TGSpawnerTileEnt) tile;
-			
-			switch(state.getValue(TYPE)) {
-			case HOLE:
-				spawner.addMobType(ZombieSoldier.class, 1);
-				break;
-			case SOLDIER_SPAWN:
-				spawner.addMobType(ArmySoldier.class, 1);
-				break;
-			default:
-				break;
-			
-			}
+		@Override
+		public String getSerializedName() {
+			return name().toLowerCase();
 		}
 	}
 
-	/*@Override
-	public boolean onBlockActivated(World worldIn, BlockPos pos, IBlockState state, EntityPlayer playerIn,
-			EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
-		if(!worldIn.isRemote) {
-			TileEntity tile = worldIn.getTileEntity(pos);
-			if(tile!=null && tile instanceof TGSpawnerTileEnt) {
-				TGSpawnerTileEnt spawner = (TGSpawnerTileEnt) tile;
-				
-				spawner.debug();
-				
-			}
-		}
-		return true;
-	}*/
+	public static final EnumProperty<Type> TYPE = EnumProperty.create("type", Type.class);
+	public static final MapCodec<BlockTGSpawner> CODEC = simpleCodec(BlockTGSpawner::new);
+	private static final VoxelShape SHAPE = box(2, 0, 2, 14, 2, 14);
 
-	@Override
-	public BlockFaceShape getBlockFaceShape(IBlockAccess worldIn, IBlockState state, BlockPos pos, EnumFacing face) {
-		return BlockFaceShape.UNDEFINED;
+	public BlockTGSpawner(Properties props) {
+		super(props);
+		this.registerDefaultState(this.stateDefinition.any().setValue(TYPE, Type.HOLE));
 	}
 
+	@Override
+	protected MapCodec<? extends BaseEntityBlock> codec() {
+		return CODEC;
+	}
+
+	@Override
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+		builder.add(TYPE);
+	}
+
+	@Override
+	protected RenderShape getRenderShape(BlockState state) {
+		return RenderShape.MODEL;
+	}
+
+	@Override
+	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext ctx) {
+		return SHAPE;
+	}
+
+	@Override
+	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext ctx) {
+		return Shapes.empty();
+	}
+
+	@Nullable
+	@Override
+	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+		return new TGSpawnerTileEnt(pos, state);
+	}
+
+	@Nullable
+	@Override
+	public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+		return level.isClientSide ? null : createTickerHelper(type, TGBlockEntities.TG_SPAWNER.get(), TGSpawnerTileEnt::serverTick);
+	}
+
+	/** placed by hand: default mob for the type (structures configure their spawners themselves) */
+	@Override
+	public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
+		if (!level.isClientSide && level.getBlockEntity(pos) instanceof TGSpawnerTileEnt spawner) {
+			switch (state.getValue(TYPE)) {
+				case HOLE -> spawner.addMobType(TGEntities.ZOMBIE_SOLDIER.get(), 1);
+				case SOLDIER_SPAWN -> spawner.addMobType(TGEntities.ARMY_SOLDIER.get(), 1);
+			}
+		}
+	}
 }

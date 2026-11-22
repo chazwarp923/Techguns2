@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "grg",
+    "rrr",
+    "rfr"
+  ],
+  "key": {
+    "r": {
+      "tag": "c:rubbers"
+    },
+    "f": {
+      "item": "techguns:gasmaskfilter"
+    },
+    "g": {
+      "tag": "c:glass_panes"
+    }
+  },
+  "result": {
+    "id": "techguns:gasmask"
+  }
+}

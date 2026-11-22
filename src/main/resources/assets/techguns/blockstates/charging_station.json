@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "techguns:block/charging_station"
+    },
+    "facing=east": {
+      "model": "techguns:block/charging_station"
+    },
+    "facing=south": {
+      "model": "techguns:block/charging_station"
+    },
+    "facing=west": {
+      "model": "techguns:block/charging_station"
+    }
+  }
+}

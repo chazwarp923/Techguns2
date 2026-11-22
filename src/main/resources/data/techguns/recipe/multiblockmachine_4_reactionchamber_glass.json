@@ -1,0 +1,31 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:reactionchamber_glass"
+    },
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:reactionchamber_housing"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "rgr",
+    "rgr",
+    "rgr"
+  ],
+  "key": {
+    "r": {
+      "item": "techguns:reactionchamber_housing"
+    },
+    "g": {
+      "tag": "c:glass_blocks"
+    }
+  },
+  "result": {
+    "id": "techguns:reactionchamber_glass",
+    "count": 6
+  }
+}

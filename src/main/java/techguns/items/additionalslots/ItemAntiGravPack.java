@@ -2,57 +2,48 @@ package techguns.items.additionalslots;
 
 import java.util.List;
 
-import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.common.gameevent.TickEvent.PlayerTickEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import techguns.TGItems;
 import techguns.api.tginventory.TGSlotType;
 import techguns.items.armors.TGArmorBonus;
 import techguns.util.TextUtil;
 
-public class ItemAntiGravPack extends ItemTGSpecialSlotAmmo {
-	
-	private static final int CONSUMPTION_PER_TICK =1;
-	
-	private static final float FLYBONUS=0.25f;
-	
-	public ItemAntiGravPack(String unlocalizedName, int camoCount,int dur) {
-		super(unlocalizedName, TGSlotType.BACKSLOT, camoCount,dur,TGItems.NUCLEAR_POWERCELL,TGItems.NUCLEAR_POWERCELL_EMPTY );
+/** Back slot: creative flight with a fly speed bonus, uses charge while flying. Reloads with nuclear power cells. */
+public class ItemAntiGravPack extends ItemTGSpecialSlot {
+
+	private static final float FLYBONUS = 0.25f;
+
+	public ItemAntiGravPack(int camoCount, int dur) {
+		super(TGSlotType.BACKSLOT, camoCount, dur, TGItems.NUCLEAR_POWERCELL, TGItems.NUCLEAR_POWERCELL_EMPTY);
 	}
 
 	@Override
-	public void onPlayerTick(ItemStack item, PlayerTickEvent event) {
-		if (item.getItemDamage()+1>= item.getMaxDamage()){
-			this.tryReloadAndRepair(item, event.player);
+	public void onPlayerTick(ItemStack item, Player ply) {
+		if (item.getDamageValue() + 1 >= item.getMaxDamage()) {
+			this.tryReloadAndRepair(item, ply);
 		}
-		if (event.player.capabilities.isFlying && !event.player.capabilities.isCreativeMode){
-			if (item.getItemDamage()<item.getMaxDamage()){
-				item.setItemDamage(item.getItemDamage()+1);
-				//this.doEffect(player.player);
-			}
+		if (ply.getAbilities().flying && !ply.isCreative() && !ply.isSpectator() && hasCharge(item)) {
+			useCharge(item, 1);
 		}
 	}
 
 	@Override
-	public float getBonus(TGArmorBonus type, ItemStack stack, boolean consume, EntityPlayer player) {
-		if (type==TGArmorBonus.CREATIVE_FLIGHT){
-			if (stack.getItemDamage()<stack.getMaxDamage()){
-				return 1;
-			}
-		} else if (type==TGArmorBonus.FLYSPEED){
-			if (stack.getItemDamage()<stack.getMaxDamage()){
-				return FLYBONUS;
-			}			
+	public float getBonus(TGArmorBonus type, ItemStack stack, boolean consume, Player player) {
+		if (type == TGArmorBonus.CREATIVE_FLIGHT && hasCharge(stack)) {
+			return 1;
+		} else if (type == TGArmorBonus.FLYSPEED && hasCharge(stack)) {
+			return FLYBONUS;
 		}
 		return 0;
 	}
-	
+
 	@Override
-	public void addInformation(ItemStack stack, World worldIn, List<String> tooltip, ITooltipFlag flagIn) {
-		tooltip.add(TextUtil.trans("techguns.armorTooltip.creativeFlight"));
-		tooltip.add(TextUtil.trans("techguns.armorTooltip.flyspeed")+": +"+FLYBONUS*100.0f+"%");
+	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
+		super.appendHoverText(stack, context, tooltip, flag);
+		tooltip.add(TextUtil.transTG("armorTooltip.creativeFlight"));
+		tooltip.add(TextUtil.transTG("armorTooltip.flyspeed").append(": +" + FLYBONUS * 100.0f + "%"));
 	}
 }
-	

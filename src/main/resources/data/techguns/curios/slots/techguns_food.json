@@ -1,0 +1,11 @@
+{
+  "size": 3,
+  "order": 210,
+  "icon": "techguns:slot/food",
+  "validators": [
+    "techguns:food",
+    "curios:tag"
+  ],
+  "add_cosmetic": false,
+  "render_toggle": false
+}

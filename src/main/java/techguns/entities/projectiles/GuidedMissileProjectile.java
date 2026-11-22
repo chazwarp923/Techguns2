@@ -1,143 +1,109 @@
 package techguns.entities.projectiles;
 
-import io.netty.buffer.ByteBuf;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
-import techguns.TGPackets;
-import techguns.Techguns;
+import javax.annotation.Nullable;
+
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
+import techguns.TGEntities;
 import techguns.api.damagesystem.DamageType;
-import techguns.capabilities.TGExtendedPlayer;
-import techguns.client.ClientProxy;
 import techguns.damagesystem.TGExplosion;
 import techguns.items.guns.GenericGun;
 import techguns.items.guns.IChargedProjectileFactory;
 import techguns.packets.PacketSpawnParticle;
+import techguns.packets.TGPackets;
 import techguns.util.MathUtil;
+import techguns.util.TGFXHooks;
 
-public class GuidedMissileProjectile extends RocketProjectile{
+/** Rocket that steers towards its lock-on target (max 9 degrees per tick). */
+public class GuidedMissileProjectile extends RocketProjectile {
 
-	public static final double MAX_TURN_ANGLE = 9.0 *MathUtil.D2R; //= 180° per second
-	
+	public static final double MAX_TURN_ANGLE = 9.0 * Math.PI / 180.0;
+
+	@Nullable
 	public Entity target;
-	
-	
-	public GuidedMissileProjectile(World par2World, EntityLivingBase p, float damage, float speed, int TTL,
-			float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage,
-			EnumBulletFirePos leftGun, float radius, double gravity) {
-		super(par2World, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, leftGun,
-				radius, gravity);
+
+	public GuidedMissileProjectile(EntityType<? extends GuidedMissileProjectile> type, Level level) {
+		super(type, level);
 	}
-	
-	public GuidedMissileProjectile(World par2World, EntityLivingBase p, float damage, float speed, int TTL,
-			float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage,
-			EnumBulletFirePos leftGun, float radius, Entity target) {
-		super(par2World, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, leftGun,
-				radius, 0.0f);
-		this.target = target;
+
+	protected GuidedMissileProjectile(EntityType<? extends GuidedMissileProjectile> type, Level level, LivingEntity p, float damage, float speed,
+			int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage,
+			EnumBulletFirePos firePos, float radius, double gravity) {
+		super(type, level, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos, radius, gravity);
 	}
-	
-	public GuidedMissileProjectile(World worldIn) {
-		super(worldIn);
-//		TGExtendedPlayer epc = TGExtendedPlayer.get(Minecraft.getMinecraft().player);
-//		epc.lockOnEntity = null;
-//		epc.lockOnTicks = 0;
+
+	public GuidedMissileProjectile(Level level, LivingEntity p, float damage, float speed, int TTL, float spread, float dmgDropStart,
+			float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, float radius, double gravity) {
+		this(TGEntities.GUIDED_MISSILE.get(), level, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage,
+				firePos, radius, gravity);
 	}
-	
+
 	@Override
 	protected void createTrailFX() {
-		ClientProxy.get().createFXOnEntity("GuidedMissileExhaust", this);
+		TGFXHooks.createFXOnEntity("GuidedMissileExhaust", this);
 	}
 
-	
 	@Override
 	protected void explodeRocket() {
-		if (!this.world.isRemote){
-			TGPackets.network.sendToAllAround(new PacketSpawnParticle("GuidedMissileExplosion", this.posX,this.posY,this.posZ), TGPackets.targetPointAroundEnt(this, 50.0f));
-			TGExplosion explosion = new TGExplosion(world, this.shooter, this, posX, posY, posZ, this.damage, this.damageMin, this.damageDropStart, this.damageDropEnd, this.blockdamage?0.25:0.0);
-			
+		if (!this.level().isClientSide) {
+			TGPackets.sendToAllAround(new PacketSpawnParticle("GuidedMissileExplosion", this.getX(), this.getY(), this.getZ()), this, 50.0);
+			TGExplosion explosion = new TGExplosion(this.level(), this.shooter, this, getX(), getY(), getZ(), this.damage, this.damageMin,
+					this.damageDropStart, this.damageDropEnd, this.blockdamage ? 0.25 : 0.0);
 			explosion.doExplosion(true);
-		}else {
-			Techguns.proxy.createLightPulse(this.posX, this.posY, this.posZ, 5, 15, 10.0f, 1.0f, 1f, 0.9f, 0.5f);
 		}
-		this.setDead();
+		this.discard();
 	}
-	
-	@Override
-	public void readSpawnData(ByteBuf additionalData) {
-		super.readSpawnData(additionalData);
-		int entityID = additionalData.readInt();
-		if (entityID != -1)
-			this.target = this.world.getEntityByID(entityID); 
-	}
-	
-	@Override
-	public void writeSpawnData(ByteBuf buffer) {
-		super.writeSpawnData(buffer);
-		if (target != null)
-			buffer.writeInt(target.getEntityId());
-		else
-			buffer.writeInt(-1);
-	}
-	
-	@Override
-	public void onUpdate() {
-		//Update Motion
-		if (this.target != null) {
-			Vec3d motion = new Vec3d(motionX, motionY, motionZ);
-			double speed = motion.lengthVector();
-			
-			Vec3d v2 = new Vec3d(target.posX, target.posY+target.height*0.5f, target.posZ).subtract(new Vec3d(this.posX, this.posY, this.posZ)).normalize();
-			Vec3d v1 = motion.normalize();
-			
-			double angle = Math.acos(v1.dotProduct(v2));
-			Vec3d axis = v1.crossProduct(v2).normalize();
-			
-			//angle = Math.min(angle, MAX_TURN_ANGLE);
-			
-			if (angle < MAX_TURN_ANGLE) {
-				motion = v2.scale(speed);
-			}else {
-				motion = MathUtil.rotateVector(v1, axis, MAX_TURN_ANGLE).scale(speed);
-			}
-			
-			this.motionX = motion.x;
-			this.motionY = motion.y;
-			this.motionZ = motion.z;
-		}
-		//System.out.println("Motion.length="+new Vec3d(motionX, motionY, motionZ).lengthVector());
-		super.onUpdate();		
-	}
-	
 
-//	@Override
-//	public void setVelocity(double x, double y, double z) {
-//		
-//	}
+	@Override
+	public void writeSpawnData(RegistryFriendlyByteBuf buffer) {
+		super.writeSpawnData(buffer);
+		buffer.writeInt(target != null ? target.getId() : -1);
+	}
+
+	@Override
+	public void readSpawnData(RegistryFriendlyByteBuf buffer) {
+		super.readSpawnData(buffer);
+		int id = buffer.readInt();
+		this.target = id != -1 ? this.level().getEntity(id) : null;
+	}
+
+	@Override
+	public void tick() {
+		if (this.target != null) {
+			if (this.target.isRemoved()) {
+				this.target = null;
+			} else {
+				Vec3 motion = this.getDeltaMovement();
+				double speed = motion.length();
+				if (speed > 1.0E-6) {
+					Vec3 v2 = new Vec3(target.getX(), target.getY() + target.getBbHeight() * 0.5f, target.getZ()).subtract(this.position()).normalize();
+					Vec3 v1 = motion.normalize();
+					double angle = Math.acos(Math.max(-1.0, Math.min(1.0, v1.dot(v2))));
+					if (angle < MAX_TURN_ANGLE) {
+						motion = v2.scale(speed);
+					} else {
+						Vec3 axis = v1.cross(v2).normalize();
+						motion = MathUtil.rotateVector(v1, axis, MAX_TURN_ANGLE).scale(speed);
+					}
+					this.setDeltaMovement(motion);
+				}
+			}
+		}
+		super.tick();
+	}
 
 	public static class Factory implements IChargedProjectileFactory<GuidedMissileProjectile> {
-
 		@Override
-		public GuidedMissileProjectile createProjectile(GenericGun gun, World world, EntityLivingBase p, float damage, float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd,
-				float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, float radius, double gravity) {
-		
-			Entity target = null;
-			if (p instanceof EntityPlayer) {
-				TGExtendedPlayer epc = TGExtendedPlayer.get((EntityPlayer)p);
-				if (epc.lockOnEntity != null && epc.lockOnTicks >= ((GenericGun)p.getActiveItemStack().getItem()).getLockOnTicks()) {
-					target = epc.lockOnEntity;
-				}
-				//epc.lockOnEntity = null;
-				//epc.lockOnTicks = 0;
-			}
-
-			if (target != null) {
-				return new GuidedMissileProjectile(world,p,damage,speed,TTL,spread,dmgDropStart,dmgDropEnd,dmgMin,penetration,blockdamage,firePos,radius, target);
-			}else {
-				return new GuidedMissileProjectile(world,p,damage,speed,TTL,spread,dmgDropStart,dmgDropEnd,dmgMin,penetration,blockdamage,firePos,radius,0.01f);
-			}
+		public GuidedMissileProjectile createProjectile(GenericGun gun, Level level, LivingEntity p, float damage, float speed, int TTL, float spread,
+				float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, float radius,
+				double gravity) {
+			// target is set by GuidedMissileLauncher#spawnProjectile; unguided missiles get a little gravity
+			return new GuidedMissileProjectile(level, p, damage, speed, TTL, spread, dmgDropStart, dmgDropEnd, dmgMin, penetration, blockdamage, firePos,
+					radius, 0.01f);
 		}
 
 		@Override
@@ -146,16 +112,10 @@ public class GuidedMissileProjectile extends RocketProjectile{
 		}
 
 		@Override
-		public GuidedMissileProjectile createChargedProjectile(World world, EntityLivingBase p, float damage,
-				float speed, int TTL, float spread, float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration,
-				boolean blockdamage, EnumBulletFirePos firePos, float radius, double gravity, float charge, int ammoConsumed) {
-//			if (p instanceof EntityPlayer) {
-//				TGExtendedPlayer epc = TGExtendedPlayer.get((EntityPlayer)p);
-//				epc.lockOnEntity = null;
-//				epc.lockOnTicks = 0;
-//			}			
+		public GuidedMissileProjectile createChargedProjectile(Level level, LivingEntity p, float damage, float speed, int TTL, float spread,
+				float dmgDropStart, float dmgDropEnd, float dmgMin, float penetration, boolean blockdamage, EnumBulletFirePos firePos, float radius,
+				double gravity, float charge, int ammoConsumed) {
 			return null;
 		}
-		
 	}
 }

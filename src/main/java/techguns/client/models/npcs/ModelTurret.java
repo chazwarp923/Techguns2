@@ -1,8 +1,8 @@
 package techguns.client.models.npcs;
 
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
-import net.minecraft.entity.Entity;
+import techguns.client.models.ModelRenderer;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.entity.Entity;
 import techguns.client.models.ModelMultipart;
 
 public class ModelTurret extends ModelMultipart {
@@ -48,7 +48,7 @@ public class ModelTurret extends ModelMultipart {
  
 	@Override
 	public void render(Entity entityIn, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw,
-			float headPitch, float scale, int ammoLeft, float reloadProgress, TransformType transformType, int part,
+			float headPitch, float scale, int ammoLeft, float reloadProgress, ItemDisplayContext transformType, int part,
 			float fireProgress, float chargeProgress) {
 	//	setRotationAngles(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale, entityIn);
 		if (part == 0) {

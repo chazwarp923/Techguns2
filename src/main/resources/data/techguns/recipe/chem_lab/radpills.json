@@ -1,0 +1,29 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "techguns:radpills"
+    }
+  ],
+  "type": "techguns:chem_lab",
+  "input1": {
+    "item": "minecraft:sugar",
+    "count": 4
+  },
+  "input2": {
+    "item": "minecraft:glistering_melon_slice"
+  },
+  "bottle": {
+    "item": "minecraft:glass_bottle"
+  },
+  "fluid_input": {
+    "tag": "c:milk",
+    "amount": 1000
+  },
+  "result": {
+    "id": "techguns:radpills",
+    "count": 4
+  },
+  "allow_swap": true,
+  "power_per_tick": 20
+}

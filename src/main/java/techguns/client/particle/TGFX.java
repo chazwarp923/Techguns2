@@ -1,98 +1,89 @@
 package techguns.client.particle;
 
-import java.net.URL;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Scanner;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
+import techguns.Techguns;
 import techguns.client.particle.TGParticleSystemType.AlphaEntry;
 import techguns.client.particle.TGParticleSystemType.ColorEntry;
 import techguns.client.render.TGRenderHelper.RenderType;
-import techguns.util.TGLogger;
 
 /**
- * Handles the loading and storage of all ParticleSystem types
+ * Handles the loading and storage of all ParticleSystem types. Loaded from
+ * assets/techguns/particles/*.txt on every client resource reload.
  */
 public class TGFX {
 
-//	//TODO
-//	public static TGParticleSystemType getType (int index) {
-//		return null;
-//	}
-	
-	public static final String FXLIST_DIR = "/assets/techguns/particles/";
-	public static String[] FXFILES = {"fxlist.txt","nuke.txt", "deathfx.txt", "impactfx.txt", "testfx.txt"};
-	
+	public static final String FXLIST_DIR = "particles/";
+	public static String[] FXFILES = { "fxlist.txt", "nuke.txt", "deathfx.txt", "impactfx.txt", "testfx.txt" };
+
 	public static HashMap<String, TGFXType> FXList = new HashMap<String, TGFXType>();
 
-	
-	public static List<TGParticleSystem> createFX(World world, String fx, double posX, double posY, double posZ, double motionX, double motionY, double motionZ) {
-		if (FXList.containsKey(fx.toLowerCase())) {
-			TGFXType fxtype = FXList.get(fx.toLowerCase());
-			List<TGParticleSystem> list = fxtype.createParticleSystems(world, posX, posY, posZ, motionX, motionY, motionZ);
-			return list;
-		}else {
-			TGLogger.logger_client.warning("FX '"+fx+"' not found!");
-			//System.out.println("FX '"+fx+"' not found!");
-			return null;
+	public static final ResourceManagerReloadListener RELOAD_LISTENER = TGFX::loadFXList;
+
+	private static TGFXType get(String fx) {
+		TGFXType t = FXList.get(fx.toLowerCase());
+		if (t == null) {
+			Techguns.LOGGER.warn("FX '{}' not found!", fx);
 		}
+		return t;
 	}
-	
+
+	public static List<TGParticleSystem> createFX(Level world, String fx, double posX, double posY, double posZ, double motionX, double motionY, double motionZ) {
+		TGFXType t = get(fx);
+		return t == null ? null : t.createParticleSystems(world, posX, posY, posZ, motionX, motionY, motionZ);
+	}
+
 	public static List<TGParticleSystem> createFXOnEntity(Entity ent, String fx) {
-
-		if (FXList.containsKey(fx.toLowerCase())) {
-			TGFXType fxtype = FXList.get(fx.toLowerCase());
-			List<TGParticleSystem> list = fxtype.createParticleSystemsOnEntity(ent);
-			return list;
-		}else {
-			TGLogger.logger_client.warning("FX '"+fx+"' not found!");
-			return null;
-		}
+		TGFXType t = get(fx);
+		return t == null ? null : t.createParticleSystemsOnEntity(ent);
 	}
-	
-	public static List<TGParticleSystem> createFXOnParticle(World worldIn, TGParticle ent, String fx) {
 
-		if (FXList.containsKey(fx.toLowerCase())) {
-			TGFXType fxtype = FXList.get(fx.toLowerCase());
-			List<TGParticleSystem> list = fxtype.createParticleSystemsOnParticle(worldIn, ent);
-			return list;
-		}else {
-			TGLogger.logger_client.warning("FX '"+fx+"' not found!");
-			return null;
-		}
+	public static List<TGParticleSystem> createFXOnParticle(Level worldIn, TGParticle ent, String fx) {
+		TGFXType t = get(fx);
+		return t == null ? null : t.createParticleSystemsOnParticle(worldIn, ent);
 	}
-	
-	public static List<TGParticleSystem> createFXOnEntityItemAttached(Entity ent, EnumHand hand, String fx) {
 
-		if (FXList.containsKey(fx.toLowerCase())) {
-			TGFXType fxtype = FXList.get(fx.toLowerCase());
-			List<TGParticleSystem> list = fxtype.createParticleSystemsOnEntityItemAttached(ent, hand);
-			return list;
-		}else {
-			TGLogger.logger_client.warning("FX '"+fx+"' not found!");
-			return null;
-		}
+	public static List<TGParticleSystem> createFXOnEntityItemAttached(Entity ent, InteractionHand hand, String fx) {
+		TGFXType t = get(fx);
+		return t == null ? null : t.createParticleSystemsOnEntityItemAttached(ent, hand);
 	}
-	
-	public static void loadFXList() {
-		URL url = TGFX.class.getResource(FXLIST_DIR);
-		if (url != null) {			
-			for (String filename : FXFILES) {
-				loadFXListFile(FXLIST_DIR+filename);
+
+	public static void loadFXList(ResourceManager manager) {
+		FXList.clear();
+		for (String filename : FXFILES) {
+			ResourceLocation loc = Techguns.rl(FXLIST_DIR + filename);
+			Optional<Resource> res = manager.getResource(loc);
+			if (res.isEmpty()) {
+				Techguns.LOGGER.error("Missing particle definition file {}", loc);
+				continue;
+			}
+			try (InputStream in = res.get().open()) {
+				loadFXListFile(in, filename);
+			} catch (IOException | RuntimeException e) {
+				Techguns.LOGGER.error("Failed reading particle file " + loc, e);
 			}
 		}
+		Techguns.LOGGER.info("Loaded {} Techguns FX definitions", FXList.size());
 	}
 
-	public static boolean loadFXListFile(String filename) {
-		//BufferedReader br = new BufferedReader(new InputStreamReader(FXList.class.getResourceAsStream(filename)));
-		Scanner sc = new Scanner(TGFX.class.getResourceAsStream(filename));
+	public static boolean loadFXListFile(InputStream in, String filename) {
+		Scanner sc = new Scanner(in, StandardCharsets.UTF_8);
 		sc.useLocale(Locale.ENGLISH);
 		sc.useDelimiter("(\\s*=\\s*)|\\s\\{|\\s*//.*|\\r\\n|\\s+"); //|^\\s*$		
 		String error = "";
@@ -165,7 +156,13 @@ public class TGFX {
 								break;
 							case "texture":
 								value = sc.next();
-								type.texture = new ResourceLocation(value);
+								// 1.21 resource paths must be lowercase; never let one bad entry abort the resource reload
+								ResourceLocation tex = ResourceLocation.tryParse(value.toLowerCase(java.util.Locale.ROOT));
+								if (tex != null) {
+									type.texture = tex;
+								} else {
+									error = value;
+								}
 								break;
 							case "rows":
 								type.rows = sc.nextInt();
@@ -339,7 +336,7 @@ public class TGFX {
 								float x = sc.nextFloat();
 								float y = sc.nextFloat();
 								float z = sc.nextFloat();
-								type.offset = new Vec3d(x, y, z);
+								type.offset = new Vec3(x, y, z);
 								break;
 							case "particlesmovewithsystem":
 								type.particlesMoveWithSystem = sc.nextBoolean();
@@ -369,8 +366,8 @@ public class TGFX {
 					FXList.put(name.toLowerCase(), type);
 					//System.out.println("Parsed ParticleSystem" +name+" in file '"+filename+"'.");
 				}else{
-					System.err.println("Error(s) while parsing particle "+name+" in file '"+filename+"'.");
-					System.err.println("error");
+					Techguns.LOGGER.error("Error(s) while parsing particle "+name+" in file '"+filename+"'.");
+					Techguns.LOGGER.error(error);
 					sc.close();
 					return false;
 				}
@@ -390,18 +387,4 @@ public class TGFX {
 	}
 	
 	
-//	public static void killAllParticles() {
-//		Iterator iter = Minecraft.getMinecraft().theWorld.loadedEntityList.iterator();
-//		while (iter.hasNext()) {
-//			try {
-//				Entity e = (Entity)iter.next();
-//				if (e instanceof EntityFX) {
-//					e.setDead();
-//					Minecraft.getMinecraft().theWorld.removeEntity(e);
-//					System.out.println("Removed FX entity.");
-//				}
-//			}catch (Exception e) {
-//			}
-//		}
-//	}
 }

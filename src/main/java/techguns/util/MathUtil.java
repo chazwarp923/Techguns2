@@ -1,12 +1,12 @@
 package techguns.util;
 
-import java.util.Random;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec2;
+import net.minecraft.world.phys.Vec3;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec2f;
-import net.minecraft.util.math.Vec3d;
-import techguns.client.ClientProxy;
+
 
 public class MathUtil {
 	
@@ -19,7 +19,7 @@ public class MathUtil {
 	 * @return
 	 */
     public static float sin360(float arg){
-    	return MathHelper.sin(arg / 180.0F * (float)Math.PI);
+    	return Mth.sin(arg / 180.0F * (float)Math.PI);
     }
     /**
 	 * cos with argument in degrees (0-360)
@@ -27,14 +27,14 @@ public class MathUtil {
 	 * @return
 	 */
     public static float cos360(float arg){
-    	return MathHelper.cos(arg / 180.0F * (float)Math.PI);
+    	return Mth.cos(arg / 180.0F * (float)Math.PI);
     }
 	
-	public static Vec2f polarOffsetXZ(float x, float z, float radius, float angle) {
-    	x = (float) (x + (radius*MathHelper.cos(angle)));
-    	z = (float) (z + (radius*MathHelper.sin(angle)));
+	public static Vec2 polarOffsetXZ(float x, float z, float radius, float angle) {
+    	x = (float) (x + (radius*Mth.cos(angle)));
+    	z = (float) (z + (radius*Mth.sin(angle)));
 
-    	return new Vec2f(x, z);
+    	return new Vec2(x, z);
     }
 	
 	public static float clamp(float value, float min, float max) {
@@ -67,36 +67,32 @@ public class MathUtil {
 		}
 	}
 	
-	public static int randomInt(Random rand, int min, int max) {
+	public static int randomInt(RandomSource rand, int min, int max) {
     	if (max >= min)
     		return min+rand.nextInt((max-min)+1);
     	else
     		return max+rand.nextInt((min-max)+1);
     }
     
-    public static float randomFloat(Random rand, float min, float max) {
+    public static float randomFloat(RandomSource rand, float min, float max) {
     	return min+(rand.nextFloat()*(max-min));
     }
     
-    public static Vec3d getInterpolatedEntityPos(Entity entityIn) {
-    	double partialTicks = (double)ClientProxy.get().PARTIAL_TICK_TIME;
-        double d0 = entityIn.lastTickPosX + (entityIn.posX - entityIn.lastTickPosX) * partialTicks;
-        double d1 = entityIn.lastTickPosY + (entityIn.posY - entityIn.lastTickPosY) * partialTicks;
-        double d2 = entityIn.lastTickPosZ + (entityIn.posZ - entityIn.lastTickPosZ) * partialTicks;
-        return new Vec3d(d0,d1,d2);
+    public static Vec3 getInterpolatedEntityPos(Entity entityIn, float partialTicks) {
+        return entityIn.getPosition(partialTicks);
     }
     
     /**
-     * X and Y methods are Vec3d.rotatePitch and Vec3d.rotateYaw
+     * X and Y methods are Vec3.rotatePitch and Vec3.rotateYaw
      * @return
      */
-    public static Vec3d rotateVec3dAroundZ(Vec3d vec, float angle) {
-        float f1 = MathHelper.cos(angle);
-        float f2 = MathHelper.sin(angle);
+    public static Vec3 rotateVec3dAroundZ(Vec3 vec, float angle) {
+        float f1 = Mth.cos(angle);
+        float f2 = Mth.sin(angle);
         double d0 = vec.x * (double)f1 + vec.y * (double)f2;
         double d1 = vec.y * (double)f1 - vec.x * (double)f2;
         double d2 = vec.z;
-        return new Vec3d(d0,d1,d2);
+        return new Vec3(d0,d1,d2);
     }
     
     /**
@@ -284,7 +280,7 @@ public class MathUtil {
     	}
     }
     
-    public static Vec3d rotateVector(Vec3d vec, Vec3d axis, double theta) {
+    public static Vec3 rotateVector(Vec3 vec, Vec3 axis, double theta) {
     	double u = axis.x;
     	double v = axis.y;
     	double w = axis.z;
@@ -298,7 +294,7 @@ public class MathUtil {
 		double zPrime = w*(u*vec.x + v*vec.y + w*vec.z)*(1d - Math.cos(theta))
 		                + vec.z*Math.cos(theta)
 		                + (-v*vec.x + u*vec.y)*Math.sin(theta);
-		return new Vec3d(xPrime, yPrime, zPrime);
+		return new Vec3(xPrime, yPrime, zPrime);
     }
 	public static boolean inRange(int val, int min, int max) {
 		return val>=min && val <=max;

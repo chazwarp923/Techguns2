@@ -1,8 +1,8 @@
 package techguns.client.models.armor;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.entity.Entity;
+import techguns.client.models.ModelBase;
+import techguns.client.models.ModelRenderer;
+import net.minecraft.world.entity.Entity;
 
 public class ModelRiotShield extends ModelBase {
     public ModelRenderer Plate;
