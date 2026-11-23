@@ -8,6 +8,9 @@ import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.FenceBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
+import net.minecraft.world.level.block.SimpleWaterloggedBlock;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -16,8 +19,8 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-/** Fence-like sandbag wall with filled corners. */
-public class BlockSandbags extends Block {
+/** Fence-like sandbag wall with filled corners. Waterloggable. */
+public class BlockSandbags extends Block implements SimpleWaterloggedBlock {
 	public static final BooleanProperty NORTH = BlockStateProperties.NORTH;
 	public static final BooleanProperty EAST = BlockStateProperties.EAST;
 	public static final BooleanProperty SOUTH = BlockStateProperties.SOUTH;
@@ -26,6 +29,7 @@ public class BlockSandbags extends Block {
 	public static final BooleanProperty CORNER_ES = BooleanProperty.create("corner_es");
 	public static final BooleanProperty CORNER_SW = BooleanProperty.create("corner_sw");
 	public static final BooleanProperty CORNER_WN = BooleanProperty.create("corner_wn");
+	public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
 
 	protected static final VoxelShape PILLAR = Block.box(4, 0, 4, 12, 16, 12);
 	protected static final VoxelShape S_NORTH = Block.box(4, 0, 0, 12, 16, 4);
@@ -36,12 +40,13 @@ public class BlockSandbags extends Block {
 	public BlockSandbags(Properties props) {
 		super(props);
 		this.registerDefaultState(this.stateDefinition.any().setValue(NORTH, false).setValue(EAST, false).setValue(SOUTH, false)
-				.setValue(WEST, false).setValue(CORNER_NE, false).setValue(CORNER_ES, false).setValue(CORNER_SW, false).setValue(CORNER_WN, false));
+				.setValue(WEST, false).setValue(CORNER_NE, false).setValue(CORNER_ES, false).setValue(CORNER_SW, false).setValue(CORNER_WN, false)
+				.setValue(WATERLOGGED, false));
 	}
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-		builder.add(NORTH, EAST, SOUTH, WEST, CORNER_NE, CORNER_ES, CORNER_SW, CORNER_WN);
+		builder.add(NORTH, EAST, SOUTH, WEST, CORNER_NE, CORNER_ES, CORNER_SW, CORNER_WN, WATERLOGGED);
 	}
 
 	protected boolean canConnect(BlockGetter level, BlockPos pos, Direction dir) {
@@ -72,13 +77,31 @@ public class BlockSandbags extends Block {
 
 	@Override
 	public BlockState getStateForPlacement(BlockPlaceContext ctx) {
-		return computeState(defaultBlockState(), ctx.getLevel(), ctx.getClickedPos());
+		return computeState(defaultBlockState().setValue(WATERLOGGED, placedInWater(ctx)), ctx.getLevel(), ctx.getClickedPos());
 	}
 
 	@Override
 	protected BlockState updateShape(BlockState state, Direction dir, BlockState neighbor, LevelAccessor level, BlockPos pos, BlockPos neighborPos) {
+		tickWater(state, level, pos);
 		// Corners depend on diagonal neighbours, so recompute everything on any horizontal change.
 		return dir.getAxis().isHorizontal() ? computeState(state, level, pos) : state;
+	}
+
+	@Override
+	protected FluidState getFluidState(BlockState state) {
+		return state.getValue(WATERLOGGED) ? Fluids.WATER.getSource(false) : super.getFluidState(state);
+	}
+
+	/** waterlogged when placed into water, like vanilla fences and walls */
+	private static boolean placedInWater(BlockPlaceContext ctx) {
+		return ctx.getLevel().getFluidState(ctx.getClickedPos()).getType() == Fluids.WATER;
+	}
+
+	/** keeps the water flowing out of a waterlogged block */
+	private static void tickWater(BlockState state, LevelAccessor level, BlockPos pos) {
+		if (state.getValue(WATERLOGGED)) {
+			level.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
+		}
 	}
 
 	@Override

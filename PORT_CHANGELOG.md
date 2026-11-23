@@ -376,6 +376,22 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
 - Lang: `techguns.jade.progress` and `config.jade.plugin_techguns.machine`, in en/de/ru.
 - New test `GameplayTests.jadeMachineInfo`. The test server log shows Jade loading `TGJadePlugin` with no errors.
 
+### 14. Waterlogging (all 31 tests pass; not tested in game)
+
+- `BlockSandbags` and `BlockCamoNet` (wall and top, all camo types) implement `SimpleWaterloggedBlock` with
+  `waterlogged`: set from the fluid at the placement position, water ticks scheduled in `updateShape`, and
+  `getFluidState` returns a water source. Bucket fill and empty come from `SimpleWaterloggedBlock`. Their
+  blockstates are multipart and don't mention the property, so no model changes were needed.
+- Ladders (`BlockTGLadder`, `BlockSlimyLadder`) extend vanilla `LadderBlock`, which was already waterloggable.
+- Metal panels (containers, large panel, steel frames) are full cubes, so waterlogging doesn't apply.
+- New test `GameplayTests.waterloggableBlocks`: all 12 blocks have the property and hold water when waterlogged, and
+  sandbags and camo nets placed into a water source start waterlogged (but not in air).
+- **Reported:** ladder items rendered outside their inventory slot. The four Techguns ladder items used the 3D block
+  model (`ladder_base`, which sits against one edge of the block) with 1.12's GUI rotation and offset. They're now
+  flat `item/generated` sprites of the ladder texture, like the vanilla ladder and the slimy ladder. The 1.12
+  ladder textures fill their whole square, so the GUI view is scaled to 0.8 to leave a margin in the slot. Placed
+  ladders are unchanged.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

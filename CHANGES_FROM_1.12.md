@@ -109,7 +109,13 @@ old tab.
 - **The Blast Furnace is now the "Metal Blast Furnace"** (English name only, same id), because vanilla added its own
   Blast Furnace in 1.14.
 
-### 3.5 Radiation
+### 3.5 Blocks
+- **Waterlogging (new).** Sandbags and all six camo nets can hold water, so they work in and next to water like
+  vanilla fences and walls. They become waterlogged when placed into water or filled with a bucket. Techguns
+  ladders already could, because they are based on the vanilla ladder. Metal panels, containers and steel frames are
+  full blocks, which can't hold water (like stone).
+
+### 3.6 Radiation
 Unchanged in behaviour: radioactive items in the inventory, radiation sickness, Rad-Away, rad pills, radiation
 resistance, radiation potions (brewing recipes) and the HUD. Items get their radiation level through the radiation
 registry as in 1.12, and the tooltip shows the level.
@@ -232,7 +238,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 30 headless game tests, run with `./gradlew runGameTestServer`. They run
+1.12 had no automated tests. There are now 31 headless game tests, run with `./gradlew runGameTestServer`. They run
 in `run-gametest/` and take about one minute. GitHub Actions (`.github/workflows/build.yml`) runs the build and every game test on each push and pull
 request. It doesn't keep built jars, because the license doesn't allow distributing builds.
 
@@ -243,6 +249,7 @@ request. It doesn't keep built jars, because the license doesn't allow distribut
   - weapon swap;
   - ammo change refund, and the rocket launcher switching to nukes, loading and reloading them;
   - the Jade overlay's server data (owner, security, progress);
+  - waterloggable sandbags, camo nets and ladders;
   - off-hand rules;
   - area mining selection;
   - the Shishkebap ambient effect;

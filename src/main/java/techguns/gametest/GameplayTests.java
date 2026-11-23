@@ -317,6 +317,48 @@ public class GameplayTests {
 		helper.succeed();
 	}
 
+	/** Sandbags, camo nets and ladders can be waterlogged; sandbags and nets placed into water start waterlogged. */
+	@GameTest(template = "empty")
+	public static void waterloggableBlocks(GameTestHelper helper) {
+		var water = net.minecraft.world.level.block.state.properties.BlockStateProperties.WATERLOGGED;
+		List<net.minecraft.world.level.block.Block> blocks = List.of(techguns.TGBlocks.SANDBAGS.get(), techguns.TGBlocks.CAMONET.get(),
+				techguns.TGBlocks.CAMONET_DESERT.get(), techguns.TGBlocks.CAMONET_SNOW.get(), techguns.TGBlocks.CAMONET_TOP.get(),
+				techguns.TGBlocks.CAMONET_TOP_DESERT.get(), techguns.TGBlocks.CAMONET_TOP_SNOW.get(), techguns.TGBlocks.LADDER_METAL.get(),
+				techguns.TGBlocks.LADDER_SHINY.get(), techguns.TGBlocks.LADDER_RUSTY.get(), techguns.TGBlocks.LADDER_CARBON.get(),
+				techguns.TGBlocks.SLIMY_LADDER.get());
+		List<String> problems = new java.util.ArrayList<>();
+		for (var b : blocks) {
+			var state = b.defaultBlockState();
+			if (!(b instanceof net.minecraft.world.level.block.SimpleWaterloggedBlock) || !state.hasProperty(water)) {
+				problems.add(BuiltInRegistries.BLOCK.getKey(b) + " not waterloggable");
+				continue;
+			}
+			if (state.getValue(water) || !state.getFluidState().isEmpty()) {
+				problems.add(BuiltInRegistries.BLOCK.getKey(b) + " starts with water");
+			}
+			if (!state.setValue(water, true).getFluidState().isSourceOfType(net.minecraft.world.level.material.Fluids.WATER)) {
+				problems.add(BuiltInRegistries.BLOCK.getKey(b) + " waterlogged state holds no water");
+			}
+		}
+		// placed into a water source (clicking the floor below it), for the blocks that don't need a wall
+		BlockPos floor = new BlockPos(1, 1, 1);
+		helper.setBlock(floor, net.minecraft.world.level.block.Blocks.STONE);
+		for (var b : List.of(techguns.TGBlocks.SANDBAGS.get(), techguns.TGBlocks.CAMONET.get(), techguns.TGBlocks.CAMONET_TOP.get())) {
+			for (boolean wet : new boolean[] { true, false }) {
+				helper.setBlock(floor.above(), wet ? net.minecraft.world.level.block.Blocks.WATER : net.minecraft.world.level.block.Blocks.AIR);
+				var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(helper.absolutePos(floor)),
+						net.minecraft.core.Direction.UP, helper.absolutePos(floor), false);
+				var ctx = new net.minecraft.world.item.context.BlockPlaceContext(helper.getLevel(), null, InteractionHand.MAIN_HAND, new ItemStack(b), hit);
+				var placed = b.getStateForPlacement(ctx);
+				if (placed == null || placed.getValue(water) != wet) {
+					problems.add(BuiltInRegistries.BLOCK.getKey(b) + " placed " + (wet ? "in water" : "in air") + ": " + placed);
+				}
+			}
+		}
+		helper.assertTrue(problems.isEmpty(), String.join("; ", problems));
+		helper.succeed();
+	}
+
 	/* ---------------------------------------------------------------- off hand rules */
 
 	@GameTest(template = "empty")
