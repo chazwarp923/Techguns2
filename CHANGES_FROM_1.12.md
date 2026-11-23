@@ -222,8 +222,9 @@ sections such as `general.RestrictUnsafeModeToOP`.
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 25 headless game tests, run with `./gradlew runGameTestServer`. They run
-in `run-gametest/` and take about one minute.
+1.12 had no automated tests. There are now 26 headless game tests, run with `./gradlew runGameTestServer`. They run
+in `run-gametest/` and take about one minute. GitHub Actions (`.github/workflows/build.yml`) runs the build and every game test on each push and pull
+request. It doesn't keep built jars, because the license doesn't allow distributing builds.
 
 - `WorldgenTests`: every dungeon template loads; the castle, military base and bug nest build for 8 seeds each; every
   scanned structure places in all 4 rotations with matching door halves.
@@ -241,6 +242,9 @@ in `run-gametest/` and take about one minute.
   translated.
 - `OreTests`: the deepslate ores match the stone ores in tags, tool level, drops, light and worldgen targets, and
   smelt or react like them. Each ore's placed feature has its config check, and placement stops while it's off.
+- `ModelTests`: every registered block's blockstate and every item's model, with all parents and textures they reach,
+  exists (the missing-texture checkerboard never shows on a server, so this is the only headless check), and no
+  blockstate file is left without a block.
 - `GuideTests`: every item, recipe, multiblock block, armor-stand entity, image and link in the manual resolves; the
   manual recipes make the Techguns book; every Ponder schematic forms with the real multiblock code.
 

@@ -297,6 +297,26 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
 - `doOreGenCopper` is removed: Techguns has no copper ore. NeoForge drops the key from existing config files.
 - New test `OreTests.oreGenConfigIsApplied`.
 
+### 10. Leftover model files removed, model test, CI (all 26 tests pass)
+
+- A check of every model file found 7 broken references. New test `ModelTests.allModelsAndTexturesResolve` showed
+  none of them belongs to a registered block or item: they were unused 1.12 files. Deleted:
+  - item models `bunkerdoor`, `door3x3`, `minigundrumepmty` (typo), `plasticbag`, `steelbarrel` (the registered items
+    are `bunker_door`, `door3x3_*`, `minigundrumempty`, and there's no plastic bag or steel barrel item);
+  - block models `testdoor_frame` and `testdoor_segment` (texture path `blocks/blocks/...`, no block);
+  - 15 1.12 blockstate files with no block (`basicmachine`, `simplemachine`, `simplemachine2`, `multiblockmachine`,
+    `oredrill`, `orecluster`, `debugblock`, `fluid`, and the gun/helicopter `.obj` forge blockstates; the `.obj`
+    meshes themselves are still used by the renderers), plus the backups `concrete.json.off` and
+    `explosive_charge.json.old`.
+- The test checks that every registered Techguns block's blockstate, every item's model, and every model, parent
+  and texture they reach exist, and that every blockstate file has a block. A test run with `ingottin.png` renamed
+  failed with exactly that one problem.
+- CI: `.github/workflows/build.yml` runs `./gradlew build` and `./gradlew runGameTestServer` on Java 21 for each push
+  and pull request, and uploads the game test logs on failure. It doesn't upload the jar, because the
+  license doesn't allow distributing builds. `gradlew` is now marked
+  executable in git (it was 644, which fails on Linux). A failed game test makes the Gradle run exit non-zero
+  (checked locally), so it fails the job.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

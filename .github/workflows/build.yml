@@ -1,0 +1,50 @@
+name: Build and game tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          # only builds of the default branch and the port branch write the cache; other branches read it
+          cache-read-only: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/port/neoforge-1.21.1' }}
+          # cache downloaded dependencies only, never compiled outputs of the mod
+          gradle-home-cache-excludes: |
+            caches/build-cache-1
+
+      - name: Build
+        run: ./gradlew build --console=plain
+
+      # Headless game server running every @GameTest (worldgen, gameplay, data, manual, ores, models).
+      # Any failed required test exits non-zero and fails the job.
+      - name: Game tests
+        run: ./gradlew runGameTestServer --console=plain
+
+      # No build outputs (jars) are uploaded: the license doesn't allow distributing builds.
+      - name: Upload game test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gametest-logs
+          path: run-gametest/logs/
+          if-no-files-found: ignore
