@@ -17,7 +17,7 @@ The 1.12.2 source is kept in `legacy/` for reference. It is not compiled.
 | Build | ForgeGradle | ModDevGradle |
 | Mod version | `1.12.2-2.0.2.0` | `1.21.1-2.1.0.0` |
 | Required mods | none | **Curios** (9.6.0+) |
-| Optional mods | FTB Library (teams), JEI, CraftTweaker, Chisel, Thermal Expansion | FTB Teams, JEI |
+| Optional mods | FTB Library (teams), JEI, CraftTweaker, Chisel, Thermal Expansion, Patchouli | FTB Teams, JEI, Patchouli, Ponder |
 
 - **Curios is required.** The Techguns inventory tab was replaced by Curios slots (see 3.1).
 - **FTB Teams** replaces FTB Library for the machine and turret security "team" levels.
@@ -177,6 +177,8 @@ sections such as `general.RestrictUnsafeModeToOP`.
 |---|---|
 | JEI | Ported. Recipe categories for all machines. |
 | FTB Library teams | Ported to FTB Teams (optional). |
+| Patchouli (Techguns Manual) | Ported. Since Patchouli 1.20, `book.json` lives in `data/` and the pages in `assets/`. The book now uses that layout, with flattened ids, Curios and FE wording, and fixed broken links. Craft it from an iron ingot, a glass pane and stone bullets or pistol rounds. |
+| Ponder (new) | Optional. Hold W over a fabricator, reaction chamber or ore drill part for an animated build guide: fabricator, reaction chamber, small and framed ore drill. |
 | CraftTweaker (machine recipes, gun/armor stats, death effects, ore clusters) | Machine recipes are JSON recipe types and can be edited with any datapack tool. Gun, armor, death-effect and ore-cluster scripting is not ported, because it would need a CraftTweaker dependency. |
 | Chisel (block groups) | Not ported. |
 | Thermal Expansion (block registrations) | Not ported. |
@@ -196,7 +198,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 20 headless game tests, run with `./gradlew runGameTestServer`. They run
+1.12 had no automated tests. There are now 23 headless game tests, run with `./gradlew runGameTestServer`. They run
 in `run-gametest/` and take about one minute.
 
 - `WorldgenTests`: every dungeon template loads; the castle, military base and bug nest build for 8 seeds each; every
@@ -213,6 +215,8 @@ in `run-gametest/` and take about one minute.
   - tracking sync.
 - `DataTests`: all machine recipe types have recipes with results, all loot tables load, and every item and block is
   translated.
+- `GuideTests`: every item, recipe, multiblock block, armor-stand entity, image and link in the manual resolves; the
+  manual recipes make the Techguns book; every Ponder schematic forms with the real multiblock code.
 
 Client-only code (sound playback, rendering) is not covered, because NeoForge 1.21.1 has no client game tests.
 

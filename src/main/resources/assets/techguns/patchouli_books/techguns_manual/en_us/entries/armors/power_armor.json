@@ -1,16 +1,16 @@
 {
     "name": "T3 : Power Armor",
     "icon": "techguns:t3_power_chestplate",
-    "category": "armors",
+    "category": "techguns:armors",
     "pages": [
         {
             "type": "text",
             "text": "The Power Armor is a  $(l:armor_mechanics#powered_armors)powered$(/l) Tier 3 armor intended for combat with strong defenses and uses $(thing)Energy Cell$()s for power."
-        }, 
+        },
         {
             "type": "entity",
             "name": "Power Armor",
-            "entity": "minecraft:armor_stand{ShowArms:1,NoBasePlate:1,ArmorItems:[{Count:1,id:'techguns:t3_power_boots'}, {Count:1,id:'techguns:t3_power_leggings'}, {Count:1,id:'techguns:t3_power_chestplate'}, {Count:1,id:'techguns:t3_power_helmet'}]}",
+            "entity": "minecraft:armor_stand{ShowArms:1,NoBasePlate:1,ArmorItems:[{count:1,id:'techguns:t3_power_boots'}, {count:1,id:'techguns:t3_power_leggings'}, {count:1,id:'techguns:t3_power_chestplate'}, {count:1,id:'techguns:t3_power_helmet'}]}",
             "text": ""
         },
         {

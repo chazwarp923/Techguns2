@@ -1,13 +1,13 @@
 {
     "name": "Ore Cluster",
-    "icon": "techguns:orecluster:1",
-    "category": "ore_drills",
+    "icon": "techguns:ore_cluster_common_metal",
+    "category": "techguns:ore_drills",
     "pages": [
         {
             "type": "text",
             "text": "Ore Cluster can be found in the world and need $(l:oredrills/ore_drills)Ore Drills$(/l) to harvest resources. There are different ore cluster types and each holds different resources. Ore clusters are unbreakable and endless amount of ore can be harvested from them."
         },
-          {
+        {
             "type": "text",
             "title": "Cluster Types",
             "anchor": "types",
@@ -25,19 +25,19 @@
             "anchor": "formulas2",
             "text": "$(li)$(l)Drill Rod Size$(): amount of rod blocks in the drill$(li)$(l)Engine Size$(): the height of the engine block, which is the number of engine blocks between rod and controller.$(li)$(l)Drill Item Mining level$(): can be seen in the tooltip of the drill item. $(li)$(l)Global Ore Multiplier$(): read from config file$(li)$(l)Global Power Multiplier$(): read from config file"
         },
-         {
+        {
             "type": "text",
             "title": "Formulas",
             "anchor": "formulas3",
             "text": "$(li)$(l)Cluster Ore Multiplier$(): Cluster type individual multiplier, displayed in the block tooltip$(li)$(l)Cluster Power Multiplier$(): Cluster type individual multiplier to power, displayed in the block tooltip"
         },
-         {
+        {
             "type": "text",
             "title": "Derived Variables",
             "anchor": "formulas4",
             "text": "$(li)$(l)Effective Mininglevel$() = $(l:oredrills/ore_clusters#formulas2)Drill Item Mining Level$(/l) + $(l:oredrills/ore_clusters#formulas)Drill Radius$(/l) - $(l:oredrills/ore_clusters#formulas)Cluster Mining Level$(/l). The $(thing)Effective Mining Level$() must be >= 0, otherwise the drill will only output cobblestone$(br2)$(li)$(l)Effective Cluster Size$() = Minimum ( $(l:oredrills/ore_clusters#formulas)Clustersize$(/l), ( $(l:oredrills/ore_clusters#formulas2)Drill Rod Size$(/l) + $(l:oredrills/ore_clusters#formulas2)Engine Size$(/l) ))"
         },
-         {
+        {
             "type": "text",
             "title": "Ores Per Hour",
             "anchor": "ores_per_hour",
@@ -47,7 +47,7 @@
             "type": "text",
             "title": "Power Consumption",
             "anchor": "power",
-            "text": "The required power per tick is calculated the following: 8 * $(l:oredrills/ore_clusters#ores_per_hour)Ores Per Hour$(/l) * ( 1 + Maximum ( $(l:oredrills/ore_clusters#formulas)Drill Radius$(/l) - 1, 0 ) * 0.2 ) * $(l:oredrills/ore_clusters#formulas3)Cluster Power Multiplier$(/l) * $(l:oredrills/ore_clusters#formulas2)Global Power Multiplier$(/l)$(br2)The Power per Tick directly determines the RF requirement. Consuming Liquid or Solid Fuel has an own multiplier for fuel to RF."
+            "text": "The required power per tick is calculated the following: 8 * $(l:oredrills/ore_clusters#ores_per_hour)Ores Per Hour$(/l) * ( 1 + Maximum ( $(l:oredrills/ore_clusters#formulas)Drill Radius$(/l) - 1, 0 ) * 0.2 ) * $(l:oredrills/ore_clusters#formulas3)Cluster Power Multiplier$(/l) * $(l:oredrills/ore_clusters#formulas2)Global Power Multiplier$(/l)$(br2)The Power per Tick directly determines the FE requirement. Consuming Liquid or Solid Fuel has an own multiplier for fuel to FE."
         }
     ]
 }

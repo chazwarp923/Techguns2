@@ -1,7 +1,7 @@
 {
     "name": "* Armor Stats *",
     "icon": "techguns:t2_combat_chestplate",
-    "category": "armors",
+    "category": "techguns:armors",
     "pages": [
         {
             "type": "text",
@@ -29,7 +29,7 @@
             "type": "text",
             "title": "Armor & Penetration",
             "anchor": "armor",
-            "text": "Armor Values shows the armor value against each different damage type. TODO: Damage Types Entry. Penetration resistance: TODO finalize damage formula."
+            "text": "Armor Values shows the armor value against each different damage type. Penetration resistance reduces the armor penetration of incoming attacks."
         },
         {
             "type": "text",
@@ -43,31 +43,31 @@
             "anchor": "fall_damage",
             "text": "Fall damage reduces the damage taken from falling by the given amount. $(br2)Fall height removes the given amount of height from the fall distance and allows to fall higher before taking any damage at all."
         },
-         {
+        {
             "type": "text",
             "title": "Accuracy & Hearts",
             "anchor": "accuracy",
             "text": "Gun accuracy reduces the $(l:weapon_stats#spread)spread$(/l) of guns.$(br2) Extra Hearts increases the player's health points (hearts) by the given amount. Note: 1 Heart in the user interfaces represents 2 health points. 10 Hearts = 20 Health."
         },
-         {
+        {
             "type": "text",
             "title": "Nightvision & Step-Assist",
             "anchor": "nightvision",
             "text": "Nightvision allows the player to activate nightvision with the $(9)$(k:techguns.key.toggleNightvision)$()-key. $(br2)Step-Assist allows the player to toggle step-assist with the $(9)$(k:techguns.key.toggleStepassist)$()-key. While step assist is active a full block height can be walked over without jumping."
         },
-         {
+        {
             "type": "text",
             "title": "Knockback Resistance",
             "anchor": "knockback",
             "text": "Gives the player a chance to avoid beeing knocked back by damage. If this chance exceeds 100% a player can no longer be knocked back by damage."
         },
-          {
+        {
             "type": "text",
             "title": "Oxygen gear",
             "anchor": "oxygen",
-            "text": "Oxygen gear allows the player to breath underwater when oxygen tanks are equipped in the player's back slot (TODO:tg inventory)."
+            "text": "Oxygen gear allows the player to breath underwater when oxygen tanks are equipped in the Curios back slot."
         },
-         {
+        {
             "type": "text",
             "title": "Cooling System",
             "anchor": "cooling",

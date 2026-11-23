@@ -1,7 +1,7 @@
 {
     "name": "Door Configuration",
     "icon": "techguns:crowbar",
-    "category": "doors",
+    "category": "techguns:doors",
     "pages": [
         {
             "type": "text",

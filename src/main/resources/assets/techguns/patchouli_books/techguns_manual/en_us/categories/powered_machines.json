@@ -1,6 +1,6 @@
 {
     "name": "Machines",
     "description": "Techguns machines that require to be powered.",
-    "icon": "techguns:basicmachine:0",
+    "icon": "techguns:ammo_press",
     "sortnum": 3
 }

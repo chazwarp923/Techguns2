@@ -33,6 +33,22 @@ description='''${mod_description}'''
     ordering="NONE"
     side="BOTH"
 
+# optional: the Techguns Manual guide book
+[[dependencies.${mod_id}]]
+    modId="patchouli"
+    type="optional"
+    versionRange="[1.21.1-90,)"
+    ordering="NONE"
+    side="BOTH"
+
+# optional: Ponder scenes for the multiblock machines
+[[dependencies.${mod_id}]]
+    modId="ponder"
+    type="optional"
+    versionRange="[1.0.60,)"
+    ordering="NONE"
+    side="CLIENT"
+
 [[dependencies.${mod_id}]]
     modId="minecraft"
     type="required"

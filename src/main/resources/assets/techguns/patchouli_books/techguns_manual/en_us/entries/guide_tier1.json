@@ -1,7 +1,7 @@
 {
     "name": "1. Preparing for Nether",
     "icon": "techguns:ak47",
-    "category": "survival_guide",
+    "category": "techguns:survival_guide",
     "pages": [
         {
             "type": "text",

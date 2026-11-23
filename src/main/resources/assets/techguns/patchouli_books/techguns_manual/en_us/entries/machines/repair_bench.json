@@ -1,7 +1,7 @@
 {
     "name": "Repair Bench",
-    "icon": "techguns:simplemachine:9",
-    "category": "simple_machines",
+    "icon": "techguns:repair_bench",
+    "category": "techguns:simple_machines",
     "pages": [
         {
             "type": "text",
@@ -10,6 +10,6 @@
         {
             "type": "crafting",
             "recipe": "techguns:simplemachine_9_repair_bench"
-       }
+        }
     ]
 }

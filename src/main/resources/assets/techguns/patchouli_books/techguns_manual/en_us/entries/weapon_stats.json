@@ -1,7 +1,7 @@
 {
     "name": "* Weapon Stats *",
-    "icon": "techguns:itemshared:58",
-    "category": "weapons",
+    "icon": "techguns:mechanicalpartsiron",
+    "category": "techguns:weapons",
     "pages": [
         {
             "type": "text",
@@ -43,13 +43,13 @@
             "anchor": "clipsize_reload",
             "text": "The clipsize defines how much ammo is in a clip or magazine. $(br2) The reloadtime defines how long it takes to reload the gun in seconds."
         },
-         {
+        {
             "type": "text",
             "title": "Armor Pen",
             "anchor": "armorpen",
-            "text": "Armor Pen stands for 'Armor Penetration'. WIP damage formulas are not final."
+            "text": "Armor Pen stands for 'Armor Penetration'."
         },
-         {
+        {
             "type": "text",
             "title": "Zoom",
             "anchor": "zoom",

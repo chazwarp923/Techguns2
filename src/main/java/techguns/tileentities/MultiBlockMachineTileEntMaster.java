@@ -65,7 +65,8 @@ public abstract class MultiBlockMachineTileEntMaster extends BasicMachineTileEnt
 
 	/** set the controller blockstate formed / unformed (only while the controller block is still there) */
 	public void setFormed(boolean formed, Direction direction) {
-		if (level == null || level.isClientSide) {
+		// only ever called from server side forming code, and on the client from the Ponder scenes' virtual level
+		if (level == null) {
 			return;
 		}
 		BlockState s = level.getBlockState(worldPosition);

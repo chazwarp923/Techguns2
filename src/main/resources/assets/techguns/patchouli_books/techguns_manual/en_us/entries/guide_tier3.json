@@ -1,11 +1,11 @@
 {
     "name": "3. High-Tech Weaponry",
     "icon": "techguns:tfg",
-    "category": "survival_guide",
+    "category": "techguns:survival_guide",
     "pages": [
         {
             "type": "text",
-            "text": "With a $(l:fabricator)Fabricator$(/l) and a $(l:reactionchamber)Reaction Chamber$(/l) you have access to new high-tech weapons and armors."
+            "text": "With a $(l:machines/fabricator)Fabricator$(/l) and a $(l:machines/reactionchamber)Reaction Chamber$(/l) you have access to new high-tech weapons and armors."
         },
         {
             "type": "text",

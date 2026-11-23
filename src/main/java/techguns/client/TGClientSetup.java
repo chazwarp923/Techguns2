@@ -32,6 +32,10 @@ public class TGClientSetup {
 			techguns.client.render.armor.TGArmorModels.initItemRenderers();
 			initShields();
 			initCurioRenderers();
+			// optional: the plugin class touches Ponder classes, so it's only loaded when Ponder is there
+			if (net.neoforged.fml.ModList.get().isLoaded("ponder")) {
+				techguns.plugins.ponder.TGPonderPlugin.register();
+			}
 		});
 		techguns.util.TGFXHooks.setHandler(ClientFX.INSTANCE);
 		techguns.util.SoundUtil.setClientPlayer((ent, sound, volume, pitch, repeat, moving, gunPosition, category, condition) -> net.minecraft.client.Minecraft

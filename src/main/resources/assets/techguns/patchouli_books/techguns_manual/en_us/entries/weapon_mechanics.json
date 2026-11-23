@@ -1,12 +1,12 @@
 {
     "name": "* Weapon Mechanics *",
-    "icon": "techguns:itemshared:57",
-    "category": "weapons",
+    "icon": "techguns:rubberbar",
+    "category": "techguns:weapons",
     "pages": [
         {
             "type": "text",
             "text": "Weapons have a left click action and optionally a $(thing)right click action$(). The $(thing)left click action$() is either primary fire or melee when the weapon is a tool or a melee weapon. The $(thing)right-click action$() differs between weapon. Some weapons do not have a $(thing)right-click action$(), others have zooming, secondary fire mode or a charging attack."
-        }, 
+        },
         {
             "type": "text",
             "title": "Hand Types",
@@ -31,7 +31,10 @@
         {
             "type": "image",
             "title": "Safe mode Indicator",
-            "images": ["techguns:textures/gui/manual/safemode_on.png","techguns:textures/gui/manual/safemode_off.png"],
+            "images": [
+                "techguns:textures/gui/manual/safemode_on.png",
+                "techguns:textures/gui/manual/safemode_off.png"
+            ],
             "text": "The icon showing the current state of safe-mode while holding a gun."
         }
     ]

@@ -217,6 +217,42 @@ Run with `./gradlew runGameTestServer` (about a minute, headless, in `run-gamete
 - Not covered: client-only code. This is the `TGSound` playback, the Shishkebap flame rendering, the mining outline
   drawing and the lock-on reset. NeoForge 1.21.1 has no client game tests, so those still need an in-game look.
 
+### 7. Techguns Manual (Patchouli) and Ponder scenes (all 23 tests pass; not tested in game)
+
+Optional dependencies: Patchouli `1.21.1-93-NEOFORGE` and Ponder `1.0.69` (Flywheel `1.0.0-9` is its client
+dependency). All three are `localRuntime`, so they're in the dev client and the game test server, but not required.
+
+- **Manual.** The 1.12 book files were copied over with `book.json` in `assets/`, the 1.12 layout. Since Patchouli
+  1.20 it has to be in `data/` with `use_resource_pack: true`, so the book didn't load in the port. Converted with a one-off script:
+  - `book.json` moved to `data/techguns/patchouli_books/techguns_manual/`, creative tab `techguns:techguns`;
+  - metadata ids flattened (`itemshared:99` to `enricheduranium`, `simplemachine:8` to `camo_bench`, and so on), the
+    multiblock pages use the new block ids, and the armor-stand NBT uses 1.21's lower case `count`;
+  - text that described 1.12 only things was rewritten: the inventory tab and its toggle buttons are Curios slots and
+    keybinds, RF is FE, the config file name, and the TODO/WIP notes;
+  - entry `category` ids are namespaced (`techguns:weapons`), which Patchouli 1.20+ requires. Without this the whole
+    book loaded empty;
+  - broken 1.12 links fixed (`reactionchamber`, `fabricator`, `machines/reaction_chamber` were missing their folder).
+  The crafting recipes were already ported with a `patchouli` mod-loaded condition.
+- **Ponder** (`plugins/ponder`, registered from `TGClientSetup` only when Ponder is loaded). Four scenes, tagged
+  "Techguns Multiblocks": fabricator, reaction chamber, small ore drill, framed ore drill. The schematics are in
+  `assets/techguns/ponder/` and the scene text in `en_us.json` (`techguns.ponder.*`). The "right-click to form" step
+  runs the machine's own `MultiBlockSchematic.form` on Ponder's level, so the scene shows the real formed models.
+  For that, `MultiBlockMachineTileEntMaster.setFormed` no longer returns on the client. All its callers are server
+  only, apart from the scenes.
+- New `gametest/GuideTests.java` (3 tests):
+  - every category, icon, spotlight item, crafting recipe, multiblock block, armor-stand entity (all 4 pieces must
+    load), image and `$(l:...)` link (including anchors) in the manual resolves. It also applies Patchouli's own load
+    rules: namespaced categories and parents, crafting pages on crafting recipes, and multiblock patterns with one `0`
+    center and even rows;
+  - the manual recipes make a `patchouli:guide_book` with the `techguns:techguns_manual` component;
+  - every Ponder schematic placed in the world passes `checkForm`, forms, links every part and unforms
+    (template `empty_large`, 7x9x7).
+- I checked that they catch failures: a wrong glass block in the fabricator schematic and a misspelled icon both
+  failed, then I put them back.
+- Needs an in-game look: the book opens from the creative tab with the Techguns manual model, pages render, the
+  multiblock previews show; in Ponder, the camera faces the controllers and the formed models appear after the
+  right-click step.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

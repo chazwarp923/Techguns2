@@ -1,7 +1,7 @@
 {
     "name": "* Machine Mechanics *",
-    "icon": "techguns:itemshared:70",
-    "category": "powered_machines",
+    "icon": "techguns:cyberneticparts",
+    "category": "techguns:powered_machines",
     "pages": [
         {
             "type": "text",
@@ -28,7 +28,7 @@
             "type": "text",
             "title": "Power",
             "anchor": "power",
-            "text": "Machines that have a power bar on the left side of the gui require power to operate. The power system used by techguns is $(thing)'FE'$() or $(thing)'Forge Energy'$() which is also compatible with most RF (Redstone Flux) based cables. Techguns has no options to generate power itself, you need another mod to produce it. Alternatively you can disable power requirement in the techguns.cfg config file."
+            "text": "Machines that have a power bar on the left side of the gui require power to operate. The power system used by techguns is $(thing)'FE'$() or $(thing)'Forge Energy'$() which every power mod for this Minecraft version uses. Techguns has no options to generate power itself, you need another mod to produce it. Alternatively you can disable power requirement with the machinesNeedNoPower option in the techguns-common.toml config file."
         },
         {
             "type": "text",
@@ -39,11 +39,11 @@
         {
             "type": "spotlight",
             "title": "Upgrade Slot",
-            "item": "techguns:itemshared:94",
+            "item": "techguns:oxygenmask",
             "anchor": "upgrade",
             "text": "Some machines have an upgrade slot in the bottom right of their gui. In this slot 'Machine Upgrades' can be placed. The 'Stack Operation' upgrade allows the machine to process the same recipe multiple times at once. The stack upgrade can be applied up to 7 times allowing to process a recipe up to 8x simultaneously."
         },
-          {
+        {
             "type": "spotlight",
             "title": "'Wrench'",
             "item": "techguns:crowbar",
