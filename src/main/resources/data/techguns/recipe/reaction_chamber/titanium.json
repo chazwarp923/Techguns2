@@ -1,7 +1,7 @@
 {
   "type": "techguns:reaction_chamber",
   "input": {
-    "item": "techguns:ore_titanium"
+    "tag": "c:ores/titanium"
   },
   "focus": "techguns:rcheatray",
   "fluid": {

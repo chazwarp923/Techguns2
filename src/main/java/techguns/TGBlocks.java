@@ -31,6 +31,11 @@ public class TGBlocks {
 	public static final DeferredBlock<Block> ORE_LEAD = ore("ore_lead", 6.0f, 0);
 	public static final DeferredBlock<Block> ORE_TITANIUM = ore("ore_titanium", 8.0f, 0);
 	public static final DeferredBlock<Block> ORE_URANIUM = ore("ore_uranium", 7.0f, 4);
+	/* Deepslate variants (new, 1.12 had no deepslate): same drops, a bit harder like vanilla's deepslate ores */
+	public static final DeferredBlock<Block> DEEPSLATE_ORE_TIN = deepslateOre("deepslate_ore_tin", 4.0f, 0);
+	public static final DeferredBlock<Block> DEEPSLATE_ORE_LEAD = deepslateOre("deepslate_ore_lead", 6.0f, 0);
+	public static final DeferredBlock<Block> DEEPSLATE_ORE_TITANIUM = deepslateOre("deepslate_ore_titanium", 8.0f, 0);
+	public static final DeferredBlock<Block> DEEPSLATE_ORE_URANIUM = deepslateOre("deepslate_ore_uranium", 7.0f, 4);
 
 	/* Metal panels (camo changeable group "metalpanel") */
 	public static final DeferredBlock<Block> CONTAINER_RED = metal("container_red");
@@ -279,6 +284,12 @@ public class TGBlocks {
 	private static DeferredBlock<Block> ore(String name, float hardness, int light) {
 		return register(name, Block::new, BlockBehaviour.Properties.of().mapColor(MapColor.STONE).instrument(NoteBlockInstrument.BASEDRUM)
 				.sound(SoundType.STONE).strength(hardness, hardness).requiresCorrectToolForDrops().lightLevel(s -> light));
+	}
+
+	/** vanilla's deepslate ores take 1.5 more hardness than the stone ones and have the deepslate look and sound */
+	private static DeferredBlock<Block> deepslateOre(String name, float hardness, int light) {
+		return register(name, Block::new, BlockBehaviour.Properties.of().mapColor(MapColor.DEEPSLATE).instrument(NoteBlockInstrument.BASEDRUM)
+				.sound(SoundType.DEEPSLATE).strength(hardness + 1.5f, hardness).requiresCorrectToolForDrops().lightLevel(s -> light));
 	}
 
 	private static DeferredBlock<Block> metal(String name) {

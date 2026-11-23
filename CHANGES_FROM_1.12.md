@@ -97,6 +97,8 @@ old tab.
   hard-coded in Java and changed through CraftTweaker. Now any datapack, or KubeJS / CraftTweaker through their
   datapack support, can add, change or remove them.
 - **Power is Forge Energy (FE)**, which every 1.21 power mod uses. The `machinesNeedNoPower` config is unchanged.
+- **The Blast Furnace is now the "Metal Blast Furnace"** (English name only, same id), because vanilla added its own
+  Blast Furnace in 1.14.
 
 ### 3.5 Radiation
 Unchanged in behaviour: radioactive items in the inventory, radiation sickness, Rad-Away, rad pills, radiation
@@ -130,8 +132,22 @@ placement. All of it is datapack JSON in `data/techguns/worldgen/`.
   These replace the 1.12 small/medium/big weights. The `StructureSpawnWeight{Small,Medium,Big}` config options were
   removed; use a datapack to change the weights or spacing. `SpawnStructures` and `SpawnOreClusterStructures` still
   switch structures on and off.
-- **Ores** (copper, tin, lead, titanium, uranium) are vanilla placed features, added through a NeoForge biome
-  modifier. The `doOreGen*` config options still work.
+- **Ores** (tin, lead, titanium, uranium) are vanilla placed features, added through a NeoForge biome modifier.
+  Copper ore is vanilla's. The `doOreGen*` config options are read, but worldgen doesn't check them yet, so they
+  can't turn ores off.
+- **Deepslate ores (new).** Each ore has a deepslate variant, placed into deepslate like vanilla's. Each spawn range
+  reaches 64 blocks deeper (the world floor moved from y 0 to y -64). The count per chunk went up in proportion,
+  so the density per layer is the same as 1.12:
+
+  | Ore | 1.12 | 1.21.1 |
+  |---|---|---|
+  | Tin | y 5 to 59, 10 per chunk | y -59 to 59, 22 per chunk |
+  | Lead | y 5 to 49, 8 per chunk | y -59 to 49, 19 per chunk |
+  | Titanium | y 4 to 31, 5 per chunk | y -60 to 31, 16 per chunk |
+  | Uranium | y 4 to 23, 4 per chunk | y -60 to 23, 17 per chunk |
+
+  The tin and lead smelting recipes and the titanium reaction chamber recipe take the `c:ores/...` tags, so both
+  variants (and other mods' ores) work.
 
 ### 4.2 Fixes compared to 1.12
 - Doors in structures always have matching halves. 1.12 only stored part of each door's state in each half, which
@@ -193,12 +209,19 @@ sections such as `general.RestrictUnsafeModeToOP`.
 - **OBJ guns** use a small OBJ mesh renderer instead of 1.12 baked models.
 - **The particle system** (`.txt` FX definitions, death effects, gore, muzzle FX, item-attached FX) is ported. It
   draws through 1.21 render types and supports depth sorting (`ParticleDepthSortPasses` client config).
+- **Textures updated for 1.14+ vanilla art.** The ores now use vanilla 1.21 stone and spot shapes in Techguns'
+  colours (iron's shape for tin, gold's for lead, diamond's for titanium, redstone's for uranium), at vanilla's 16x16.
+  The ingots and nuggets use the 1.21 iron ingot and nugget shapes, and the crate sides sit on 1.21 planks.
+  The ore cluster backgrounds are 1.21 stone (netherrack for the nether crystal cluster), with their shading, glow
+  and animation kept. The
+  `oretitanium` item is now "Raw Titanium" with a raw-ore icon (same id). The unused Techguns copper ingot and copper
+  ore files were removed.
 - **Keybinds** are NeoForge key mappings with the same defaults: N night vision, B safe mode, V step assist, R reload, J jetpack.
 
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 23 headless game tests, run with `./gradlew runGameTestServer`. They run
+1.12 had no automated tests. There are now 24 headless game tests, run with `./gradlew runGameTestServer`. They run
 in `run-gametest/` and take about one minute.
 
 - `WorldgenTests`: every dungeon template loads; the castle, military base and bug nest build for 8 seeds each; every
@@ -215,6 +238,8 @@ in `run-gametest/` and take about one minute.
   - tracking sync.
 - `DataTests`: all machine recipe types have recipes with results, all loot tables load, and every item and block is
   translated.
+- `OreTests`: the deepslate ores match the stone ores in tags, tool level, drops, light and worldgen targets, and
+  smelt or react like them.
 - `GuideTests`: every item, recipe, multiblock block, armor-stand entity, image and link in the manual resolves; the
   manual recipes make the Techguns book; every Ponder schematic forms with the real multiblock code.
 

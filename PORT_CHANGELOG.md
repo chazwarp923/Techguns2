@@ -253,6 +253,41 @@ dependency). All three are `localRuntime`, so they're in the dev client and the 
   multiblock previews show; in Ponder, the camera faces the controllers and the formed models appear after the
   right-click step.
 
+### 8. Textures for 1.14+ vanilla art, deepslate ores, Raw Titanium, Metal Blast Furnace (all 24 tests pass; not tested in game)
+
+I compared all 370 Techguns block and item textures, pixel by pixel, with vanilla 1.12.2 and 1.21.1. The 1.12.2 jar
+came from Mojang's launcher servers. Only these were built on vanilla art that changed in 1.14+. They were rebuilt
+with scripts (in the job's temp folder, not the repo) and checked on a before/after sheet:
+- **Ores** (tin, lead, titanium, uranium): titanium and uranium were 1.12 redstone ore with recoloured spots, and tin
+  and lead sat on an old style stone. They now use a 1.21 vanilla ore's coloured spot pixels recoloured with the
+  Techguns spot colours (matched by brightness), and vanilla's grey rock shading. Iron's pattern for tin, gold's for
+  lead, diamond's for titanium, redstone's for uranium. Uranium's 4 frame animation and green glow are kept.
+- **New deepslate ores**, made the same way from the deepslate vanilla ores. Blocks `deepslate_ore_*` with 1.5 more
+  hardness and the deepslate sound, like vanilla's. They come with models, loot (drops itself), the same tool-level
+  tags, `c:ores/*`, `c:ores_in_ground/stone|deepslate`, and en/de/ru names. The ore features place them into
+  `deepslate_ore_replaceables`.
+- **Spawn ranges** reach 64 blocks deeper, with counts scaled so the density per layer is unchanged (table in
+  `CHANGES_FROM_1.12.md` 4).
+- **Recipes:** tin and lead smelting and blasting, and the titanium reaction chamber recipe, take `c:ores/*` tags.
+- **Ingots and nuggets:** the 1.21 iron ingot and iron nugget shapes, recoloured from each Techguns texture's own
+  colours.
+- **Crates:** the armor, explosive and medical crate sides keep their markings on 1.21 oak, spruce and birch planks.
+- **Ore clusters** (all 9): their background was 1.12 stone, or netherrack for the nether crystal, at 2x with shading
+  painted on. Pixels that are the old base times one brightness factor became 1.21 stone at 2x times that factor.
+  Coloured glow pixels close to the old base kept their colour difference on the new base. For netherrack this was
+  limited to red pixels, so the crystals don't pick up netherrack noise. The clusters, the 4 animation frames and the
+  glows are unchanged.
+- **Raw Titanium:** `oretitanium` keeps its id. It's named Raw Titanium (Rohtitan, Необработанный титан) and its icon
+  is the raw iron shape in its colours.
+- **Copper leftovers removed:** `ingotcopper` texture and model, `ore_copper` texture and model, and their lang keys.
+  Copper is vanilla's.
+- **Metal Blast Furnace:** English block, container and manual names. German and Russian didn't clash with vanilla.
+- New `gametest/OreTests.java`. A model reference check found no broken references from this change; the 7 that
+  exist were already there.
+- Found, not fixed: the `doOreGen*` configs are never checked by worldgen. `CHANGES_FROM_1.12.md` claimed they work;
+  that's corrected.
+- Needs an in-game look: the new textures, and deepslate ores appearing below y 0.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

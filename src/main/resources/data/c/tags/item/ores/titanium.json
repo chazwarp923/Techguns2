@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
-    "techguns:ore_titanium"
+    "techguns:ore_titanium",
+    "techguns:deepslate_ore_titanium"
   ]
 }

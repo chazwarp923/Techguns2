@@ -2,6 +2,8 @@
   "replace": false,
   "values": [
     "techguns:ore_lead",
-    "techguns:ore_uranium"
+    "techguns:deepslate_ore_lead",
+    "techguns:ore_uranium",
+    "techguns:deepslate_ore_uranium"
   ]
 }

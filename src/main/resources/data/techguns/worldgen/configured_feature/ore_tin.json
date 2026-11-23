@@ -12,6 +12,15 @@
         "state": {
           "Name": "techguns:ore_tin"
         }
+      },
+      {
+        "target": {
+          "predicate_type": "minecraft:tag_match",
+          "tag": "minecraft:deepslate_ore_replaceables"
+        },
+        "state": {
+          "Name": "techguns:deepslate_ore_tin"
+        }
       }
     ]
   }

@@ -2,7 +2,7 @@
   "type": "minecraft:blasting",
   "category": "misc",
   "ingredient": {
-    "item": "techguns:ore_lead"
+    "tag": "c:ores/lead"
   },
   "result": {
     "id": "techguns:ingotlead"

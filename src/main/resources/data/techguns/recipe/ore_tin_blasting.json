@@ -2,7 +2,7 @@
   "type": "minecraft:blasting",
   "category": "misc",
   "ingredient": {
-    "item": "techguns:ore_tin"
+    "tag": "c:ores/tin"
   },
   "result": {
     "id": "techguns:ingottin"
