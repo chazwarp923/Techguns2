@@ -11,13 +11,17 @@ import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
 import techguns.curios.TGCurios;
+import techguns.items.ItemAmmoBox;
 
 public final class InventoryUtil {
 	private InventoryUtil() {}
 
-	/** Add to the TG ammo slots first, then the main inventory. Returns amount that did NOT fit. */
+	/** Add to the TG ammo slots first, then the ammo boxes, then the main inventory. Returns amount that did NOT fit. */
 	public static int addAmmoToPlayerInventory(Player ply, ItemStack ammo) {
 		int amount = addAmmoToAmmoInventory(ply, ammo);
+		if (amount > 0) {
+			amount = addAmmoToAmmoBoxes(ply, ammo.copyWithCount(amount));
+		}
 		if (amount > 0) {
 			return addItemToInventory(ply.getInventory().items, ammo.copyWithCount(amount), 0, ply.getInventory().items.size());
 		}
@@ -28,6 +32,34 @@ public final class InventoryUtil {
 	public static int addAmmoToAmmoInventory(Player ply, ItemStack ammo) {
 		List<ItemStack> slots = TGCurios.getStacks(ply, TGCurios.SLOT_AMMO);
 		return addItemToInventory(slots, ammo, 0, slots.size());
+	}
+
+	/** the ammo boxes in the main inventory and the offhand (Fabric port: reloading uses them) */
+	public static List<ItemStack> getAmmoBoxes(Player ply) {
+		List<ItemStack> boxes = new java.util.ArrayList<>();
+		for (ItemStack s : ply.getInventory().items) {
+			if (s.getItem() instanceof ItemAmmoBox) {
+				boxes.add(s);
+			}
+		}
+		for (ItemStack s : ply.getInventory().offhand) {
+			if (s.getItem() instanceof ItemAmmoBox) {
+				boxes.add(s);
+			}
+		}
+		return boxes;
+	}
+
+	/** Add to the ammo boxes. Returns amount that did NOT fit. */
+	public static int addAmmoToAmmoBoxes(Player ply, ItemStack ammo) {
+		ItemStack rest = ammo.copy();
+		for (ItemStack box : getAmmoBoxes(ply)) {
+			if (rest.isEmpty()) {
+				break;
+			}
+			((ItemAmmoBox) box.getItem()).insert(box, rest);
+		}
+		return rest.getCount();
 	}
 
 	/** Try to merge a stack into a list of slots; returns the amount that could NOT be merged. */
@@ -85,6 +117,12 @@ public final class InventoryUtil {
 		}
 		List<ItemStack> slots = TGCurios.getStacks(ply, TGCurios.SLOT_AMMO);
 		int missing = consumeItem(slots, ammo, 0, slots.size());
+		for (ItemStack box : getAmmoBoxes(ply)) {
+			if (missing <= 0) {
+				break;
+			}
+			missing -= ItemAmmoBox.remove(box, ammo, missing);
+		}
 		if (missing > 0) {
 			consumeItem(ply.getInventory().items, ammo.copyWithCount(missing), 0, ply.getInventory().items.size());
 		}
@@ -98,6 +136,9 @@ public final class InventoryUtil {
 		List<ItemStack> slots = TGCurios.getStacks(ply, TGCurios.SLOT_AMMO);
 		int have = countItemInInv(slots, ammo, 0, slots.size())
 				+ countItemInInv(ply.getInventory().items, ammo, 0, ply.getInventory().items.size());
+		for (ItemStack box : getAmmoBoxes(ply)) {
+			have += ItemAmmoBox.count(box, ammo);
+		}
 		return have >= ammo.getCount();
 	}
 

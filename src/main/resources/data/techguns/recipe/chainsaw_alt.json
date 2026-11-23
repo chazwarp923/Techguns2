@@ -2,25 +2,25 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
-    "ccp",
-    "mmr",
-    "ccf"
+    "  p",
+    "hsr",
+    "  m"
   ],
   "key": {
     "p": {
       "item": "techguns:plasticsheet"
     },
+    "h": {
+      "item": "techguns:chainsawblades_steel"
+    },
+    "s": {
+      "tag": "c:ingots/steel"
+    },
     "r": {
       "item": "techguns:ironreceiver"
     },
-    "c": {
-      "item": "techguns:mechanicalpartsiron"
-    },
-    "f": {
-      "item": "techguns:fueltankempty"
-    },
     "m": {
-      "tag": "c:plates/iron"
+      "item": "techguns:fueltankempty"
     }
   },
   "result": {

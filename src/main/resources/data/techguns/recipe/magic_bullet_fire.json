@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "techguns:magic_bullet"
+    },
+    {
+      "item": "techguns:magic_bullet"
+    },
+    {
+      "item": "techguns:magic_bullet"
+    },
+    {
+      "item": "techguns:magic_bullet"
+    },
+    {
+      "item": "minecraft:blaze_powder"
+    }
+  ],
+  "result": {
+    "id": "techguns:magic_bullet_fire",
+    "count": 4
+  }
+}

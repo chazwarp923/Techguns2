@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "cpc",
+    "pgp"
+  ],
+  "key": {
+    "p": {
+      "item": "techguns:powerplating_mk2"
+    },
+    "c": {
+      "tag": "c:circuits/elite"
+    },
+    "g": {
+      "tag": "c:glass_panes"
+    }
+  },
+  "result": {
+    "id": "techguns:t4_power_helmet"
+  }
+}

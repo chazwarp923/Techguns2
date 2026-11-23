@@ -4,7 +4,7 @@
     "tag": "c:ingots/enriched_uranium"
   },
   "wires": {
-    "tag": "c:circuits/elite",
+    "tag": "c:circuits/advanced",
     "count": 2
   },
   "powder": {

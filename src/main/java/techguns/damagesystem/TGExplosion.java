@@ -49,6 +49,10 @@ public class TGExplosion {
 	double secondaryDamage;
 	double blockDamageFactor;
 	public float blockDropChance = 0.25f;
+	/** entities the explosion doesn't hurt (the Fabric port's magic bolt leaves out the one it hit) */
+	public java.util.Set<Entity> excludedEntities = java.util.Set.of();
+	/** seconds hurt entities burn for, 0 for none (Fabric port setIncendiary, entities only) */
+	public int entityFireTime = 0;
 
 	Explosion explosionDummy;
 	TGDamageSource dmgSrc = null;
@@ -193,7 +197,7 @@ public class TGExplosion {
 		}
 
 		for (Entity entity : list) {
-			if (!entity.ignoreExplosion(explosionDummy) && GenericProjectile.BULLET_TARGETS.test(entity)) {
+			if (!entity.ignoreExplosion(explosionDummy) && GenericProjectile.BULLET_TARGETS.test(entity) && !this.excludedEntities.contains(entity)) {
 				double distance = this.position.distanceTo(new Vec3(entity.getX(), entity.getY() + entity.getEyeHeight(), entity.getZ()));
 				double damage = powerAt(distance);
 
@@ -210,6 +214,9 @@ public class TGExplosion {
 						f = DamageSystem.getDamageFactor(elbExploder, elb);
 					}
 					entity.hurt(tgs, (float) Math.max(0, damage * f));
+					if (this.entityFireTime > 0 && !entity.fireImmune()) {
+						entity.igniteForSeconds(this.entityFireTime);
+					}
 				}
 			}
 		}

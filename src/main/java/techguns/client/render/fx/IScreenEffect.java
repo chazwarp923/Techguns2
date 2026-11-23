@@ -45,6 +45,24 @@ public interface IScreenEffect {
 	IScreenEffect sniperScope = new ScreenEffect("textures/fx/testscope.png", 1, 1, 1, RenderType.ALPHA);
 	IScreenEffect techScope = new ScreenEffect("textures/fx/techscope.png", 1, 1, 1, RenderType.ALPHA).setFlipAxis(false, true);
 
+	/**
+	 * Fabric port: the magic rifle's charge circle, by the bullet loaded (arcane, fire, lightning), growing from 5 to 10
+	 * times and pulsing while the charge is held.
+	 */
+	IScreenEffect magicRifleCharge = new VariableScreenEffect(new ScreenEffect("textures/fx/magic_circle_01.png", 1, 1, 1, RenderType.ADDITIVE).setFade(FadeType.RISE_SMOOTH_AND_PULSE_FAST)
+					.setColor(1.0f, 1.0f, 1.0f, 1.0f).setDynamicScale(FadeType.RISE_SMOOTH, 5.0f, 10.0f).setDrawMode3p(ScreenEffect.DrawMode3p.PLANE_Z))
+			.put(techguns.items.guns.ammo.AmmoTypes.TYPE_DEFAULT, new ScreenEffect("textures/fx/magic_circle_arcane.png", 1, 1, 1, RenderType.ADDITIVE).setFade(FadeType.RISE_SMOOTH_AND_PULSE_FAST)
+					.setColor(0.75f, 0.75f, 0.75f, 1.0f).setDynamicScale(FadeType.RISE_SMOOTH, 5.0f, 10.0f).setDrawMode3p(ScreenEffect.DrawMode3p.PLANE_Z))
+			.put(techguns.items.guns.ammo.AmmoTypes.TYPE_FIRE, new ScreenEffect("textures/fx/magic_circle_fire.png", 1, 1, 1, RenderType.ADDITIVE).setFade(FadeType.RISE_SMOOTH_AND_PULSE_FAST)
+					.setColor(0.75f, 0.75f, 0.75f, 1.0f).setDynamicScale(FadeType.RISE_SMOOTH, 5.0f, 10.0f).setDrawMode3p(ScreenEffect.DrawMode3p.PLANE_Z))
+			.put(techguns.items.guns.ammo.AmmoTypes.TYPE_LIGHTNING, new ScreenEffect("textures/fx/magic_circle_01.png", 1, 1, 1, RenderType.ADDITIVE).setFade(FadeType.RISE_SMOOTH_AND_PULSE_FAST)
+					.setColor(0.55f, 0.75f, 1.0f, 1.0f).setDynamicScale(FadeType.RISE_SMOOTH, 5.0f, 10.0f).setDrawMode3p(ScreenEffect.DrawMode3p.PLANE_Z));
+
+	/** for effects that look different by the loaded ammo variant ({@link VariableScreenEffect}); the rest ignore it */
+	default void doRender(float progress, float offsetX, float offsetY, float offsetZ, float scale, boolean is3p, String ammoVariant) {
+		doRender(progress, offsetX, offsetY, offsetZ, scale, is3p);
+	}
+
 	default void doRender(float progress, float offsetX, float offsetY, float offsetZ, float scale, boolean is3p) {
 		doRender(progress, offsetX, offsetY, offsetZ, scale, 0, 0, 0, is3p);
 	}

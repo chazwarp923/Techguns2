@@ -213,6 +213,25 @@
       "npc_burst_count": 6,
       "npc_burst_delay": 15
     },
+    "techguns:grapplinghook": {
+      "damage": 1.0,
+      "damage_min": 0.5,
+      "damage_drop_start": 8.0,
+      "damage_drop_end": 15.0,
+      "range": 60,
+      "bullet_speed": 2.5,
+      "gravity": 0.005,
+      "inaccuracy": 0.0,
+      "penetration": 0.5,
+      "fire_delay": 6,
+      "reload_time": 25,
+      "charge_time": 30.0,
+      "ammo_per_charge": 1,
+      "npc_range": 18.0,
+      "npc_attack_time": 30,
+      "npc_burst_count": 0,
+      "npc_burst_delay": 0
+    },
     "techguns:grenadelauncher": {
       "damage": 30.0,
       "damage_min": 12.0,
@@ -386,6 +405,25 @@
       "npc_attack_time": 35,
       "npc_burst_count": 3,
       "npc_burst_delay": 2
+    },
+    "techguns:magicrifle": {
+      "damage": 25.0,
+      "damage_min": 10.0,
+      "damage_drop_start": 40.0,
+      "damage_drop_end": 60.0,
+      "range": 60,
+      "bullet_speed": 2.5,
+      "gravity": 0.0,
+      "inaccuracy": 0.05,
+      "penetration": 0.5,
+      "fire_delay": 6,
+      "reload_time": 2,
+      "charge_time": 60.0,
+      "ammo_per_charge": 1,
+      "npc_range": 36.0,
+      "npc_attack_time": 60,
+      "npc_burst_count": 0,
+      "npc_burst_delay": 0
     },
     "techguns:mibgun": {
       "damage": 16.0,

@@ -4,7 +4,7 @@
     "item": "techguns:coil"
   },
   "wires": {
-    "tag": "c:circuits/elite",
+    "tag": "c:circuits/advanced",
     "count": 2
   },
   "powder": {

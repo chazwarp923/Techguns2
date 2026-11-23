@@ -20,6 +20,15 @@ import techguns.items.guns.GenericGun;
 public class RenderGunBase extends RenderItemBase {
 
 	protected IScreenEffect muzzleFX = null;
+	protected IScreenEffect chargeFX = null;
+	protected float chargeFX_x_l = 0f;
+	protected float chargeFX_x_r = 0f;
+	protected float chargeFX_y = 0f;
+	protected float chargeFX_z = 0f;
+	protected float chargeFX_scale = 1.0f;
+	protected float chargeFX_3p_y = 0f;
+	protected float chargeFX_3p_z = 0f;
+	protected float chargeFX_3p_scale = 0.5f;
 	protected IScreenEffect scope = null;
 
 	protected float muzzleFX_x_l = 0f;
@@ -132,6 +141,24 @@ public class RenderGunBase extends RenderItemBase {
 		return this;
 	}
 
+	/** Fabric port: an effect drawn at the muzzle while charging, given the charge (going on past 1 while held) */
+	public RenderGunBase setChargeFx(IScreenEffect chargeFX, float x, float y, float z, float scale, float x_l) {
+		this.chargeFX = chargeFX;
+		this.chargeFX_x_r = x;
+		this.chargeFX_x_l = x_l;
+		this.chargeFX_y = y;
+		this.chargeFX_z = z;
+		this.chargeFX_scale = scale;
+		return this;
+	}
+
+	public RenderGunBase setChargeFXPos3P(float y, float z, float scale) {
+		this.chargeFX_3p_y = y;
+		this.chargeFX_3p_z = z;
+		this.chargeFX_3p_scale = scale;
+		return this;
+	}
+
 	public RenderGunBase setMuzzleFXPos3P(float y, float z) {
 		this.muzzleFX_3p_y = y;
 		this.muzzleFX_3p_z = z;
@@ -179,6 +206,8 @@ public class RenderGunBase extends RenderItemBase {
 		float reloadProgress = 0.0f;
 		float muzzleFlashProgress = 0.0f;
 		float chargeProgress = 0.0f;
+		/** the charge, going on past 1 while held (for the charge effect) */
+		float chargeProgressFull = 0.0f;
 		byte attackType = 0;
 
 		boolean renderScope = false;
@@ -189,6 +218,9 @@ public class RenderGunBase extends RenderItemBase {
 
 			if (gun.canCharge() && !isOffhand && entityIn.isUsingItem()) {
 				chargeProgress = getChargeProgress(gun, stack, entityIn);
+				if (gun instanceof techguns.items.guns.GenericGunCharge charge && entityIn.getUseItem() == stack) {
+					chargeProgressFull = Math.max(0f, entityIn.getTicksUsingItem() / charge.fullChargeTime);
+				}
 			} else if (attack.isReloading()) {
 				long diff = attack.getReloadTime() - System.currentTimeMillis();
 				if (diff <= 0) {
@@ -279,11 +311,23 @@ public class RenderGunBase extends RenderItemBase {
 				} else {
 					this.drawMuzzleFx3P(muzzleFlashProgress, attackType, leftHand);
 				}
-			} else if (reloadProgress <= 0) {
-				if (isFirstPerson(transform)) {
-					this.drawIdleFx(leftHand);
-				} else {
-					this.drawIdleFx3P(leftHand);
+			} else {
+				if (reloadProgress <= 0) {
+					if (isFirstPerson(transform)) {
+						this.drawIdleFx(leftHand);
+					} else {
+						this.drawIdleFx3P(leftHand);
+					}
+				}
+				if (chargeProgressFull > 0 && this.chargeFX != null) {
+					String variant = gun.getCurrentAmmoVariantKey(stack);
+					if (isFirstPerson(transform)) {
+						float x = leftHand ? this.chargeFX_x_l : this.chargeFX_x_r;
+						this.chargeFX.doRender(chargeProgressFull, x, this.chargeFX_y, this.chargeFX_z, this.chargeFX_scale, false, variant);
+					} else {
+						this.chargeFX.doRender(chargeProgressFull, 0, this.chargeFX_3p_y, this.chargeFX_3p_z, this.chargeFX_scale * this.chargeFX_3p_scale,
+								true, variant);
+					}
 				}
 			}
 		} else {

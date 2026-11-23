@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "i  ",
+    "iii",
+    "i  "
+  ],
+  "key": {
+    "i": {
+      "tag": "c:ingots/steel"
+    }
+  },
+  "result": {
+    "id": "techguns:powerhammerhead_steel"
+  }
+}

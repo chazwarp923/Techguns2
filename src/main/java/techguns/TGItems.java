@@ -99,8 +99,14 @@ public class TGItems {
 	public static final DeferredItem<GenericItemShared> WIRE_GOLD = shared("goldwire", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> CARBON_FIBERS = shared("carbonfibers", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> CIRCUIT_BOARD_BASIC = shared("circuitboard", TGSlotType.NORMAL);
+	/** between the basic and the elite circuit board (Fabric port) */
+	public static final DeferredItem<GenericItemShared> CIRCUIT_BOARD_ADVANCED = shared("circuitboardadvanced", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> CIRCUIT_BOARD_ELITE = shared("circuitboardelite", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> POWER_ARMOR_PLATING = shared("powerplating", TGSlotType.NORMAL);
+	/** T4 power armor plating (Fabric port) */
+	public static final DeferredItem<GenericItemShared> POWER_ARMOR_PLATING_MK2 = shared("powerplating_mk2", TGSlotType.NORMAL);
+	/** praetor armor plating (Fabric port) */
+	public static final DeferredItem<GenericItemShared> NETHER_ARMOR_PLATING = shared("netherarmorplating", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> COIL = shared("coil", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> CYBERNETIC_PARTS = shared("cyberneticparts", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> ELECTRIC_ENGINE = shared("electricengine", TGSlotType.NORMAL);
@@ -112,13 +118,21 @@ public class TGItems {
 	public static final DeferredItem<GenericItemShared> NETHER_CHARGE = shared("nethercharge", TGSlotType.AMMOSLOT);
 	public static final DeferredItem<GenericItemShared> TREATED_LEATHER = shared("treatedleather", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> ORE_TITANIUM = shared("oretitanium", TGSlotType.NORMAL);
+	/** raw ores, dropped by the ores like vanilla's (Fabric port); titanium ore drops the existing oretitanium */
+	public static final DeferredItem<GenericItemShared> RAW_TIN = shared("raw_tin", TGSlotType.NORMAL);
+	public static final DeferredItem<GenericItemShared> RAW_LEAD = shared("raw_lead", TGSlotType.NORMAL);
+	public static final DeferredItem<GenericItemShared> RAW_URANIUM = shared("raw_uranium", TGSlotType.NORMAL);
 	/** Techguns copper ingot replaced by vanilla copper (added in 1.17). */
 	public static final ItemLike INGOT_COPPER = Items.COPPER_INGOT;
 	public static final DeferredItem<GenericItemShared> INGOT_TIN = shared("ingottin", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> INGOT_BRONZE = shared("ingotbronze", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> INGOT_LEAD = shared("ingotlead", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> INGOT_STEEL = shared("ingotsteel", TGSlotType.NORMAL);
+	/** crafted from iron and coal, blasted into steel (Fabric port) */
+	public static final DeferredItem<GenericItemShared> RAW_STEEL_INGOT = shared("raw_steel_ingot", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> INGOT_OBSIDIAN_STEEL = shared("ingotobsidiansteel", TGSlotType.NORMAL);
+	/** crafted from steel and obsidian, blasted into obsidian steel (Fabric port) */
+	public static final DeferredItem<GenericItemShared> RAW_OBSIDIAN_STEEL_INGOT = shared("raw_obsidian_steel_ingot", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> INGOT_TITANIUM = shared("ingottitanium", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> NUGGET_COPPER = shared("nuggetcopper", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> NUGGET_LEAD = shared("nuggetlead", TGSlotType.NORMAL);
@@ -143,6 +157,10 @@ public class TGItems {
 	public static final DeferredItem<GenericItemShared> SHOTGUN_ROUNDS_INCENDIARY = shared("shotgunrounds_incendiary", TGSlotType.AMMOSLOT);
 	public static final DeferredItem<GenericItemShared> AS50_MAGAZINE_INCENDIARY = shared("as50magazine_incendiary", TGSlotType.AMMOSLOT, 64, true);
 	public static final DeferredItem<GenericItemShared> SNIPER_ROUNDS_INCENDIARY = shared("sniperrounds_incendiary", TGSlotType.AMMOSLOT);
+	/** magic rifle ammo (Fabric port): arcane, fire and lightning */
+	public static final DeferredItem<GenericItemShared> MAGIC_BULLET = shared("magic_bullet", TGSlotType.AMMOSLOT);
+	public static final DeferredItem<GenericItemShared> MAGIC_BULLET_FIRE = shared("magic_bullet_fire", TGSlotType.AMMOSLOT);
+	public static final DeferredItem<GenericItemShared> MAGIC_BULLET_LIGHTNING = shared("magic_bullet_lightning", TGSlotType.AMMOSLOT);
 	public static final DeferredItem<GenericItemShared> PISTOL_ROUNDS_INCENDIARY = shared("pistolrounds_incendiary", TGSlotType.AMMOSLOT);
 	public static final DeferredItem<GenericItemShared> RIFLE_ROUNDS_INCENDIARY = shared("riflerounds_incendiary", TGSlotType.AMMOSLOT);
 	public static final DeferredItem<GenericItemShared> RIFLE_ROUNDS_STACK_INCENDIARY = shared("rifleroundsstack_incendiary", TGSlotType.AMMOSLOT);
@@ -157,8 +175,17 @@ public class TGItems {
 	public static final DeferredItem<GenericItemShared> MININGDRILLHEAD_CARBON = shared("miningdrillhead_carbon", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> POWERHAMMERHEAD_OBSIDIAN = shared("powerhammerhead_obsidian", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> POWERHAMMERHEAD_CARBON = shared("powerhammerhead_carbon", TGSlotType.NORMAL);
+	/** the power hammer's built-in head, crafted into a new power hammer (Fabric port) */
+	public static final DeferredItem<GenericItemShared> POWERHAMMERHEAD_STEEL = shared("powerhammerhead_steel", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> CHAINSAWBLADES_OBSIDIAN = shared("chainsawblades_obsidian", TGSlotType.NORMAL);
 	public static final DeferredItem<GenericItemShared> CHAINSAWBLADES_CARBON = shared("chainsawblades_carbon", TGSlotType.NORMAL);
+	/** the chainsaw's built-in blades, crafted into a new chainsaw (Fabric port) */
+	public static final DeferredItem<GenericItemShared> CHAINSAWBLADES_STEEL = shared("chainsawblades_steel", TGSlotType.NORMAL);
+	/** Fabric port: bundles for ammo, 4 and 8 stacks; reloading takes ammo from them */
+	public static final DeferredItem<techguns.items.ItemAmmoBox> AMMO_BOX = register("ammo_box",
+			() -> new techguns.items.ItemAmmoBox(new Item.Properties(), 4));
+	public static final DeferredItem<techguns.items.ItemAmmoBox> AMMO_BOX_LARGE = register("ammo_box_large",
+			() -> new techguns.items.ItemAmmoBox(new Item.Properties(), 8));
 	public static final DeferredItem<GenericItemShared> REDSTONE_BATTERY = shared("redstone_battery", TGSlotType.AMMOSLOT);
 	public static final DeferredItem<GenericItemShared> REDSTONE_BATTERY_EMPTY = shared("redstone_battery_empty", TGSlotType.AMMOSLOT);
 	public static final DeferredItem<GenericItemShared> GAUSSRIFLE_SLUGS = shared("gaussrifleslugs", TGSlotType.AMMOSLOT);

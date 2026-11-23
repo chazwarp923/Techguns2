@@ -97,6 +97,11 @@ public class TGBlocks {
 	public static final DeferredBlock<BlockSandbags> SANDBAGS = register("sandbags", BlockSandbags::new,
 			BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BROWN).sound(SoundType.WOOL).strength(3.0f, 9.0f).noOcclusion());
 
+	/** Fabric port: crafts bullets from a core, a casing and powder, like a stonecutter */
+	public static final DeferredBlock<techguns.blocks.BlockAmmoBench> AMMO_BENCH = register("ammo_bench", techguns.blocks.BlockAmmoBench::new,
+			BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).sound(SoundType.WOOD).strength(5.0f, 5.0f).noOcclusion()
+					.instrument(net.minecraft.world.level.block.state.properties.NoteBlockInstrument.BASS));
+
 	/* Machines (1.12 basicmachine / simplemachine metadata blocks) */
 	public static final DeferredBlock<techguns.blocks.machines.BlockMachine<techguns.tileentities.AmmoPressTileEnt>> AMMO_PRESS = register("ammo_press",
 			p -> new techguns.blocks.machines.BlockMachine<>(p, TGBlockEntities.AMMO_PRESS, net.minecraft.world.level.block.RenderShape.MODEL),

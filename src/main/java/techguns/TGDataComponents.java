@@ -33,6 +33,11 @@ public class TGDataComponents {
 	public static final Supplier<DataComponentType<Integer>> ARMOR_POWER = register("armor_power",
 			b -> b.persistent(Codec.INT).networkSynchronized(ByteBufCodecs.VAR_INT));
 
+	/** Ammo inside an ammo box (stored like a bundle's contents). */
+	public static final Supplier<DataComponentType<net.minecraft.world.item.component.BundleContents>> AMMO_BOX_CONTENTS = register("ammo_box_contents",
+			b -> b.persistent(net.minecraft.world.item.component.BundleContents.CODEC)
+					.networkSynchronized(net.minecraft.world.item.component.BundleContents.STREAM_CODEC).cacheEncoding());
+
 	private static <T> Supplier<DataComponentType<T>> register(String name, UnaryOperator<DataComponentType.Builder<T>> builder) {
 		return COMPONENTS.registerComponentType(name, builder);
 	}

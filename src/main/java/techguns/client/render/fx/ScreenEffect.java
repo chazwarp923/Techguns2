@@ -25,6 +25,11 @@ public class ScreenEffect implements IScreenEffect {
 	protected FadeType fadeType = FadeType.NONE;
 	protected boolean flipY = false;
 	protected boolean flipX = false;
+	/** Fabric port: the size follows this curve over the progress, from minScale to maxScale times */
+	protected FadeType dynamicScaleType = null;
+	protected float minScale = 0f;
+	protected float maxScale = 0f;
+	protected DrawMode3p drawMode3p = DrawMode3p.CROSS_XYZ;
 
 	public ScreenEffect() {
 	}
@@ -37,7 +42,7 @@ public class ScreenEffect implements IScreenEffect {
 		this.type = type;
 	}
 
-	public IScreenEffect setColor(float R, float G, float B, float A) {
+	public ScreenEffect setColor(float R, float G, float B, float A) {
 		this.colorR = R;
 		this.colorG = G;
 		this.colorB = B;
@@ -50,9 +55,23 @@ public class ScreenEffect implements IScreenEffect {
 		return this;
 	}
 
-	public IScreenEffect setFlipAxis(boolean x, boolean y) {
+	public ScreenEffect setFlipAxis(boolean x, boolean y) {
 		this.flipX = x;
 		this.flipY = y;
+		return this;
+	}
+
+	/** Fabric port: the size grows along the curve (min and max scale are stored, unused as in the Fabric port) */
+	public ScreenEffect setDynamicScale(FadeType type, float minScale, float maxScale) {
+		this.dynamicScaleType = type;
+		this.minScale = minScale;
+		this.maxScale = maxScale;
+		return this;
+	}
+
+	/** which quads the effect draws in third person (default: all three planes) */
+	public ScreenEffect setDrawMode3p(DrawMode3p mode) {
+		this.drawMode3p = mode;
 		return this;
 	}
 
@@ -62,7 +81,10 @@ public class ScreenEffect implements IScreenEffect {
 			return;
 		}
 		int currentFrame = (int) ((float) numSprites * progress);
-		if (currentFrame >= numSprites) {
+		if (this.fadeType.isRising()) {
+			// the rising fades go on past 1 (a charge held on), the sprites loop
+			currentFrame = Math.floorMod(currentFrame, numSprites);
+		} else if (currentFrame >= numSprites) {
 			return;
 		}
 		int col = currentFrame % cols;
@@ -93,26 +115,19 @@ public class ScreenEffect implements IScreenEffect {
 		}
 
 		float f = scale / 2.0f;
-		float a;
-		switch (fadeType) {
-			case FAST:
-				a = (float) ((1.0 - Math.cos(Math.sqrt(progress) * 2.0 * Math.PI)) * 0.5) * this.alpha;
-				break;
-			case SMOOTH:
-				double d2 = Math.sin(Math.PI * progress);
-				a = (float) (d2 * d2) * this.alpha;
-				break;
-			case NONE:
-			default:
-				a = this.alpha;
-				break;
+		if (this.dynamicScaleType != null) {
+			// as in the Fabric port: grows along the curve; min and max are kept but it never used them
+			f *= this.dynamicScaleType.getValueAt(progress);
 		}
+		float a = this.fadeType.getValueAt(progress) * this.alpha;
 
 		VertexConsumer vc = TGRenderState.buffer();
 		PoseStack.Pose pose = TGRenderState.pose().last();
-		quad(vc, pose, offsetX - f, offsetY + f, offsetZ, U1, V2, offsetX - f, offsetY - f, offsetZ, U1, V1, offsetX + f, offsetY - f, offsetZ, U2, V1,
-				offsetX + f, offsetY + f, offsetZ, U2, V2, a);
-		if (is3p) {
+		if (!is3p || this.drawMode3p != DrawMode3p.CROSS_XY) {
+			quad(vc, pose, offsetX - f, offsetY + f, offsetZ, U1, V2, offsetX - f, offsetY - f, offsetZ, U1, V1, offsetX + f, offsetY - f, offsetZ, U2, V1,
+					offsetX + f, offsetY + f, offsetZ, U2, V2, a);
+		}
+		if (is3p && this.drawMode3p != DrawMode3p.PLANE_Z) {
 			quad(vc, pose, offsetX - f, offsetY, offsetZ + f, U1, V2, offsetX - f, offsetY, offsetZ - f, U1, V1, offsetX + f, offsetY, offsetZ - f, U2, V1,
 					offsetX + f, offsetY, offsetZ + f, U2, V2, a);
 			quad(vc, pose, offsetX, offsetY - f, offsetZ + f, U1, V2, offsetX, offsetY - f, offsetZ - f, U1, V1, offsetX, offsetY + f, offsetZ - f, U2, V1,
@@ -136,6 +151,55 @@ public class ScreenEffect implements IScreenEffect {
 	}
 
 	public enum FadeType {
-		SMOOTH, FAST, NONE;
+		SMOOTH, FAST, NONE,
+		/** Fabric port: rises smoothly to 1 over the progress, then stays */
+		RISE_SMOOTH,
+		/** Fabric port: rises smoothly to 1, then pulses down to 0.5 and back each further unit of progress */
+		RISE_SMOOTH_AND_PULSE_FAST;
+
+		public boolean isRising() {
+			return this == RISE_SMOOTH || this == RISE_SMOOTH_AND_PULSE_FAST;
+		}
+
+		public float getValueAt(float progress) {
+			switch (this) {
+				case FAST: {
+					progress = Math.max(0.0f, Math.min(1.0f, progress));
+					return (float) ((1.0 - Math.cos(Math.sqrt(progress) * 2.0 * Math.PI)) * 0.5);
+				}
+				case SMOOTH: {
+					progress = Math.max(0.0f, Math.min(1.0f, progress));
+					double d2 = Math.sin(Math.PI * progress);
+					return (float) (d2 * d2);
+				}
+				case RISE_SMOOTH: {
+					if (progress >= 1.0f) {
+						return 1.0f;
+					}
+					double d2 = Math.sin(Math.PI * 0.5 * progress);
+					return (float) (d2 * d2);
+				}
+				case RISE_SMOOTH_AND_PULSE_FAST: {
+					if (progress <= 1.0f) {
+						double d2 = Math.sin(Math.PI * 0.5 * progress);
+						return (float) (d2 * d2);
+					}
+					progress = progress - (int) progress;
+					return (float) (1.0f - (0.5f * Math.pow(Math.sin(progress * Math.PI * 2), 2)));
+				}
+				case NONE:
+				default:
+					return 1.0f;
+			}
+		}
+	}
+
+	public enum DrawMode3p {
+		/** the three planes */
+		CROSS_XYZ,
+		/** the two planes along the barrel */
+		CROSS_XY,
+		/** only the plane facing along the barrel */
+		PLANE_Z
 	}
 }

@@ -190,6 +190,60 @@ Powered armor still gives its unpowered values without power, and still uses pow
 Movement speed stays in code (it doubles while sprinting and adds a water bonus), and so do the toggled bonuses:
 step assist, night vision, and the jump pack's boost and fall cushion.
 
+### 3.9 Content from the 1.19 Fabric port
+New items and recipe changes from the unfinished 1.19 Fabric port (pWn3d1337/Techguns-Fabric), with our item ids:
+- **Raw ores.** Tin, lead and uranium ore drop `raw_tin`, `raw_lead` and `raw_uranium` (fortune applies), and the
+  ore block only with silk touch, like vanilla ores. Titanium ore drops the existing `oretitanium` the same way
+  (the Fabric port's `raw_titanium` is the same item). Raw tin and lead smelt and blast into ingots; raw uranium
+  goes into the chemical lab for yellowcake like the ore, and is radioactive in the inventory.
+- **Raw steel.** 2 iron ingots and coal (or charcoal) make 2 raw steel ingots; a steel ingot and obsidian make a raw
+  obsidian steel ingot. A vanilla blast furnace turns them into steel and obsidian steel. The Techguns blast furnace
+  recipes stay.
+- **Advanced Circuit Board** (basic circuit board, gold wire, lapis; tag `c:circuits/advanced`), between basic and
+  elite. The laser pistol, blaster rifle, gauss rifle, guided missile launcher, pulse rifle, rad emitter and sonic
+  emitter now take it instead of the elite board; the gauss rifle grinds back into one.
+- **Power Armor Plating Mk2** and **Nether Armor Plating** (netherite, cybernetic parts, advanced circuits). They
+  give the T4 power armor and the praetor armor crafting recipes; neither had one before (nor in 1.12).
+- **Steel chainsaw blades and power hammer head.** New chainsaws and power hammers are crafted with them (Fabric
+  recipes). They are the tools' level-0 head, shown in the tooltip; obsidian and carbon heads upgrade them as before.
+- **Blaster Shotgun recipe (new, ours).** The Fabric port's blaster shotgun is the 1.12 scatter beam rifle
+  (`scatterbeamrifle`, already named "Blaster Shotgun"). Neither 1.12 nor the Fabric port had a recipe for it. It is
+  now crafted like the blaster rifle, with a second laser barrel in place of the carbon plate, and grinds like it.
+- **Ammo Bench** (crafting table, gunpowder, iron ingot). It works like a stonecutter with three input slots: a
+  bullet core (steel or lead ingot), a casing (copper, iron, tin or bronze ingot) and gunpowder. With all three in, it
+  lists what they make: 12 pistol rounds, 8 rifle rounds, 2 rifle round stacks, 16 shotgun rounds or 4 sniper
+  rounds. Each result takes one of each input. It has no inventory of its own; the inputs go back to the player
+  when the screen closes. Recipe type `techguns:ammo_bench`, item tags `techguns:bullet_core`, `bullet_casing` and
+  `bullet_powder`. JEI shows the recipes.
+- **Ammo Box** (4 stacks) and **Large Ammo Box** (8 stacks): bundles for ammo. They hold anything that goes in the
+  ammo slots, full or empty. Right click with the box on a slot, or with ammo on the box, to move ammo in or out,
+  like a bundle; right click with the box on another box to pour it in; use it to empty it. Reloading takes ammo
+  from boxes in the inventory or offhand after the ammo slots, and empty magazines go into them. The Fabric port
+  had no recipe for them; ours is a treated leather handle on 7 iron ingots (small) or 7 steel ingots (large).
+  Not ported: the Fabric port also counted the ammo in boxes on its ammo HUD, which this port doesn't have.
+- **Grappling Hook** (`grapplinghook`), one-handed, uses compressed air tanks (100 shots each). Hold use to fire
+  the hook, and keep holding to stay hooked. On a block it pulls you to the spot. On a mob it does 1 damage and
+  pulls you to it, or pulls the mob to you if you sneak while firing. Pulling stops within a block of the target,
+  after 5 seconds, or when you let go, and you take no fall damage while being pulled. Sneaking at a block lets go.
+  A wire runs from the gun to the hook. Fabric port model, texture and sounds. The Fabric port had no recipe for it;
+  ours is a steel ingot hook on a chain, an iron receiver, iron mechanical parts and a compressed air tank (an empty
+  tank makes it unloaded).
+- **Magic Rifle** (`magicrifle`) and **Magic Bullets**. A single-shot rifle: hold use to charge (3 seconds), let go
+  to fire a magic bolt. What it does depends on the bullet loaded (switch bullets like other ammo variants, by
+  crafting the rifle with the bullet):
+  - **Magic Bullet**: an explosion that hurts what's around the target, but not the target itself;
+  - **Fire Magic Bullet**: sets the target on fire, and an explosion that sets what it hurts on fire;
+  - **Lightning Magic Bullet**: a lightning strike where it hits. Charged over a quarter, the bolt stays a moment
+    and calls more strikes around the spot.
+  Explosions, trails and lingering grow with the charge. The lightning lingers half as long as in the Fabric port
+  (ours: it was too much), so it calls about half the strikes. While charging, a magic circle (arcane, fire or lightning)
+  grows at the muzzle. Five camos: Basic, Rusty, Black, Silver, Ivory. Fabric port model, textures and effects.
+  The Fabric port's rifle was unfinished: it had no names, recipes or sounds of its own. **Ours:** the names; the
+  recipes (the rifle from an amethyst shard, a gold ingot, an iron receiver, a wood stock and lapis; 4 magic
+  bullets from an amethyst shard, lapis and a gold nugget; 4 fire or lightning bullets from 4 magic bullets and
+  blaze powder or a copper ingot); and its damage type in tooltips (energy, fire or lightning; the Fabric port said
+  projectile). It uses the handgun and TFG sounds, as in the Fabric port.
+
 ## 4. World generation
 
 1.12 placed structures from its own world generator on a grid. They now use Minecraft's structure system, so
@@ -335,7 +389,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 44 headless game tests, run with `./gradlew runGameTestServer`. They run
+1.12 had no automated tests. There are now 53 headless game tests, run with `./gradlew runGameTestServer`. They run
 in `run-gametest/` and take about one minute. GitHub Actions (`.github/workflows/build.yml`) runs the build and every game test on each push and pull
 request. It doesn't keep built jars, because the license doesn't allow distributing builds.
 
@@ -372,6 +426,15 @@ request. It doesn't keep built jars, because the license doesn't allow distribut
   translated. The shipped gun_stats file lists every gun with exactly its code values (on a mismatch the test writes
   the correct file to `run-gametest/gun_stats.expected.json`); an override changes only the stats it names, rounds
   and raises values, ignores stats the gun lacks, and a removed entry restores the defaults.
+- `AmmoBenchTests`: crafting at the ammo bench (the recipe list, the result, inputs used up, shift-click in and
+  out); the bench's shape, facing and drop; what an ammo box takes, its capacity and order, its contents after
+  saving; reloading from a box and empty magazines going into it.
+- `MagicRifleTests`: the rifle charged and fired with each bullet: the plain bolt's explosion hurts the golem beside
+  the one it hits but not that one; the fire bolt sets both on fire; the lightning bolt stays at the wall and calls
+  several strikes, then goes.
+- `GrapplingHookTests`: the gun fired by a player at a wall uses a round, grabs the wall and pulls the player to it,
+  and lets go when the player stops; at a zombie while sneaking it pulls the zombie in and lets go within a block,
+  and without sneaking it pulls the player to the zombie.
 - `OreTests`: the deepslate ores match the stone ores in tags, tool level, drops, light and worldgen targets, and
   smelt or react like them. Each ore's placed feature has its config check, and placement stops while it's off.
 - `ModelTests`: every registered block's blockstate and every item's model, with all parents and textures they reach,

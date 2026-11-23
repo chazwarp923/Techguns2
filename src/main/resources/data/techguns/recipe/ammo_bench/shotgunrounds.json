@@ -1,0 +1,16 @@
+{
+  "type": "techguns:ammo_bench",
+  "core": {
+    "tag": "techguns:bullet_core"
+  },
+  "casing": {
+    "tag": "techguns:bullet_casing"
+  },
+  "powder": {
+    "tag": "techguns:bullet_powder"
+  },
+  "result": {
+    "id": "techguns:shotgunrounds",
+    "count": 16
+  }
+}

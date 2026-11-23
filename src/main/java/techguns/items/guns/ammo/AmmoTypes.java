@@ -27,12 +27,15 @@ public class AmmoTypes {
 	public static AmmoType NUCLEAR_POWER_CELL;
 	public static AmmoType REDSTONE_BATTERY;
 	public static AmmoType AMMO_GAUSS_RIFLE;
+	public static AmmoType MAGIC_BULLETS;
 
 	public static final String TYPE_INCENDIARY = "incendiary";
 	public static final String TYPE_DEFAULT = "default";
 	public static final String TYPE_NUKE = "nuke";
 	public static final String TYPE_EXPLOSIVE = "explosive";
 	public static final String TYPE_HV = "high_velocity";
+	public static final String TYPE_FIRE = "fire";
+	public static final String TYPE_LIGHTNING = "lightning";
 
 	private static boolean initialized = false;
 
@@ -87,6 +90,10 @@ public class AmmoTypes {
 		GRENADES_40MM = new AmmoType(TGItems.GRENADE_40MM);
 		NUCLEAR_POWER_CELL = new AmmoType(TGItems.NUCLEAR_POWERCELL, TGItems.NUCLEAR_POWERCELL_EMPTY, null,0);
 		
+		MAGIC_BULLETS = new AmmoType(TGItems.MAGIC_BULLET);
+		MAGIC_BULLETS.addVariant(TYPE_FIRE, TGItems.MAGIC_BULLET_FIRE);
+		MAGIC_BULLETS.addVariant(TYPE_LIGHTNING, TGItems.MAGIC_BULLET_LIGHTNING);
+
 		AMMO_GAUSS_RIFLE = new AmmoType(new ItemLike[] {TGItems.GAUSSRIFLE_SLUGS, TGItems.ENERGY_CELL}, new ItemLike[] {null, TGItems.ENERGY_CELL_EMPTY}, new ItemLike[] {TGItems.GAUSSRIFLE_SLUGS, null},  1);
 	}
 }

@@ -42,6 +42,7 @@ public final class TGJeiCategories {
 	public static final RecipeType<RecipeHolder<techguns.recipes.FabricatorRecipe>> FABRICATOR = RecipeType.createFromVanilla(TGRecipes.FABRICATOR.get());
 	public static final RecipeType<OreDrillRecipe> ORE_DRILL = RecipeType.create(techguns.Techguns.MODID, "ore_drill", OreDrillRecipe.class);
 	public static final RecipeType<RecipeHolder<techguns.recipes.ReactionChamberRecipe>> REACTION_CHAMBER = RecipeType.createFromVanilla(TGRecipes.REACTION_CHAMBER.get());
+	public static final RecipeType<RecipeHolder<techguns.recipes.AmmoBenchRecipe>> AMMO_BENCH = RecipeType.createFromVanilla(TGRecipes.AMMO_BENCH.get());
 	public static final RecipeType<AmmoPressDisplay> AMMO_PRESS = RecipeType.create(Techguns.MODID, "ammo_press", AmmoPressDisplay.class);
 	public static final RecipeType<GrinderDisplay> GRINDER = RecipeType.create(Techguns.MODID, "grinder", GrinderDisplay.class);
 
@@ -385,6 +386,28 @@ public final class TGJeiCategories {
 		public void draw(RecipeHolder<UpgradeBenchRecipe> recipe, IRecipeSlotsView slots, GuiGraphics g, double mouseX, double mouseY) {
 			super.draw(recipe, slots, g, mouseX, mouseY);
 			text(g, Component.translatable("techguns.jei.upgrade_bench.xp", techguns.TGConfig.upgrade_xp_cost), 0, 22);
+		}
+	}
+
+	/* ---- ammo bench ---- */
+
+	public static class AmmoBench extends MachineCategory<RecipeHolder<techguns.recipes.AmmoBenchRecipe>> {
+		public AmmoBench(IGuiHelper gui) {
+			super(gui, AMMO_BENCH, TGBlocks.AMMO_BENCH.get(), 116, 20, 40);
+		}
+
+		@Override
+		protected int[] arrowPos() {
+			return new int[] { 62, 1 };
+		}
+
+		@Override
+		public void setRecipe(IRecipeLayoutBuilder b, RecipeHolder<techguns.recipes.AmmoBenchRecipe> holder, IFocusGroup focuses) {
+			techguns.recipes.AmmoBenchRecipe r = holder.value();
+			for (int i = 0; i < 3; i++) {
+				b.addInputSlot(1 + i * 19, 1).setStandardSlotBackground().addIngredients(r.ingredient(i));
+			}
+			b.addOutputSlot(95, 1).setOutputSlotBackground().addItemStack(r.result());
 		}
 	}
 

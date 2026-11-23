@@ -70,13 +70,28 @@ public class OreTests {
 			if (ds.getLightEmission() != stone.defaultBlockState().getLightEmission()) {
 				problems.add(metal + ": light");
 			}
-			// drops itself
+			// drops the raw item, or itself with silk touch (vanilla ore loot, Fabric port)
 			BlockPos pos = helper.absolutePos(BlockPos.ZERO);
-			level.setBlock(pos, ds, 3);
-			List<ItemStack> drops = Block.getDrops(ds, level, pos, null, null, new ItemStack(Items.DIAMOND_PICKAXE));
-			level.removeBlock(pos, false);
-			if (drops.size() != 1 || !drops.get(0).is(deep.asItem())) {
-				problems.add(metal + ": drops " + drops);
+			ItemStack silk = new ItemStack(Items.DIAMOND_PICKAXE);
+			silk.enchant(level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+					.getOrThrow(net.minecraft.world.item.enchantment.Enchantments.SILK_TOUCH), 1);
+			net.minecraft.world.item.Item raw = switch (metal) {
+				case "tin" -> TGItems.RAW_TIN.get();
+				case "lead" -> TGItems.RAW_LEAD.get();
+				case "uranium" -> TGItems.RAW_URANIUM.get();
+				default -> TGItems.ORE_TITANIUM.get();
+			};
+			for (Block b : new Block[] { stone, deep }) {
+				level.setBlock(pos, b.defaultBlockState(), 3);
+				List<ItemStack> drops = Block.getDrops(b.defaultBlockState(), level, pos, null, null, new ItemStack(Items.DIAMOND_PICKAXE));
+				List<ItemStack> silkDrops = Block.getDrops(b.defaultBlockState(), level, pos, null, null, silk);
+				level.removeBlock(pos, false);
+				if (drops.size() != 1 || !drops.get(0).is(raw)) {
+					problems.add(metal + ": drops " + drops);
+				}
+				if (silkDrops.size() != 1 || !silkDrops.get(0).is(b.asItem())) {
+					problems.add(metal + ": silk touch drops " + silkDrops);
+				}
 			}
 			// the ore feature places the deepslate variant into deepslate
 			var feature = level.registryAccess().registryOrThrow(Registries.CONFIGURED_FEATURE)

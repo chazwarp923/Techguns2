@@ -64,6 +64,9 @@ public class TGSounds {
 	public static final DeferredHolder<SoundEvent, SoundEvent> POWERHAMMER_SWING = create("guns.powerhammerswing");
 	public static final DeferredHolder<SoundEvent, SoundEvent> POWERHAMMER_IMPACT = create("guns.powerhammerimpactground");
 	public static final DeferredHolder<SoundEvent, SoundEvent> POWERHAMMER_CHARGE = create("guns.powerhammercharge");
+	/** Fabric port grappling hook */
+	public static final DeferredHolder<SoundEvent, SoundEvent> GRAPPLING_HOOK_FIRE = create("guns.grapplinghookfire");
+	public static final DeferredHolder<SoundEvent, SoundEvent> GRAPPLING_HOOK_PULL = create("guns.grapplinghookpull");
 	public static final DeferredHolder<SoundEvent, SoundEvent> BLASTER_RIFLE_FIRE = create("guns.blasterriflefire");
 	public static final DeferredHolder<SoundEvent, SoundEvent> GRENADE_LAUNCHER_FIRE = create("guns.grenadelauncherfire");
 	public static final DeferredHolder<SoundEvent, SoundEvent> GRENADE_LAUNCHER_RELOAD = create("guns.grenadelauncherreload");

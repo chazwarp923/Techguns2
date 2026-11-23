@@ -75,6 +75,12 @@ public class TGRecipes {
 	public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<UpgradeBenchRecipe>> UPGRADE_BENCH_SERIALIZER = SERIALIZERS
 			.register("upgrade_bench", () -> new Simple<>(UpgradeBenchRecipe.CODEC, UpgradeBenchRecipe.STREAM_CODEC));
 
+	/** bullet core + casing + powder, picked like at a stonecutter (Fabric port) */
+	public static final DeferredHolder<net.minecraft.world.item.crafting.RecipeType<?>, net.minecraft.world.item.crafting.RecipeType<AmmoBenchRecipe>> AMMO_BENCH = TYPES
+			.register("ammo_bench", () -> net.minecraft.world.item.crafting.RecipeType.simple(Techguns.rl("ammo_bench")));
+	public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<AmmoBenchRecipe>> AMMO_BENCH_SERIALIZER = SERIALIZERS
+			.register("ammo_bench", () -> new Simple<>(AmmoBenchRecipe.CODEC, AmmoBenchRecipe.STREAM_CODEC));
+
 	/** gun + ammo item: switch the gun's ammo variant and load that item (1.12 AmmoSwitchRecipeFactory) */
 	public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<AmmoSwitchRecipe>> AMMO_CHANGE_CRAFTING = SERIALIZERS
 			.register("ammo_change_crafting", () -> shapeless(AmmoSwitchRecipe::new));

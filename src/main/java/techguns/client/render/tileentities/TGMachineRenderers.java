@@ -61,6 +61,7 @@ public final class TGMachineRenderers {
 		event.register(TGMenus.ORE_DRILL.get(), techguns.client.gui.OreDrillScreen::new);
 		event.register(TGMenus.EXPLOSIVE_CHARGE.get(), techguns.client.gui.ExplosiveChargeScreen::new);
 		event.register(TGMenus.DOOR3x3.get(), techguns.client.gui.Door3x3Screen::new);
+		event.register(TGMenus.AMMO_BENCH.get(), techguns.client.gui.AmmoBenchScreen::new);
 	}
 
 	public static void registerItems(RegisterClientExtensionsEvent event) {

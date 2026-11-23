@@ -1,0 +1,35 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "bcg",
+    "bms",
+    " e "
+  ],
+  "key": {
+    "b": {
+      "item": "techguns:laserbarrel"
+    },
+    "c": {
+      "tag": "c:circuits/advanced"
+    },
+    "s": {
+      "item": "techguns:carbonstock"
+    },
+    "e": {
+      "item": "techguns:energycellempty"
+    },
+    "g": {
+      "tag": "c:glass_blocks"
+    },
+    "m": {
+      "item": "techguns:carbonreceiver"
+    }
+  },
+  "result": {
+    "id": "techguns:scatterbeamrifle",
+    "components": {
+      "techguns:ammo": 0
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "tag": "c:ingots/iron"
+    },
+    {
+      "tag": "c:ingots/iron"
+    },
+    {
+      "item": "minecraft:coal"
+    }
+  ],
+  "result": {
+    "id": "techguns:raw_steel_ingot",
+    "count": 2
+  }
+}

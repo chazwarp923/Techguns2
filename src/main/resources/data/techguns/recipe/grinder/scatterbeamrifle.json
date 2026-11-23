@@ -1,0 +1,23 @@
+{
+  "type": "techguns:grinder",
+  "input": {
+    "item": "techguns:scatterbeamrifle"
+  },
+  "results": [
+    {
+      "id": "techguns:carbonfibers",
+      "count": 3
+    },
+    {
+      "id": "techguns:plasticsheet"
+    },
+    {
+      "id": "minecraft:redstone",
+      "count": 20
+    },
+    {
+      "id": "minecraft:gold_ingot",
+      "count": 3
+    }
+  ]
+}

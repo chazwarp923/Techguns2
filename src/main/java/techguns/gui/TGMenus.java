@@ -41,6 +41,8 @@ public class TGMenus {
 			() -> IMenuTypeExtension.create(techguns.gui.containers.Door3x3Menu::new));
 	public static final DeferredHolder<MenuType<?>, MenuType<techguns.gui.containers.ExplosiveChargeMenu>> EXPLOSIVE_CHARGE = MENUS.register("explosive_charge",
 			() -> IMenuTypeExtension.create(techguns.gui.containers.ExplosiveChargeMenu::new));
+	public static final DeferredHolder<MenuType<?>, MenuType<techguns.gui.containers.AmmoBenchMenu>> AMMO_BENCH = MENUS.register("ammo_bench",
+			() -> new MenuType<>(techguns.gui.containers.AmmoBenchMenu::new, net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS));
 	public static final DeferredHolder<MenuType<?>, MenuType<techguns.gui.containers.OreDrillMenu>> ORE_DRILL = MENUS.register("ore_drill",
 			() -> IMenuTypeExtension.create(techguns.gui.containers.OreDrillMenu::new));
 }

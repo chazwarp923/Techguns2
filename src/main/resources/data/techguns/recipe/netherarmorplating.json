@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " i ",
+    "cbc",
+    "tpt"
+  ],
+  "key": {
+    "p": {
+      "tag": "c:plates/carbon"
+    },
+    "b": {
+      "tag": "c:circuits/advanced"
+    },
+    "c": {
+      "item": "techguns:cyberneticparts"
+    },
+    "t": {
+      "tag": "c:ingots/netherite"
+    },
+    "i": {
+      "tag": "c:ingots/titanium"
+    }
+  },
+  "result": {
+    "id": "techguns:netherarmorplating",
+    "count": 4
+  }
+}

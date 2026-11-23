@@ -54,6 +54,10 @@ public class TGEntities {
 	public static final Supplier<EntityType<SonicShotgunProjectile>> SONIC_SHOTGUN = projectile("sonicshotgunprojectile", SonicShotgunProjectile::new);
 	public static final Supplier<EntityType<BioGunProjectile>> BIOGUN = projectile("biogunprojectile", BioGunProjectile::new);
 	public static final Supplier<EntityType<TFGProjectile>> TFG = projectile("tfgprojectile", TFGProjectile::new);
+	public static final Supplier<EntityType<techguns.entities.projectiles.GrapplingHookProjectile>> GRAPPLING_HOOK = projectile("grappling_hook_projectile",
+			techguns.entities.projectiles.GrapplingHookProjectile::new);
+	public static final Supplier<EntityType<techguns.entities.projectiles.MagicRifleProjectile>> MAGIC_RIFLE = projectile("magic_rifle_projectile",
+			techguns.entities.projectiles.MagicRifleProjectile::new);
 	public static final Supplier<EntityType<PowerHammerProjectile>> POWERHAMMER = projectile("powerhammerprojectile", PowerHammerProjectile::new);
 	public static final Supplier<EntityType<ChainsawProjectile>> CHAINSAW = projectile("chainsawprojectile", ChainsawProjectile::new);
 	public static final Supplier<EntityType<GuidedMissileProjectile>> GUIDED_MISSILE = projectile("guidedmissileprojectile", GuidedMissileProjectile::new);

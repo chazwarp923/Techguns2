@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ili",
+    "i i",
+    "iii"
+  ],
+  "key": {
+    "l": {
+      "item": "techguns:treatedleather"
+    },
+    "i": {
+      "tag": "c:ingots/steel"
+    }
+  },
+  "result": {
+    "id": "techguns:ammo_box_large"
+  }
+}

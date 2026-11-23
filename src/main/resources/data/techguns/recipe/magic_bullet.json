@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:amethyst_shard"
+    },
+    {
+      "tag": "c:gems/lapis"
+    },
+    {
+      "tag": "c:nuggets/gold"
+    }
+  ],
+  "result": {
+    "id": "techguns:magic_bullet",
+    "count": 4
+  }
+}

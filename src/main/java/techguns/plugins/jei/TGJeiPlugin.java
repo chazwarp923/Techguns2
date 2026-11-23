@@ -52,7 +52,7 @@ public class TGJeiPlugin implements IModPlugin {
 		IGuiHelper gui = reg.getJeiHelpers().getGuiHelper();
 		reg.addRecipeCategories(new TGJeiCategories.AmmoPress(gui), new TGJeiCategories.MetalPress(gui), new TGJeiCategories.BlastFurnace(gui),
 				new TGJeiCategories.Grinder(gui), new TGJeiCategories.ChargingStation(gui), new TGJeiCategories.Fabricator(gui), new TGJeiCategories.ReactionChamber(gui), new TGJeiCategories.OreDrill(gui), new TGJeiCategories.ChemLab(gui), new TGJeiCategories.CamoBench(gui),
-				new TGJeiCategories.UpgradeBench(gui));
+				new TGJeiCategories.UpgradeBench(gui), new TGJeiCategories.AmmoBench(gui));
 	}
 
 	@Override
@@ -70,6 +70,7 @@ public class TGJeiPlugin implements IModPlugin {
 		}
 		RecipeManager rm = level.getRecipeManager();
 		reg.addRecipes(TGJeiCategories.METAL_PRESS, rm.getAllRecipesFor(TGRecipes.METAL_PRESS.get()));
+		reg.addRecipes(TGJeiCategories.AMMO_BENCH, rm.getAllRecipesFor(TGRecipes.AMMO_BENCH.get()));
 		reg.addRecipes(TGJeiCategories.BLAST_FURNACE, rm.getAllRecipesFor(TGRecipes.BLAST_FURNACE.get()));
 		// fuel / oil recipes only show when a mod adds fluids to the techguns:fuel / techguns:oil tags
 		reg.addRecipes(TGJeiCategories.CHEM_LAB, rm.getAllRecipesFor(TGRecipes.CHEM_LAB.get()).stream()
@@ -144,6 +145,7 @@ public class TGJeiPlugin implements IModPlugin {
 	@Override
 	public void registerRecipeCatalysts(IRecipeCatalystRegistration reg) {
 		reg.addRecipeCatalyst(TGBlocks.AMMO_PRESS.get(), TGJeiCategories.AMMO_PRESS);
+		reg.addRecipeCatalyst(TGBlocks.AMMO_BENCH.get(), TGJeiCategories.AMMO_BENCH);
 		reg.addRecipeCatalyst(TGBlocks.METAL_PRESS.get(), TGJeiCategories.METAL_PRESS);
 		reg.addRecipeCatalyst(TGBlocks.BLAST_FURNACE.get(), TGJeiCategories.BLAST_FURNACE);
 		reg.addRecipeCatalyst(TGBlocks.GRINDER.get(), TGJeiCategories.GRINDER);
@@ -159,6 +161,7 @@ public class TGJeiPlugin implements IModPlugin {
 	@Override
 	public void registerGuiHandlers(IGuiHandlerRegistration reg) {
 		reg.addRecipeClickArea(AmmoPressScreen.class, 119, 36, 19, 22, TGJeiCategories.AMMO_PRESS);
+		reg.addRecipeClickArea(techguns.client.gui.AmmoBenchScreen.class, 38, 33, 12, 16, TGJeiCategories.AMMO_BENCH);
 		reg.addRecipeClickArea(MetalPressScreen.class, 119, 36, 19, 22, TGJeiCategories.METAL_PRESS);
 		reg.addRecipeClickArea(BlastFurnaceScreen.class, 19, 53, 90, 11, TGJeiCategories.BLAST_FURNACE);
 		reg.addRecipeClickArea(GrinderScreen.class, 31, 39, 42, 22, TGJeiCategories.GRINDER);

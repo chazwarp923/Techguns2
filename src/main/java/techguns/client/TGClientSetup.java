@@ -167,6 +167,11 @@ public class TGClientSetup {
 	}
 
 	@SubscribeEvent
+	public static void registerTooltips(net.neoforged.neoforge.client.event.RegisterClientTooltipComponentFactoriesEvent event) {
+		event.register(techguns.items.ItemAmmoBox.Tooltip.class, techguns.client.gui.ClientAmmoBoxTooltip::new);
+	}
+
+	@SubscribeEvent
 	public static void registerScreens(net.neoforged.neoforge.client.event.RegisterMenuScreensEvent event) {
 		techguns.client.render.tileentities.TGMachineRenderers.registerScreens(event);
 	}
@@ -203,6 +208,8 @@ public class TGClientSetup {
 		event.registerEntityRenderer(TGEntities.DEATOMIZER.get(), techguns.client.render.entities.projectiles.RenderInvisibleProjectile::new);
 		event.registerEntityRenderer(TGEntities.CYBERDEMON_BLASTER.get(), techguns.client.render.entities.projectiles.RenderInvisibleProjectile::new);
 		event.registerEntityRenderer(TGEntities.BIOGUN.get(), techguns.client.render.entities.projectiles.RenderBioGunProjectile::new);
+		event.registerEntityRenderer(TGEntities.MAGIC_RIFLE.get(), techguns.client.render.entities.projectiles.RenderInvisibleProjectile::new);
+		event.registerEntityRenderer(TGEntities.GRAPPLING_HOOK.get(), techguns.client.render.entities.projectiles.RenderGrapplingHookProjectile::new);
 		event.registerEntityRenderer(TGEntities.TFG.get(), techguns.client.render.entities.projectiles.RenderInvisibleProjectile::new);
 		event.registerEntityRenderer(TGEntities.POWERHAMMER.get(), techguns.client.render.entities.projectiles.RenderInvisibleProjectile::new);
 		event.registerEntityRenderer(TGEntities.CHAINSAW.get(), techguns.client.render.entities.projectiles.RenderInvisibleProjectile::new);

@@ -69,6 +69,8 @@ public final class TGRadiationSystem {
 	public static final TagKey<Item> URANIUM_ORES = TagKey.create(Registries.ITEM, net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("c", "ores/uranium"));
 	public static final TagKey<Item> URANIUM_INGOTS = TagKey.create(Registries.ITEM,
 			net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("c", "ingots/uranium"));
+	public static final TagKey<Item> RAW_URANIUM = TagKey.create(Registries.ITEM,
+			net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("c", "raw_materials/uranium"));
 
 	/** radiation level and duration of items that radiate in the inventory */
 	public record ItemRadiationData(int radamount, int radduration) {
@@ -129,7 +131,7 @@ public final class TGRadiationSystem {
 			itemRadiation = m;
 		}
 		ItemRadiationData d = itemRadiation.get(stack.getItem());
-		if (d == null && (stack.is(URANIUM_ORES) || stack.is(URANIUM_INGOTS))) {
+		if (d == null && (stack.is(URANIUM_ORES) || stack.is(RAW_URANIUM) || stack.is(URANIUM_INGOTS))) {
 			d = TAG_RADIATION;
 		}
 		return d;

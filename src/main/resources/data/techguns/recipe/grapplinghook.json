@@ -1,0 +1,29 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "  i",
+    "cr ",
+    "tm "
+  ],
+  "key": {
+    "i": {
+      "tag": "c:ingots/steel"
+    },
+    "c": {
+      "item": "minecraft:chain"
+    },
+    "r": {
+      "item": "techguns:ironreceiver"
+    },
+    "m": {
+      "item": "techguns:mechanicalpartsiron"
+    },
+    "t": {
+      "item": "techguns:compressedairtank"
+    }
+  },
+  "result": {
+    "id": "techguns:grapplinghook"
+  }
+}

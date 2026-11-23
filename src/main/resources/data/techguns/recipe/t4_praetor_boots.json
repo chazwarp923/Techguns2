@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "c c",
+    "p p"
+  ],
+  "key": {
+    "p": {
+      "item": "techguns:netherarmorplating"
+    },
+    "c": {
+      "tag": "c:circuits/elite"
+    }
+  },
+  "result": {
+    "id": "techguns:t4_praetor_boots"
+  }
+}

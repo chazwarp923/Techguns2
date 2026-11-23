@@ -2,9 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
-    " m ",
-    "spr",
-    " mc"
+    " i ",
+    "hpr",
+    " im"
   ],
   "key": {
     "p": {
@@ -13,14 +13,14 @@
     "r": {
       "item": "techguns:ironreceiver"
     },
-    "s": {
-      "tag": "c:plates/iron"
+    "h": {
+      "item": "techguns:powerhammerhead_steel"
     },
-    "c": {
-      "item": "techguns:compressedairtank"
+    "i": {
+      "item": "techguns:mechanicalpartsiron"
     },
     "m": {
-      "item": "techguns:mechanicalpartsiron"
+      "item": "techguns:compressedairtank"
     }
   },
   "result": {

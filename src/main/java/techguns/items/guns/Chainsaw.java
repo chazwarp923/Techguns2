@@ -30,6 +30,7 @@ public class Chainsaw extends GenericGunMeleeCharge {
 			Supplier<SoundEvent> firesound, Supplier<SoundEvent> reloadsound, int TTL, float accuracy, float fullChargeTime, int ammoConsumedOnFullCharge) {
 		super(sel, semiAuto, minFiretime, clipsize, reloadtime, damage, firesound, reloadsound, TTL, accuracy, fullChargeTime, ammoConsumedOnFullCharge);
 		this.setMiningHeads(TGItems.CHAINSAWBLADES_OBSIDIAN, TGItems.CHAINSAWBLADES_CARBON);
+		this.setBaseHead(TGItems.CHAINSAWBLADES_STEEL);
 	}
 
 	@Override

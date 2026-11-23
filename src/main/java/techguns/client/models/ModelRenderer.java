@@ -90,6 +90,27 @@ public class ModelRenderer {
 		return this;
 	}
 
+	/**
+	 * The Fabric port's ModelPart.addCuboid: float sizes, and an expansion that scales the box about the part's origin by
+	 * (size + 2 * expansion) / size, keeping its texture mapping. Done here as a shifted box with a per-axis grow.
+	 */
+	public ModelRenderer addCuboid(float x, float y, float z, float w, float h, float d, float ex, float ey, float ez) {
+		float[] gx = fabricExpansion(x, w, ex), gy = fabricExpansion(y, h, ey), gz = fabricExpansion(z, d, ez);
+		this.cubeList.add(new ModelPart.Cube(this.textureOffsetX, this.textureOffsetY, gx[0], gy[0], gz[0], w, h, d, gx[1], gy[1], gz[1],
+				this.mirror, this.textureWidth, this.textureHeight, ALL_FACES));
+		return this;
+	}
+
+	/** origin and grow of a box spanning [o * s, (o + size) * s], s = (size + 2 e) / size */
+	private static float[] fabricExpansion(float o, float size, float e) {
+		if (e == 0.0F) {
+			return new float[] { o, 0.0F };
+		}
+		float s = (size + 2.0F * e) / size;
+		float origin = ((2.0F * o + size) * s - size) / 2.0F;
+		return new float[] { origin, origin - o * s };
+	}
+
 	public void setRotationPoint(float x, float y, float z) {
 		this.rotationPointX = x;
 		this.rotationPointY = y;

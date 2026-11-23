@@ -30,6 +30,7 @@ public class PowerHammer extends GenericGunMeleeCharge {
 			Supplier<SoundEvent> firesound, Supplier<SoundEvent> reloadsound, int TTL, float accuracy, float fullChargeTime, int ammoConsumedOnFullCharge) {
 		super(sel, semiAuto, minFiretime, clipsize, reloadtime, damage, firesound, reloadsound, TTL, accuracy, fullChargeTime, ammoConsumedOnFullCharge);
 		this.setMiningHeads(TGItems.POWERHAMMERHEAD_OBSIDIAN, TGItems.POWERHAMMERHEAD_CARBON);
+		this.setBaseHead(TGItems.POWERHAMMERHEAD_STEEL);
 	}
 
 	@Override

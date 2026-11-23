@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " i",
+    "ip",
+    " i"
+  ],
+  "key": {
+    "p": {
+      "item": "techguns:mechanicalpartsiron"
+    },
+    "i": {
+      "tag": "c:ingots/steel"
+    }
+  },
+  "result": {
+    "id": "techguns:chainsawblades_steel"
+  }
+}

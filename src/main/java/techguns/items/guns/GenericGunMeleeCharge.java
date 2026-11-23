@@ -64,6 +64,8 @@ public class GenericGunMeleeCharge extends GenericGunCharge {
 	protected int miningRadius = 0;
 	protected int swingSoundDelay = 5;
 	protected List<Supplier<? extends Item>> miningHeads = null;
+	/** the head a new tool comes with (level 0), crafted into it; null: none */
+	protected Supplier<? extends Item> baseHead = null;
 	protected boolean hasCustomAnim = true;
 	protected float melee_sound_volume = 0.65f;
 
@@ -95,6 +97,12 @@ public class GenericGunMeleeCharge extends GenericGunCharge {
 	@SafeVarargs
 	public final GenericGunMeleeCharge setMiningHeads(Supplier<? extends Item>... heads) {
 		this.miningHeads = List.of(heads);
+		return this;
+	}
+
+	/** the head a new tool is crafted with, shown as its level 0 head */
+	public GenericGunMeleeCharge setBaseHead(Supplier<? extends Item> head) {
+		this.baseHead = head;
 		return this;
 	}
 
@@ -351,7 +359,8 @@ public class GenericGunMeleeCharge extends GenericGunCharge {
 		if (longTooltip) {
 			if (this.miningHeads != null) {
 				int lvl = this.getMiningHeadLevel(stack);
-				Component head = lvl > 0 && lvl <= miningHeads.size() ? miningHeads.get(lvl - 1).get().getDescription() : TextUtil.transTG("default");
+				Component head = lvl > 0 && lvl <= miningHeads.size() ? miningHeads.get(lvl - 1).get().getDescription()
+						: baseHead != null ? baseHead.get().getDescription() : TextUtil.transTG("default");
 				list.add(TextUtil.transTG("tooltip.mininghead").append(": ").append(head.copy().withStyle(ChatFormatting.WHITE)));
 			}
 			list.add(TextUtil.transTG("tooltip.toolclasses").append(":"));

@@ -1,0 +1,32 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " a ",
+    "brs",
+    " g "
+  ],
+  "key": {
+    "a": {
+      "item": "minecraft:amethyst_shard"
+    },
+    "b": {
+      "tag": "c:ingots/gold"
+    },
+    "r": {
+      "item": "techguns:ironreceiver"
+    },
+    "s": {
+      "item": "techguns:woodstock"
+    },
+    "g": {
+      "tag": "c:gems/lapis"
+    }
+  },
+  "result": {
+    "id": "techguns:magicrifle",
+    "components": {
+      "techguns:ammo": 0
+    }
+  }
+}
