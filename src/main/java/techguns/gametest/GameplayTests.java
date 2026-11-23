@@ -615,4 +615,19 @@ public class GameplayTests {
 		helper.assertTrue(freq == 3, "gunfire frequency " + freq);
 		helper.succeed();
 	}
+
+	/* ---------------------------------------------------------------- Mekanism radiation bridge */
+
+	/**
+	 * With Mekanism (-Pcompat_mods=mekanism or true): Techguns armor shields against Mekanism radiation, Mekanism
+	 * armor gives Techguns RAD resistance, and Mekanism's own radiate() lets nothing through full Techguns hazmat.
+	 * Without Mekanism there is nothing to check (the bridge isn't loaded).
+	 */
+	@GameTest(template = "empty")
+	public static void mekanismRadiationBridge(GameTestHelper helper) {
+		if (net.neoforged.fml.ModList.get().isLoaded("mekanism")) {
+			MekanismRadiationChecks.run(helper);
+		}
+		helper.succeed();
+	}
 }

@@ -452,6 +452,42 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   Planted bugs (gunfire sent as `projectile_shoot`; the explosion event removed) failed with "didn't hear a sneaking
   player's gunshot" and "didn't hear an explosion".
 
+### 18. Mekanism radiation bridge (all 38 tests pass with and without Mekanism; not tested in game)
+
+- `techguns.plugins.mekanism.MekanismRadiationBridge`, registered only when Mekanism is loaded. It compiles against
+  Mekanism's API jar (`mekanism:Mekanism:1.21.1-10.7.19.85:api` from modmaven.dev, `compileOnly`). The item
+  capability `mekanism:radiation_shielding` isn't in the API (it's in `mekanism.common.capabilities.Capabilities`),
+  so the bridge creates it by the same name and type, which NeoForge resolves to the same instance.
+- Techguns armor to Mekanism: every Techguns armor piece with RAD resistance, and the gas mask, gets the shielding
+  capability: `min(1, resistance) x` the slot's share of Mekanism's hazmat suit (0.25/0.4/0.2/0.15, read from
+  `ItemHazmatSuitArmor.getShieldingByArmor`). A broken piece gives 0, like its RAD resistance. Mekanism adds up armor
+  and Curios slots and caps at 1 (`RadiationUtil.getRadiationResistance`), so the gas mask in its Curios slot counts.
+- Mekanism to Techguns: an `ItemAttributeModifierEvent` gives other mods' armor with the capability
+  `RADIATION_RESISTANCE = shielding / slot share` in its slot. Techguns items are skipped, since they already have
+  their own resistance and would otherwise count twice.
+- The doses aren't merged. Shared cures came next (entry 19).
+- New test `GameplayTests.mekanismRadiationBridge` (helper `MekanismRadiationChecks`, only loaded with Mekanism). It
+  checks shielding values, the RAD resistance of the four Mekanism hazmat pieces, and end to end: Mekanism's
+  `IRadiationManager.radiate(player, 1.0)` gives a bare player 1 Sv and a player in full Techguns hazmat 0. With
+  the bridge's registration commented out, all ten checks failed ("full Techguns hazmat let 1.0 Sv through").
+  CI's all-compat-mods run covers it.
+
+### 19. Shared radiation cures with Mekanism (all 38 tests pass with and without Mekanism; not tested in game)
+
+- Asked how to link the doses; chose "two doses, shared cures" over making either mod's dose the only one or
+  mirroring exposure into both.
+- `TGRadiationSystem.externalRadRegeneration`: a hook `RadRegenerationEffect` calls with the RAD it just removed.
+  The Mekanism bridge sets it, so core code still has no Mekanism references.
+- Cures: Mekanism's dose severity is `log10(dose / 1e-5) / log10(100 / 1e-5)` (`RadiationScale`, the minimum
+  magnitude from `IRadiationManager`). The bridge maps 1000 RAD to that whole range: removing N RAD multiplies the
+  Mekanism dose by `10^(-7 x N / 1000)`, floored at Mekanism's baseline. Rad-Away (300 RAD): 10 Sv becomes 0.079 Sv.
+- Rad pills: while the RAD resistance effect is active, a player tick takes back `min(1, (amplifier + 1) / 4)` of
+  any Mekanism dose gained since the last check (rad pills III: 75%). Only the effect counts, since armor already
+  shields through Mekanism. The last dose is kept in a `WeakHashMap` per player.
+- Test additions in `MekanismRadiationChecks`: Rad-Away ticks take a player from 400 to 100 RAD and from 10 Sv to
+  the expected 0.0794 Sv; with rad pills III, Mekanism's `radiate(player, 1.0)` adds 0.25 Sv. Planted bugs (hook not
+  set, effect blocking 0) failed with "10.0 instead of 0.0794" and "1.0 instead of 0.25".
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

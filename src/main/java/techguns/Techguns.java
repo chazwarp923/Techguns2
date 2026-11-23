@@ -43,6 +43,10 @@ public class Techguns {
 		techguns.entities.spawn.TGSpawnManager.register(modBus);
 		techguns.world.gen.TGStructures.register(modBus);
 		techguns.world.gen.ConfigOrePlacement.register(modBus);
+		if (net.neoforged.fml.ModList.get().isLoaded(techguns.plugins.mekanism.MekanismRadiationBridge.MEKANISM)) {
+			// radiation protection works across both radiation systems
+			techguns.plugins.mekanism.MekanismRadiationBridge.register(modBus);
+		}
 
 		modBus.addListener(TGEntities::registerAttributes);
 		modBus.addListener(TGEntities::registerSpawnPlacements);

@@ -132,6 +132,20 @@ Unchanged in behaviour: radioactive items in the inventory, radiation sickness, 
 resistance, radiation potions (brewing recipes) and the HUD. Items get their radiation level through the radiation
 registry as in 1.12, and the tooltip shows the level.
 
+**With Mekanism installed (new),** the two radiation systems are linked. The doses stay separate (Techguns RAD and
+Mekanism's Sv, each with its own meter and sickness), but protection and cures work on both:
+- Techguns armor shields against Mekanism radiation. A piece's RAD resistance of 1 (a hazmat piece) counts as that
+  slot's full share of Mekanism's hazmat suit (helmet 25%, chestplate 40%, leggings 20%, boots 15%); less is
+  scaled down, more is capped. Full Techguns hazmat, HEV, Nether Combat or Power Armor Mk2 shields 100%, full Steam
+  or Ranger Veteran armor 50%, Commando or Advanced Combat 25%. The gas mask counts as a helmet share.
+- Mekanism's hazmat suit (and MekaSuit pieces with the radiation shielding unit) gives Techguns RAD resistance,
+  1 per hazmat piece, the same as Techguns hazmat. It shows in the item tooltip.
+- Rad-Away, rad pills and the RAD regeneration potion also lower the Mekanism dose, by the same share of
+  Mekanism's scale as they take off ours (1000 RAD is the whole scale). Mekanism's scale is logarithmic, so
+  Rad-Away's 300 RAD takes the dose down about a hundredfold, for example from 10 Sv to 0.08 Sv.
+- The RAD resistance effect from rad pills and the RAD resistance potion also blocks Mekanism exposure:
+  resistance / 4, so rad pills (III) block 75%. A full hazmat suit is 4 in our system and 100% in Mekanism's.
+
 ---
 
 ## 4. World generation
@@ -223,6 +237,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 | FTB Library teams | Ported to FTB Teams (optional). |
 | Patchouli (Techguns Manual) | Ported. Since Patchouli 1.20, `book.json` lives in `data/` and the pages in `assets/`. The book now uses that layout, with flattened ids, Curios and FE wording, and fixed broken links. Craft it from an iron ingot, a glass pane and stone bullets or pistol rounds. |
 | Jade (new) | Optional. Looking at a machine (or any part of a formed multiblock) shows its progress, owner and security level; Jade's own providers add energy, items and fluids. Toggle under Jade's plugin settings ("Techguns Machines"). |
+| Mekanism radiation (new) | Optional. The two radiation systems are linked: armor protects against both, and Rad-Away and rad pills work on both; see 3.7. |
 | Create, Mekanism, Immersive Engineering (new) | Data-only recipes in `data/techguns/recipe/compat/`, each loaded only when its mod is installed. All three already process Techguns ores and ingots through the shared `c:` tags; these fill the gaps. **Create:** presses tin, bronze, obsidian steel and titanium ingots into Techguns plates (steel and lead too, unless IE is installed: Create already presses those into IE plates). Heated mixing makes bronze (3 copper + 1 tin = 4) and obsidian steel (steel + obsidian). Create crushes Techguns lead, tin and uranium ores but only had uses for the crushed ore with another metal mod installed; without one, crushed tin and lead now smelt into Techguns ingots, crushed lead washes into lead nuggets and crushed uranium into yellowcake. **Immersive Engineering:** metal press plates for obsidian steel and titanium (IE already makes Techguns tin and bronze plates); obsidian steel in the alloy kiln and arc furnace. **Mekanism:** obsidian steel in the combiner. Titanium processing and enriched uranium stay with the Techguns reaction chamber. |
 | Ponder (new) | Optional. Hold W over a fabricator, reaction chamber or ore drill part for an animated build guide: fabricator, reaction chamber, small and framed ore drill. |
 | CraftTweaker (machine recipes, gun/armor stats, death effects, ore clusters) | Machine recipes are JSON recipe types and can be edited with any datapack tool. Gun, armor, death-effect and ore-cluster scripting is not ported, because it would need a CraftTweaker dependency. |
@@ -251,7 +266,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 37 headless game tests, run with `./gradlew runGameTestServer`. They run
+1.12 had no automated tests. There are now 38 headless game tests, run with `./gradlew runGameTestServer`. They run
 in `run-gametest/` and take about one minute. GitHub Actions (`.github/workflows/build.yml`) runs the build and every game test on each push and pull
 request. It doesn't keep built jars, because the license doesn't allow distributing builds.
 
@@ -266,6 +281,9 @@ request. It doesn't keep built jars, because the license doesn't allow distribut
   - the advancements: all load, lead to the root, use real item and entity ids and are translated;
   - vibrations: a sneaking player's gunshot, a reload and a Techguns explosion each set off a sculk sensor, and
     the gunfire event's tags and frequency;
+  - the Mekanism radiation bridge (with Mekanism installed): shielding values of Techguns armor, RAD resistance of
+    Mekanism's hazmat suit, Mekanism's own radiate() letting nothing through full Techguns hazmat, Rad-Away
+    lowering the Mekanism dose, and rad pills blocking 75% of new exposure;
   - the compat recipes: each is gated on its mod and loads exactly when it should. CI also runs the tests with
     Create, Mekanism and IE installed, and with Create alone (`-Pcompat_mods=true` or `=create`), where a recipe
     that fails to parse, or takes an input another recipe of that type already uses, fails the test;

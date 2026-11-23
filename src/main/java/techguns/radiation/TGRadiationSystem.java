@@ -88,6 +88,13 @@ public final class TGRadiationSystem {
 
 	private static final ItemRadiationData TAG_RADIATION = new ItemRadiationData(1, 100);
 
+	/**
+	 * Called with the RAD that RAD regeneration (Rad-Away, rad pills, the potion) just removed from a player, so another
+	 * mod's radiation can be cured along with it. The Mekanism bridge sets this.
+	 */
+	public static java.util.function.ObjIntConsumer<net.minecraft.world.entity.player.Player> externalRadRegeneration = (ply, rad) -> {
+	};
+
 	private TGRadiationSystem() {
 	}
 

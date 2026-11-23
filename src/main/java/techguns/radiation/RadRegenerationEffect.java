@@ -22,6 +22,7 @@ public class RadRegenerationEffect extends MobEffect {
 	public boolean applyEffectTick(LivingEntity ent, int amplifier) {
 		if (!ent.level().isClientSide && ent instanceof Player ply) {
 			TGExtendedPlayer.get(ply).addRadiation(-(amplifier + 1));
+			TGRadiationSystem.externalRadRegeneration.accept(ply, amplifier + 1);
 		}
 		return true;
 	}
