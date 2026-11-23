@@ -33,7 +33,7 @@ public final class TGTeams {
 	private static Boolean loaded;
 
 	/** Player UUID to scoreboard name. Game tests swap it, because the test server has no profile cache. */
-	private static BiFunction<MinecraftServer, UUID, String> nameLookup = TGTeams::scoreboardName;
+	private static BiFunction<MinecraftServer, UUID, String> nameLookup = TGTeams::playerName;
 
 	private TGTeams() {
 	}
@@ -115,6 +115,12 @@ public final class TGTeams {
 		return name == null ? null : server.getScoreboard().getPlayersTeam(name);
 	}
 
+	/** Name lookup used for teams (swappable in game tests). */
+	@Nullable
+	public static String lookupName(MinecraftServer server, UUID player) {
+		return nameLookup.apply(server, player);
+	}
+
 	/** For game tests: replaces the UUID to scoreboard name lookup and returns the previous one. */
 	public static BiFunction<MinecraftServer, UUID, String> setNameLookupForTests(BiFunction<MinecraftServer, UUID, String> lookup) {
 		BiFunction<MinecraftServer, UUID, String> old = nameLookup;
@@ -122,8 +128,9 @@ public final class TGTeams {
 		return old;
 	}
 
+	/** Name of a player, online or offline (profile cache); null if the server has never seen them. */
 	@Nullable
-	private static String scoreboardName(MinecraftServer server, UUID player) {
+	public static String playerName(MinecraftServer server, UUID player) {
 		ServerPlayer online = server.getPlayerList().getPlayer(player);
 		if (online != null) {
 			return online.getScoreboardName();

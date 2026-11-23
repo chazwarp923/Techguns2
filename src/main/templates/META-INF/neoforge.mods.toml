@@ -41,6 +41,14 @@ description='''${mod_description}'''
     ordering="NONE"
     side="BOTH"
 
+# optional: Jade overlay (machine progress, owner, security)
+[[dependencies.${mod_id}]]
+    modId="jade"
+    type="optional"
+    versionRange="[15.0,)"
+    ordering="NONE"
+    side="BOTH"
+
 # optional: Ponder scenes for the multiblock machines
 [[dependencies.${mod_id}]]
     modId="ponder"

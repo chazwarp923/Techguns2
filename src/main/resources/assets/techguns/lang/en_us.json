@@ -967,5 +967,7 @@
   "techguns.ponder.ore_drill.text_3": "Frames cover the ends and corners, Scaffolds the sides in between. Wider engines need a bigger drill head",
   "techguns.ponder.ore_drill.text_4": "The Controller goes on the end of the Engines. Right-click it to form the drill",
   "techguns.ponder.tag.multiblocks": "Techguns Multiblocks",
-  "techguns.ponder.tag.multiblocks.description": "Machines built from several blocks"
+  "techguns.ponder.tag.multiblocks.description": "Machines built from several blocks",
+  "techguns.jade.progress": "Progress: %s%%",
+  "config.jade.plugin_techguns.machine": "Techguns Machines"
 }

@@ -757,5 +757,7 @@
   "tipped_arrow.effect.radpotion": "Радиоактивная Стрела",
   "tipped_arrow.effect.radpotion_severe": "Усиленная Радиоактивная Стрела",
   "tipped_arrow.effect.radregenerationpotion": "Стрела с Антирадином",
-  "tipped_arrow.effect.radresistancepotion": "Стрела с Защитой от Радиации"
+  "tipped_arrow.effect.radresistancepotion": "Стрела с Защитой от Радиации",
+  "techguns.jade.progress": "Прогресс: %s%%",
+  "config.jade.plugin_techguns.machine": "Машины Techguns"
 }

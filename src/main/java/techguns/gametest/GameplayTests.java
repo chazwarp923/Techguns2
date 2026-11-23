@@ -285,6 +285,38 @@ public class GameplayTests {
 		helper.succeed();
 	}
 
+	/** The server data behind the Jade overlay: owner name, security and progress of a working machine. */
+	@GameTest(template = "empty")
+	public static void jadeMachineInfo(GameTestHelper helper) {
+		BlockPos rel = new BlockPos(1, 1, 1);
+		helper.setBlock(rel, techguns.TGBlocks.GRINDER.get());
+		var grinder = (techguns.tileentities.BasicMachineTileEnt) helper.getBlockEntity(rel);
+		ServerPlayer ply = player(helper);
+		grinder.setOwner(ply);
+		grinder.setSecurity((byte) 2);
+		var old = techguns.factions.TGTeams.setNameLookupForTests((s, id) -> id.equals(ply.getUUID()) ? "tgOwner" : null);
+		try {
+			net.minecraft.nbt.CompoundTag idle = new net.minecraft.nbt.CompoundTag();
+			techguns.plugins.jade.MachineInfo.write(idle, grinder, helper.getLevel().getServer());
+			helper.assertTrue("tgOwner".equals(idle.getString(techguns.plugins.jade.MachineInfo.OWNER)), "owner: " + idle);
+			helper.assertTrue(idle.getByte(techguns.plugins.jade.MachineInfo.SECURITY) == 2, "security: " + idle);
+			helper.assertTrue(techguns.plugins.jade.MachineInfo.progress(idle) < 0, "idle machine shows progress: " + idle);
+
+			grinder.totaltime = 200;
+			grinder.progress = 50;
+			net.minecraft.nbt.CompoundTag working = new net.minecraft.nbt.CompoundTag();
+			techguns.plugins.jade.MachineInfo.write(working, grinder, helper.getLevel().getServer());
+			helper.assertTrue(Math.abs(techguns.plugins.jade.MachineInfo.progress(working) - 0.25f) < 1e-6, "progress: " + working);
+
+			net.minecraft.nbt.CompoundTag none = new net.minecraft.nbt.CompoundTag();
+			techguns.plugins.jade.MachineInfo.write(none, null, helper.getLevel().getServer());
+			helper.assertTrue(none.isEmpty(), "data for no block entity: " + none);
+		} finally {
+			techguns.factions.TGTeams.setNameLookupForTests(old);
+		}
+		helper.succeed();
+	}
+
 	/* ---------------------------------------------------------------- off hand rules */
 
 	@GameTest(template = "empty")

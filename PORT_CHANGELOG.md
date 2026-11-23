@@ -360,6 +360,22 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
 - `ModelTests` now also checks that each model texture is in the block atlas (our directory and single sources,
   vanilla's `block/` and `item/`). With the two fixes reverted it reported exactly those 5 problems.
 
+### 13. Jade overlay (all 30 tests pass; overlay not tested in game)
+
+- Optional dependency on Jade 15.10.6 (Modrinth maven): `compileOnly` and `localRuntime` in `build.gradle`,
+  `jade_version` in `gradle.properties`, optional `jade` entry in `neoforge.mods.toml`.
+- `plugins/jade/TGJadePlugin` (`@WailaPlugin`, loaded only by Jade) registers one provider, `techguns:machine`. Its
+  server side runs for every `BasicOwnedTileEnt` and multiblock part, and its client side draws:
+  - a progress bar with "Progress: N%" while a machine works;
+  - the owner's name and the security level, in the same colours as the machine GUI.
+- `plugins/jade/MachineInfo` writes that data on the server. It has no Jade imports, so the game test can call it.
+  A multiblock part shows its controller, and an unformed part shows nothing. Owner names come from
+  `TGTeams.lookupName` (online players, then the profile cache), now public as `TGTeams.playerName`.
+- No energy, item or fluid code: Jade's universal providers read the NeoForge capabilities the machines already
+  expose, including through multiblock parts.
+- Lang: `techguns.jade.progress` and `config.jade.plugin_techguns.machine`, in en/de/ru.
+- New test `GameplayTests.jadeMachineInfo`. The test server log shows Jade loading `TGJadePlugin` with no errors.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

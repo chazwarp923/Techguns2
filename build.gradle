@@ -136,6 +136,9 @@ dependencies {
     compileOnly("net.createmod.ponder:Ponder-NeoForge-${minecraft_version}:${ponder_version}") { transitive = false }
     localRuntime("net.createmod.ponder:Ponder-NeoForge-${minecraft_version}:${ponder_version}") { transitive = false }
     localRuntime "dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}"
+    // Jade: optional, machine progress / owner / security in the look-at overlay (techguns.plugins.jade)
+    compileOnly "maven.modrinth:jade:${jade_version}"
+    localRuntime "maven.modrinth:jade:${jade_version}"
     // Powah (FE generators to power the machines) and its dependencies, dev client only
     localRuntime "maven.modrinth:powah:${powah_version}"
     localRuntime "maven.modrinth:cloth-config:${cloth_config_version}"

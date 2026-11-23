@@ -643,5 +643,7 @@
   "techguns.yes": "Ja",
   "tipped_arrow.effect.radpotion": "Pfeil der Verstrahlung",
   "tipped_arrow.effect.radregenerationpotion": "Pfeil der RAD Regeneration",
-  "tipped_arrow.effect.radresistancepotion": "Pfeil der RAD Resistenz"
+  "tipped_arrow.effect.radresistancepotion": "Pfeil der RAD Resistenz",
+  "techguns.jade.progress": "Fortschritt: %s%%",
+  "config.jade.plugin_techguns.machine": "Techguns-Maschinen"
 }
