@@ -60,8 +60,23 @@ public abstract class BasicTGTileEntity extends BlockEntity implements net.minec
 
 	public void readClientData(CompoundTag tags, HolderLookup.Provider registries) {
 		if (this.hasRotation) {
+			byte old = this.rotation;
 			this.rotation = (byte) (tags.getByte("rotation") % 4);
+			if (old != this.rotation && this.level != null && this.level.isClientSide) {
+				// JSON machine models are rotated by the model data: re-mesh the block
+				this.requestModelDataUpdate();
+				this.level.sendBlockUpdated(this.worldPosition, this.getBlockState(), this.getBlockState(), 8);
+			}
 		}
+	}
+
+	/** rotation of block models that turn with the block entity (see techguns.client.models.RotatedBlockModel) */
+	public static final net.neoforged.neoforge.client.model.data.ModelProperty<Integer> ROTATION = new net.neoforged.neoforge.client.model.data.ModelProperty<>();
+
+	@Override
+	public net.neoforged.neoforge.client.model.data.ModelData getModelData() {
+		return this.hasRotation ? net.neoforged.neoforge.client.model.data.ModelData.builder().with(ROTATION, (int) this.rotation).build()
+				: net.neoforged.neoforge.client.model.data.ModelData.EMPTY;
 	}
 
 	@Override

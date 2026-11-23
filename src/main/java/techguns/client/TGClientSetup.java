@@ -159,6 +159,13 @@ public class TGClientSetup {
 		techguns.client.render.tileentities.RenderDoor3x3.registerModels(event);
 	}
 
+	/** machines whose JSON model turns with the block entity's rotation */
+	@SubscribeEvent
+	public static void modifyBakedModels(net.neoforged.neoforge.client.event.ModelEvent.ModifyBakingResult event) {
+		techguns.client.models.RotatedBlockModel.wrap(event, techguns.TGBlocks.AMMO_PRESS.get(), techguns.TGBlocks.METAL_PRESS.get(),
+				techguns.TGBlocks.CHEM_LAB.get());
+	}
+
 	@SubscribeEvent
 	public static void registerScreens(net.neoforged.neoforge.client.event.RegisterMenuScreensEvent event) {
 		techguns.client.render.tileentities.TGMachineRenderers.registerScreens(event);

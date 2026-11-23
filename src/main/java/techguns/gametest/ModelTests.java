@@ -81,6 +81,11 @@ public class ModelTests {
 	private static Atlas atlas;
 
 	private static void checkModel(String ref, String from, Set<String> seen, List<String> problems) throws IOException {
+		checkModel(ref, from, Set.of(), seen, problems);
+	}
+
+	/** inherited: texture variables the models using this one as their parent define */
+	private static void checkModel(String ref, String from, Set<String> inherited, Set<String> seen, List<String> problems) throws IOException {
 		ResourceLocation rl = ResourceLocation.parse(ref);
 		if (!rl.getNamespace().equals(Techguns.MODID) || rl.getPath().startsWith("builtin/") || !seen.add(rl.getPath())) {
 			return;
@@ -92,11 +97,51 @@ public class ModelTests {
 		}
 		JsonObject model = json(file);
 		if (model.has("loader")) {
-			return; // custom loaders (obj) reference their own files
+			if (model.get("loader").getAsString().equals("neoforge:composite")) {
+				// the JSON machine models: each child is a model of its own, with the root's textures too
+				checkTextures(model, file, problems);
+				for (var child : model.getAsJsonObject("children").entrySet()) {
+					JsonObject c = child.getValue().getAsJsonObject();
+					checkTextures(c, file + " (" + child.getKey() + ")", problems);
+					Set<String> defined = new java.util.HashSet<>(model.getAsJsonObject("textures").keySet());
+					if (c.has("textures")) {
+						defined.addAll(c.getAsJsonObject("textures").keySet());
+					}
+					checkFaceRefs(c, defined, file + " (" + child.getKey() + ")", problems);
+				}
+			}
+			return; // other custom loaders (obj) reference their own files
+		}
+		Set<String> defined = new java.util.HashSet<>(inherited);
+		if (model.has("textures")) {
+			defined.addAll(model.getAsJsonObject("textures").keySet());
 		}
 		if (model.has("parent")) {
-			checkModel(model.get("parent").getAsString(), file, seen, problems);
+			checkModel(model.get("parent").getAsString(), file, defined, seen, problems);
 		}
+		checkTextures(model, file, problems);
+		checkFaceRefs(model, defined, file, problems);
+	}
+
+	/**
+	 * Every face of the model's own elements uses a texture variable that's defined: by the model, a model using it as
+	 * parent, or the composite root. A template only reached as a parent is checked with its children's variables.
+	 */
+	private static void checkFaceRefs(JsonObject model, Set<String> defined, String file, List<String> problems) {
+		if (!model.has("elements")) {
+			return;
+		}
+		for (JsonElement el : model.getAsJsonArray("elements")) {
+			for (var face : el.getAsJsonObject().getAsJsonObject("faces").entrySet()) {
+				String tex = face.getValue().getAsJsonObject().get("texture").getAsString();
+				if (tex.startsWith("#") && !defined.contains(tex.substring(1))) {
+					problems.add(file + " -> face texture " + tex + " isn't defined");
+				}
+			}
+		}
+	}
+
+	private static void checkTextures(JsonObject model, String file, List<String> problems) {
 		if (model.has("textures")) {
 			for (var e : model.getAsJsonObject("textures").entrySet()) {
 				String tex = e.getValue().getAsString();
@@ -179,6 +224,56 @@ public class ModelTests {
 		}
 		problems = new ArrayList<>(new TreeSet<>(problems));
 		helper.assertTrue(problems.isEmpty(), problems.size() + " model problems: " + String.join("; ", problems));
+		helper.succeed();
+	}
+
+	/**
+	 * Every OBJ block / item model face's vertex normals point the way the face does. NeoForge's OBJ loader picks each
+	 * quad's direction, and so its shade, from these normals: smoothed (averaged) normals made the reaction chamber's
+	 * flat panels split into a light and a dark triangle.
+	 */
+	@GameTest(template = "empty")
+	public static void objNormalsMatchFaces(GameTestHelper helper) throws IOException {
+		List<String> problems = new ArrayList<>();
+		Path root = asset("models");
+		List<Path> objs;
+		try (var walk = Files.walk(root)) {
+			objs = walk.filter(f -> f.toString().endsWith(".obj")).sorted().toList();
+		}
+		for (Path obj : objs) {
+			List<float[]> v = new ArrayList<>(), vn = new ArrayList<>();
+			int bad = 0;
+			for (String line : Files.readAllLines(obj)) {
+				String[] p = line.trim().split("\\s+");
+				if (p[0].equals("v")) {
+					v.add(new float[] { Float.parseFloat(p[1]), Float.parseFloat(p[2]), Float.parseFloat(p[3]) });
+				} else if (p[0].equals("vn")) {
+					vn.add(new float[] { Float.parseFloat(p[1]), Float.parseFloat(p[2]), Float.parseFloat(p[3]) });
+				} else if (p[0].equals("f") && p.length >= 4) {
+					float[] a = v.get(Integer.parseInt(p[1].split("/")[0]) - 1), b = v.get(Integer.parseInt(p[2].split("/")[0]) - 1),
+							c = v.get(Integer.parseInt(p[3].split("/")[0]) - 1);
+					float[] e1 = { b[0] - a[0], b[1] - a[1], b[2] - a[2] }, e2 = { c[0] - a[0], c[1] - a[1], c[2] - a[2] };
+					float[] g = { e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0] };
+					double lg = Math.sqrt(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]);
+					for (int i = 1; i < p.length && lg > 0; i++) {
+						String[] idx = p[i].split("/");
+						if (idx.length < 3 || idx[2].isEmpty()) {
+							continue; // no normal: the loader uses the face's own
+						}
+						float[] n = vn.get(Integer.parseInt(idx[2]) - 1);
+						double ln = Math.sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+						if ((g[0] * n[0] + g[1] * n[1] + g[2] * n[2]) / (lg * ln) < 0.98) {
+							bad++;
+							break;
+						}
+					}
+				}
+			}
+			if (bad > 0) {
+				problems.add(root.relativize(obj) + ": " + bad + " faces with normals off the face");
+			}
+		}
+		helper.assertTrue(problems.isEmpty(), String.join("; ", problems));
 		helper.succeed();
 	}
 }

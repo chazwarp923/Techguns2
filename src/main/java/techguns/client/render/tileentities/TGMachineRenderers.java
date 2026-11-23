@@ -64,9 +64,6 @@ public final class TGMachineRenderers {
 	}
 
 	public static void registerItems(RegisterClientExtensionsEvent event) {
-		item(event, AMMO_PRESS, TGBlocks.AMMO_PRESS.get());
-		item(event, METAL_PRESS, TGBlocks.METAL_PRESS.get());
-		item(event, CHEM_LAB, TGBlocks.CHEM_LAB.get());
 		event.registerItem(new IClientItemExtensions() {
 			private BlockEntityWithoutLevelRenderer bewlr;
 
@@ -78,19 +75,5 @@ public final class TGMachineRenderers {
 				return bewlr;
 			}
 		}, TGBlocks.TURRET.get().asItem());
-	}
-
-	private static void item(RegisterClientExtensionsEvent event, RenderMachine<?> renderer, ItemLike item) {
-		event.registerItem(new IClientItemExtensions() {
-			private BlockEntityWithoutLevelRenderer bewlr;
-
-			@Override
-			public BlockEntityWithoutLevelRenderer getCustomRenderer() {
-				if (bewlr == null) {
-					bewlr = new RenderMachine.ItemRenderer(renderer);
-				}
-				return bewlr;
-			}
-		}, item.asItem());
 	}
 }

@@ -14,7 +14,10 @@ import techguns.client.models.machines.ModelMachine;
 import techguns.client.render.gl.TGRenderState;
 import techguns.tileentities.BasicMachineTileEnt;
 
-/** Animated machine model (1.12 RenderMachine), the progress drives the model animation. */
+/**
+ * Moving parts of a machine (1.12 RenderMachine), driven by the machine progress. The static parts are a JSON block
+ * model turned by the same rotation (techguns.client.models.RotatedBlockModel).
+ */
 public class RenderMachine<T extends BasicMachineTileEnt> implements BlockEntityRenderer<T> {
 
 	protected final ModelMachine model;
@@ -48,20 +51,5 @@ public class RenderMachine<T extends BasicMachineTileEnt> implements BlockEntity
 			TGRenderState.end();
 		}
 		ps.popPose();
-	}
-
-	/** item form of the machine, uses the builtin/entity display transforms of models/item/basicmachine.json */
-	public static class ItemRenderer extends BlockEntityWithoutLevelRenderer {
-		private final RenderMachine<?> renderer;
-
-		public ItemRenderer(RenderMachine<?> renderer) {
-			super(Minecraft.getInstance().getBlockEntityRenderDispatcher(), Minecraft.getInstance().getEntityModels());
-			this.renderer = renderer;
-		}
-
-		@Override
-		public void renderByItem(ItemStack stack, ItemDisplayContext ctx, PoseStack ps, MultiBufferSource buffers, int light, int overlay) {
-			renderer.renderModel(ps, buffers, light, overlay, 0, 0f);
-		}
 	}
 }

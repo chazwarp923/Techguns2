@@ -1,7 +1,7 @@
 {
   "variants": {
     "": {
-      "model": "techguns:block/basicmachine"
+      "model": "techguns:block/chem_lab"
     }
   }
 }

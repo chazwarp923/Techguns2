@@ -525,6 +525,45 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
 - Removed the 1.12 CraftTweaker leftovers `EnumGunStat` and `GenericGun.setGunStat`, which nothing called.
 - Magazine size isn't a stat: it's the item's max durability, fixed at registration.
 
+### 22. Static machine parts as JSON block models (all 42 tests pass; not tested in game)
+
+- Only four machines had Java models: the ammo press, metal press, chemical lab and fabricator (plus the turret
+  base). The proposal's "77 files, 18k lines" counted guns, armor and NPCs too. The fabricator is left as it is: it's
+  a formed multiblock drawn from its controller and reaches beyond one block.
+- Converter (`machine_models.py`, not committed; the JSON is the source now):
+  - parses the Techne-style constructors (`new ModelRenderer(this, u, v)`, `addBox`, `setRotationPoint`,
+    `setRotation`, `mirror` in statement order);
+  - takes the unconditional `X.render(scale)` calls at the start of `render()` as the static parts;
+  - rebuilds each `ModelPart.Cube` polygon with vanilla's UV layout under RenderMachine's transform;
+  - for each face, searches the JSON direction, UV order and UV rotation, and the element's 45 degree rotation sign,
+    and keeps only a face whose FaceBakery bake (re-implemented from the 1.21.1 source) has the same 4 positions,
+    texture coordinates and facing;
+  - folds 90 degree Y rotations into the box and keeps 45 degree ones as JSON element rotations. No other rotations
+    were present.
+  - Result: ammo press 31 elements, metal press 29, chem lab 46 plus 11 glass (translucent child of a
+    `neoforge:composite` model). The item models add the moving parts at rest (ammo press pistons, metal press
+    plungers) and use `item/basicmachine`'s display transforms.
+- Java models keep only the moving parts (about 940 lines removed). The three blocks render with `RenderShape.MODEL`,
+  their blockstates point at the new models, and the item BEWLRs and `RenderMachine.ItemRenderer` are gone.
+- Rotation: `BasicTGTileEntity.getModelData()` reports `ROTATION`. `readClientData` re-meshes the block when the
+  rotation changes. `RotatedBlockModel` (wrapped in `ModelEvent.ModifyBakingResult`) turns the quads by -90 x r
+  degrees around the block centre, with quad directions turned clockwise, cached per rotation and render type. That
+  matches RenderMachine's `Y(90 x r)` inside its Z/Y flip.
+- `ModelTests` now checks composite children and face texture variables, carrying variables down from inheriting
+  models so templates (camo net tops, lamp base) pass. A bad texture variable planted in the chem lab glass failed
+  with "models/block/chem_lab.json (glass) -> face texture #tax isn't defined".
+- Reaction chamber (found in game while testing this): the formed chamber's flat panels showed a light and a dark
+  triangle. `reactionchamber.obj` had smoothed vertex normals: 320 of 324 chamber triangles had diagonal normals,
+  and 12 of those were nearest to "up" instead of their real side. NeoForge's OBJ loader takes each quad's direction,
+  and so its flat shade, from those normals. Every face now has its geometric normal (23 distinct). No other OBJ had
+  the problem. New test `objNormalsMatchFaces` (42 tests) checks every OBJ face; the original file failed it with
+  "330 faces with normals off the face".
+- Needs an in-game look:
+  - each machine next to how it looked before;
+  - all four wrench rotations, with the moving parts lining up with the static ones;
+  - the item icons;
+  - the chem lab glass over the liquids.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

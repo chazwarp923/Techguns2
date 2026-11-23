@@ -99,10 +99,10 @@ public class TGBlocks {
 
 	/* Machines (1.12 basicmachine / simplemachine metadata blocks) */
 	public static final DeferredBlock<techguns.blocks.machines.BlockMachine<techguns.tileentities.AmmoPressTileEnt>> AMMO_PRESS = register("ammo_press",
-			p -> new techguns.blocks.machines.BlockMachine<>(p, TGBlockEntities.AMMO_PRESS, net.minecraft.world.level.block.RenderShape.ENTITYBLOCK_ANIMATED),
+			p -> new techguns.blocks.machines.BlockMachine<>(p, TGBlockEntities.AMMO_PRESS, net.minecraft.world.level.block.RenderShape.MODEL),
 			machineProps());
 	public static final DeferredBlock<techguns.blocks.machines.BlockMachine<techguns.tileentities.MetalPressTileEnt>> METAL_PRESS = register("metal_press",
-			p -> new techguns.blocks.machines.BlockMachine<>(p, TGBlockEntities.METAL_PRESS, net.minecraft.world.level.block.RenderShape.ENTITYBLOCK_ANIMATED),
+			p -> new techguns.blocks.machines.BlockMachine<>(p, TGBlockEntities.METAL_PRESS, net.minecraft.world.level.block.RenderShape.MODEL),
 			machineProps());
 	public static final DeferredBlock<techguns.blocks.machines.BlockMachineFacing<techguns.tileentities.BlastFurnaceTileEnt>> BLAST_FURNACE = register("blast_furnace",
 			p -> new techguns.blocks.machines.BlockMachineFacing<>(p, TGBlockEntities.BLAST_FURNACE), machineProps());
@@ -113,7 +113,7 @@ public class TGBlocks {
 	public static final DeferredBlock<techguns.blocks.machines.BlockMachineFacing<techguns.tileentities.RepairBenchTileEnt>> REPAIR_BENCH = register("repair_bench",
 			p -> new techguns.blocks.machines.BlockMachineFacing<>(p, TGBlockEntities.REPAIR_BENCH), machineProps());
 	public static final DeferredBlock<techguns.blocks.machines.BlockMachine<techguns.tileentities.ChemLabTileEnt>> CHEM_LAB = register("chem_lab",
-			p -> new techguns.blocks.machines.BlockMachine<>(p, TGBlockEntities.CHEM_LAB, net.minecraft.world.level.block.RenderShape.ENTITYBLOCK_ANIMATED),
+			p -> new techguns.blocks.machines.BlockMachine<>(p, TGBlockEntities.CHEM_LAB, net.minecraft.world.level.block.RenderShape.MODEL),
 			machineProps());
 	public static final DeferredBlock<techguns.blocks.machines.BlockMachineFacing<techguns.tileentities.CamoBenchTileEnt>> CAMO_BENCH = register("camo_bench",
 			p -> new techguns.blocks.machines.BlockMachineFacing<>(p, TGBlockEntities.CAMO_BENCH), machineProps());

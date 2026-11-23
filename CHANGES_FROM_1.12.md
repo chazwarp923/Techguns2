@@ -293,6 +293,22 @@ sections such as `general.RestrictUnsafeModeToOP`.
 - **The 1.12 Java gun and armor models are kept.** They render through a small `GlStateManager` stand-in
   (`client/render/gl`) that sends the old matrix, colour and texture calls to 1.21's `PoseStack` and render buffers.
   Guns render through a block-entity-without-level renderer (BEWLR) item extension.
+- **The ammo press, metal press and chemical laboratory are JSON block models.** In 1.12 the whole machine was a
+  Java model drawn every frame. Now the static parts are JSON models (`models/block/ammo_press.json`, `metal_press.json`,
+  `chem_lab.json`), drawn once with the terrain; only the moving parts (pistons, metal piece, bullets, liquids) are
+  still drawn each frame by the block entity renderer. Resource packs and Blockbench can edit the JSON models, and
+  the item icons are JSON item models of the resting machine instead of a Java renderer.
+  - The chemical laboratory's glass is a translucent child of a NeoForge composite model; the rest is cutout.
+  - The machines still turn with the wrench through the block entity's rotation, not a blockstate property, so
+    existing worlds and dungeon machines need no conversion. The rotation reaches the model as NeoForge model data
+    (`RotatedBlockModel`), which turns the quads; a wrench turn re-meshes the chunk section.
+  - The models were converted from the Java models by a script that rebuilt every face as vanilla's model code
+    draws it and only accepted JSON faces that bake to the same positions and texture coordinates. Lighting now
+    uses block shading and smooth lighting instead of entity lighting, so shading looks slightly different.
+  - The fabricator stays a Java model: it's a formed multiblock drawn from its controller, larger than one block.
+- **The formed reaction chamber has flat face normals.** Its OBJ model had smoothed normals, which NeoForge's OBJ
+  loader uses to pick each triangle's shade: flat panels split into a light and a dark triangle. Every face now has
+  its own flat normal.
 - **OBJ guns** use a small OBJ mesh renderer instead of 1.12 baked models.
 - **The particle system** (`.txt` FX definitions, death effects, gore, muzzle FX, item-attached FX) is ported. It
   draws through 1.21 render types and supports depth sorting (`ParticleDepthSortPasses` client config).
@@ -308,7 +324,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 41 headless game tests, run with `./gradlew runGameTestServer`. They run
+1.12 had no automated tests. There are now 42 headless game tests, run with `./gradlew runGameTestServer`. They run
 in `run-gametest/` and take about one minute. GitHub Actions (`.github/workflows/build.yml`) runs the build and every game test on each push and pull
 request. It doesn't keep built jars, because the license doesn't allow distributing builds.
 
@@ -347,7 +363,9 @@ request. It doesn't keep built jars, because the license doesn't allow distribut
 - `ModelTests`: every registered block's blockstate and every item's model, with all parents and textures they reach,
   exists and is in the block atlas (the missing-texture checkerboard never shows on a server, so this is the only
   headless check), and no
-  blockstate file is left without a block.
+  blockstate file is left without a block. Composite models (the machines) are checked child by child, and every
+  element face must use a texture variable the model, a model inheriting from it, or the composite root defines.
+  Every OBJ face's normals must point the way the face does.
 - `TeamTests`: `/team` members, other teams and players without a team get the right security access and turret
   PvP decisions, and Techguns damage is blocked between teammates when friendly fire is off.
 - `GuideTests`: every item, recipe, multiblock block, armor-stand entity, image and link in the manual resolves; the
