@@ -1,31 +1,42 @@
 package techguns.world.gen;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.LevelHeightAccessor;
-import net.minecraft.world.level.block.ChestBlock;
-import net.minecraft.world.level.block.DoorBlock;
-import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.core.HolderGetter;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.properties.StructureMode;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import techguns.Techguns;
 
 /**
- * A 1.12 scanned structure (WorldgenStructure subclasses using BlockUtils.placeScannedStructure): the block list file in
- * assets/techguns/structures plus its palette and the placement steps (clear above, foundation, two passes).
+ * A 1.12 scanned structure (WorldgenStructure subclasses using BlockUtils.placeScannedStructure), now a vanilla
+ * structure template, {@code data/techguns/structure/scanned/<name>.nbt}, with the 1.12 rules for finding a spot and
+ * placing it (clear above, foundation, two passes, rotation around the centre). Blocks that 1.12 chose at placement
+ * (weighted random blocks, the rolled ore type, biome blocks) are structure blocks in data mode in the template; their
+ * metadata names a rule set with {@link #marker}. The templates can be loaded and edited with structure blocks
+ * (load {@code techguns:scanned/<name>}), and a datapack can replace them.
  */
 public class ScannedStructure {
 
@@ -42,8 +53,6 @@ public class ScannedStructure {
 	public static final int NETHER_MAX_Y = 100;
 
 	public final String name;
-	final String file;
-	final List<MBlock> palette;
 	public final int sizeX, sizeY, sizeZ;
 	int cleanRange = 0;
 	int foundationRange = 0;
@@ -55,15 +64,102 @@ public class ScannedStructure {
 	int indexUniform = 0;
 	int heightDiffLimit = 3;
 	Ground ground = Ground.LAND;
-	private short[][] blocks;
+	/** rules for the template's data markers (structure blocks in data mode), by their metadata */
+	final Map<String, MBlock> markers = new LinkedHashMap<>();
+	private StructureTemplate compiledFrom;
+	private List<Placed> compiled = List.of();
+	private boolean warnedMissing;
 
-	public ScannedStructure(String name, String file, int sizeX, int sizeY, int sizeZ, List<MBlock> palette) {
+	/** one template block: a fixed block (with its block entity data) or a marker's rule */
+	record Placed(int x, int y, int z, MBlock block) {
+	}
+
+	public ScannedStructure(String name, int sizeX, int sizeY, int sizeZ) {
 		this.name = name;
-		this.file = file;
 		this.sizeX = sizeX;
 		this.sizeY = sizeY;
 		this.sizeZ = sizeZ;
-		this.palette = palette;
+	}
+
+	/** the rule for the template's data markers with this metadata */
+	public ScannedStructure marker(String key, MBlock rule) {
+		markers.put(key, rule);
+		return this;
+	}
+
+	public ResourceLocation templateId() {
+		return Techguns.rl("scanned/" + name);
+	}
+
+	/** the template's blocks, read again when the template manager has a new one (datapack reload) */
+	synchronized List<Placed> placements(StructureTemplateManager manager) {
+		Optional<StructureTemplate> t = manager.get(templateId());
+		if (t.isEmpty()) {
+			if (!warnedMissing) {
+				warnedMissing = true;
+				Techguns.LOGGER.error("Missing structure template {}", templateId());
+			}
+			return List.of();
+		}
+		if (t.get() != compiledFrom) {
+			compiled = compile(t.get());
+			compiledFrom = t.get();
+		}
+		return compiled;
+	}
+
+	private List<Placed> compile(StructureTemplate template) {
+		CompoundTag tag = template.save(new CompoundTag());
+		ListTag pal = tag.contains("palettes", Tag.TAG_LIST) ? tag.getList("palettes", Tag.TAG_LIST).getList(0) : tag.getList("palette", Tag.TAG_COMPOUND);
+		HolderGetter<Block> lookup = BuiltInRegistries.BLOCK.asLookup();
+		List<BlockState> states = new ArrayList<>();
+		for (int i = 0; i < pal.size(); i++) {
+			states.add(NbtUtils.readBlockState(lookup, pal.getCompound(i)));
+		}
+		Map<BlockState, MBlock> plain = new HashMap<>();
+		List<Placed> out = new ArrayList<>();
+		ListTag list = tag.getList("blocks", Tag.TAG_COMPOUND);
+		for (int i = 0; i < list.size(); i++) {
+			CompoundTag b = list.getCompound(i);
+			ListTag pos = b.getList("pos", Tag.TAG_INT);
+			BlockState state = states.get(b.getInt("state"));
+			CompoundTag nbt = b.contains("nbt", Tag.TAG_COMPOUND) ? b.getCompound("nbt") : null;
+			MBlock mb;
+			if (state.is(Blocks.STRUCTURE_BLOCK) && nbt != null && nbt.getString("mode").equals(StructureMode.DATA.name())) {
+				String key = nbt.getString("metadata");
+				mb = markers.get(key);
+				if (mb == null) {
+					Techguns.LOGGER.error("Structure template {}: no rule for the data marker \"{}\" at {} {} {}, left out", templateId(), key, pos.getInt(0),
+							pos.getInt(1), pos.getInt(2));
+					continue;
+				}
+			} else if (nbt != null) {
+				mb = new MBlock.WithData(state, nbt);
+			} else {
+				mb = plain.computeIfAbsent(state, MBlock::new);
+			}
+			out.add(new Placed(pos.getInt(0), pos.getInt(1), pos.getInt(2), mb));
+		}
+		return List.copyOf(out);
+	}
+
+	/** data marker metadata in the template, for the tests */
+	public List<String> templateMarkers(StructureTemplateManager manager) {
+		List<String> out = new ArrayList<>();
+		manager.get(templateId()).ifPresent(t -> {
+			CompoundTag tag = t.save(new CompoundTag());
+			for (Tag e : tag.getList("blocks", Tag.TAG_COMPOUND)) {
+				CompoundTag b = (CompoundTag) e;
+				if (b.contains("nbt", Tag.TAG_COMPOUND) && b.getCompound("nbt").getString("mode").equals(StructureMode.DATA.name())) {
+					out.add(b.getCompound("nbt").getString("metadata"));
+				}
+			}
+		});
+		return out;
+	}
+
+	public java.util.Set<String> markerRules() {
+		return markers.keySet();
 	}
 
 	public ScannedStructure clean(int range) {
@@ -107,46 +203,6 @@ public class ScannedStructure {
 	public ScannedStructure heightDiff(int limit) {
 		this.heightDiffLimit = limit;
 		return this;
-	}
-
-	/* ------------------------------------------------------------------ file */
-
-	private synchronized short[][] blocks() {
-		if (blocks == null) {
-			blocks = load(file);
-		}
-		return blocks;
-	}
-
-	/** 1.12 BlockUtils.loadStructureFromFile: first line count, then x,y,z,paletteIndex per line */
-	static short[][] load(String file) {
-		String path = "/assets/techguns/structures/" + file;
-		try (InputStream in = ScannedStructure.class.getResourceAsStream(path)) {
-			if (in == null) {
-				Techguns.LOGGER.error("Missing structure file {}", path);
-				return new short[0][4];
-			}
-			BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
-			int count = Integer.parseInt(br.readLine().trim());
-			short[][] out = new short[count][4];
-			String line;
-			int i = 0;
-			while ((line = br.readLine()) != null && i < count) {
-				line = line.trim();
-				if (line.isEmpty()) {
-					continue;
-				}
-				String[] s = line.split(",");
-				for (int j = 0; j < s.length && j < 4; j++) {
-					out[i][j] = Short.parseShort(s[j].trim());
-				}
-				i++;
-			}
-			return out;
-		} catch (IOException | RuntimeException e) {
-			Techguns.LOGGER.error("Could not load structure file {}", path, e);
-			return new short[0][4];
-		}
 	}
 
 	/* ------------------------------------------------------------------ choosing a spot */
@@ -297,36 +353,33 @@ public class ScannedStructure {
 
 	/* ------------------------------------------------------------------ placement (1.12 setBlocks) */
 
+	/** places the structure from its template; the 1.12 rules for clearing, foundation and the two passes */
 	public void place(PlaceContext ctx, BlockPos origin, int direction) {
-		short[][] bl = blocks();
+		List<Placed> bl = placements(ctx.level.getServer().getStructureManager());
 		int posX = origin.getX(), posY = origin.getY(), posZ = origin.getZ();
 		int centerX = sizeX / 2, centerZ = sizeZ / 2;
 		BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
 		int ax = posX + centerX, az = posZ + centerZ;
 		if (cleanRange > 0) {
-			BlockPos.MutableBlockPos q = new BlockPos.MutableBlockPos();
-			for (short[] b : bl) {
-				if (b[1] == 0) {
+			for (Placed b : bl) {
+				if (b.y() == 0) {
 					for (int o = 1; o <= cleanRange; o++) {
-						rotated(q, posX + b[0], posY + b[1] + o, posZ + b[2], ax, az, direction);
-						ctx.set(q, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+						rotated(p, posX + b.x(), posY + o, posZ + b.z(), ax, az, direction);
+						ctx.set(p, Blocks.AIR.defaultBlockState());
 					}
 				}
 			}
 		}
 		int baseY = posY + yOffset;
 		if (foundationRange > 0) {
-			for (short[] b : bl) {
-				if (b[1] != 0 || b[3] >= palette.size()) {
-					continue;
-				}
-				MBlock mb = palette.get(b[3]);
-				if (mb.getPass() != 0) {
+			for (Placed b : bl) {
+				MBlock mb = b.block();
+				if (b.y() != 0 || mb.getPass() != 0) {
 					continue;
 				}
 				int solid = 0;
 				for (int o = 1; o <= foundationRange; o++) {
-					rotated(p, posX + b[0], baseY - o, posZ + b[2], ax, az, direction);
+					rotated(p, posX + b.x(), baseY - o, posZ + b.z(), ax, az, direction);
 					if (netherFoundation) {
 						if (!ctx.inside(p)) {
 							continue;
@@ -343,84 +396,17 @@ public class ScannedStructure {
 				}
 			}
 		}
-		pairChests(ctx, bl, posX, baseY, posZ, ax, az, direction);
-		matchDoorHalves(ctx, bl, posX, baseY, posZ, ax, az, direction);
 		for (int pass = 0; pass <= 1; pass++) {
-			for (short[] b : bl) {
-				if (b[3] >= palette.size()) {
-					continue;
-				}
-				MBlock mb = palette.get(b[3]);
-				if (mb.getPass() == pass) {
-					rotated(p, posX + b[0], baseY + b[1], posZ + b[2], ax, az, direction);
+			for (Placed b : bl) {
+				if (b.block().getPass() == pass) {
+					rotated(p, posX + b.x(), baseY + b.y(), posZ + b.z(), ax, az, direction);
 					if (ctx.inside(p)) {
-						mb.place(ctx, p.immutable(), direction);
+						b.block().place(ctx, p.immutable(), direction);
 					}
 				}
 			}
 		}
 		ctx.finishShapes();
-	}
-
-	/**
-	 * Single chests side by side with the same facing become a double chest, as when a player places them. Worked out from
-	 * the structure data, not the world, so a pair split over two chunks gets matching halves.
-	 */
-	private void pairChests(PlaceContext ctx, short[][] bl, int posX, int baseY, int posZ, int ax, int az, int direction) {
-		java.util.Map<BlockPos, BlockState> chests = new java.util.LinkedHashMap<>();
-		BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
-		for (short[] b : bl) {
-			if (b[3] < palette.size() && palette.get(b[3]) instanceof MBlock.Chest chest) {
-				rotated(p, posX + b[0], baseY + b[1], posZ + b[2], ax, az, direction);
-				chests.put(p.immutable(), chest.rotatedState(direction));
-			}
-		}
-		for (java.util.Map.Entry<BlockPos, BlockState> e : chests.entrySet()) {
-			BlockPos pos = e.getKey();
-			BlockState s = e.getValue();
-			if (ctx.chestTypes.containsKey(pos) || !s.hasProperty(ChestBlock.FACING)) {
-				continue;
-			}
-			Direction facing = s.getValue(ChestBlock.FACING);
-			BlockPos other = pos.relative(facing.getClockWise());
-			BlockState o = chests.get(other);
-			if (o != null && !ctx.chestTypes.containsKey(other) && o.hasProperty(ChestBlock.FACING) && o.getValue(ChestBlock.FACING) == facing) {
-				ctx.chestTypes.put(pos, ChestType.LEFT);
-				ctx.chestTypes.put(other, ChestType.RIGHT);
-			}
-		}
-	}
-
-	/**
-	 * 1.12 doors kept the facing and open state only in the lower half's metadata and the hinge and powered state only in
-	 * the upper half's, so each half converts with defaults for the rest. Every half takes the missing properties from its
-	 * partner, as the vanilla world upgrade does.
-	 */
-	private void matchDoorHalves(PlaceContext ctx, short[][] bl, int posX, int baseY, int posZ, int ax, int az, int direction) {
-		java.util.Map<BlockPos, BlockState> doors = new java.util.HashMap<>();
-		BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
-		for (short[] b : bl) {
-			if (b[3] < palette.size()) {
-				MBlock mb = palette.get(b[3]);
-				if (mb.getClass() == MBlock.class && mb.state.getBlock() instanceof DoorBlock) {
-					rotated(p, posX + b[0], baseY + b[1], posZ + b[2], ax, az, direction);
-					doors.put(p.immutable(), mb.rotatedState(direction));
-				}
-			}
-		}
-		for (java.util.Map.Entry<BlockPos, BlockState> e : doors.entrySet()) {
-			BlockPos pos = e.getKey();
-			BlockState s = e.getValue();
-			boolean upper = s.getValue(DoorBlock.HALF) == DoubleBlockHalf.UPPER;
-			BlockState other = doors.get(upper ? pos.below() : pos.above());
-			if (other == null || other.getBlock() != s.getBlock() || other.getValue(DoorBlock.HALF) == s.getValue(DoorBlock.HALF)) {
-				continue;
-			}
-			BlockState lower = upper ? other : s;
-			BlockState top = upper ? s : other;
-			ctx.stateOverrides.put(pos, s.setValue(DoorBlock.FACING, lower.getValue(DoorBlock.FACING)).setValue(DoorBlock.OPEN, lower.getValue(DoorBlock.OPEN))
-					.setValue(DoorBlock.HINGE, top.getValue(DoorBlock.HINGE)).setValue(DoorBlock.POWERED, top.getValue(DoorBlock.POWERED)));
-		}
 	}
 
 	/** 1.12 BlockUtils.rotateAroundY */

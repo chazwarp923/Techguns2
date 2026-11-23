@@ -1,9 +1,7 @@
 package techguns.world.gen;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
@@ -16,7 +14,6 @@ import net.minecraft.world.level.block.RedStoneWireBlock;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.WallBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import techguns.blocks.BlockCamoNet;
 import techguns.blocks.BlockSandbags;
@@ -37,10 +34,6 @@ public class PlaceContext {
 	public final long seed;
 	public final BiomeColorType biome;
 	public final int indexRoll;
-	/** double chest halves, worked out from the whole structure so both chunks of a split pair agree */
-	final Map<BlockPos, ChestType> chestTypes = new HashMap<>();
-	/** final states worked out from the whole structure (door halves), used instead of the palette state */
-	final Map<BlockPos, BlockState> stateOverrides = new HashMap<>();
 	/** connecting blocks placed in this chunk, their shapes are recomputed once everything is placed */
 	private final List<BlockPos> connecting = new ArrayList<>();
 

@@ -564,6 +564,52 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   - the item icons;
   - the chem lab glass over the liquids.
 
+### 23. Scanned structures as vanilla structure templates (all 43 tests pass; not tested in game)
+
+- The 18 scanned structures were 1.12 text block lists (`assets/techguns/structures/`, x,y,z,palette index) with
+  their palettes in `TGStructureDefs`. They're now `data/techguns/structure/scanned/<name>.nbt` templates.
+  `ScannedStructure` reads a template from the server's template manager (again after `/reload`) and places it with
+  the same 1.12 rules as before: clear above, foundation, attached blocks in a second pass, rotation around the
+  centre.
+- Each 1.12 palette entry that chose its block at placement became a named rule (`ScannedStructure.marker`) and a
+  data-mode structure block with that name in the template. There are 31 rules over 10 structures; 8 structures have
+  none.
+- Door halves and double chests are now set in the template, so `pairChests`, `matchDoorHalves` and
+  `PlaceContext`'s chest and door maps are gone. `MBlock.WithData` loads a template block's block entity data, and
+  containers with a loot table get their seed from the position as before. `MBlock.VanillaSpawner` is gone (the
+  ghast spawner's vanilla spawner is template data now).
+- Conversion: a temporary game test wrote each template from the old scan and palette at rotation 0. Block entities
+  were placed at a scratch spot to save their data, and the loot seed was dropped. Where a scan listed a position
+  twice (38 in the carrier, 1 each in the factory and train station: air, then a crate or spawner), the block placed
+  last was kept. The train station's blocks reach y 6, so its template is 7 high; the code's size is unchanged.
+- Checks:
+  - A temporary test placed every structure the old way and from the template, in 4 rotations x 2 variants (seed,
+    biome, ore roll), and compared every block state and block entity: 121,307 blocks, all equal. With template
+    block entity data dropped, the same test failed (chests without loot tables).
+  - After the palettes were rewritten as rules, placements at a fixed position hashed the same as with the
+    exported version (136 placements; the desert oil cluster needs an oil mod, its 3 rules were checked by hand).
+  - New test `scannedTemplatesMatchRules` (43 tests). A misspelled rule failed it with "no rule for the data
+    marker "cobble_or_mossy"" and "rule "cobble_or_mosy" isn't used by the template".
+- `netherdungeon_entrance` was removed: it had no palette anywhere, and 1.12 never placed the nether dungeon.
+- Needs an in-game look: a few structures found with `/locate structure techguns:<name>`, and one loaded with a
+  structure block (`techguns:scanned/police_station`) to see that the templates can be edited.
+
+### 24. Taller castle staircases (all 44 tests pass; not tested in game)
+
+- Reported in game: you hit your head on every step of the castle's staircases.
+- Measured in the built castle (3 seeds): every step had exactly 3 or more free blocks above it, and many had
+  exactly 3. That covered all the cobblestone steps underground and most spruce and stone brick steps. Three is the
+  bare minimum, so you bump when jumping or sprinting up.
+- The RAMP segment of each castle template (`ncdung1`, `nclower1`, `ncmid1`, `ncupper1`, `nctop1`) now has 4 free
+  blocks above every step. That includes the top step, whose flight can go on into the next ramp. The ceiling is
+  cut along the slope, 26 blocks in all; the underground ramp's ceiling now steps up with the stairs. Only the
+  RAMP layer lines of the JSON changed.
+- Kept: the two top slabs holding `ncmid1`'s loot chests over the second step (3.5 blocks: a top slab only fills
+  the upper half).
+- New test `castleStairHeadroom` (44 tests): builds the castle for 3 seeds and checks that every step of a flight
+  has 3.5 blocks from its top to the lowest collision above. With the 1.12 templates it failed (3.0).
+- Needs an in-game look: walk up a few castle staircases, including two ramps in a row.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

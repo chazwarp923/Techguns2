@@ -14,7 +14,6 @@ import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ButtonBlock;
-import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.LadderBlock;
 import net.minecraft.world.level.block.LeverBlock;
@@ -25,7 +24,6 @@ import net.minecraft.world.level.block.SignBlock;
 import net.minecraft.world.level.block.TorchBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
-import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootTable;
 import techguns.Techguns;
@@ -70,10 +68,7 @@ public class MBlock {
 	}
 
 	public void place(PlaceContext ctx, BlockPos pos, int rotation) {
-		BlockState target = ctx.stateOverrides.get(pos);
-		if (target == null) {
-			target = rotatedState(rotation);
-		}
+		BlockState target = rotatedState(rotation);
 		if (ctx.set(pos, target)) {
 			afterPlace(ctx, pos, target);
 		}
@@ -251,19 +246,6 @@ public class MBlock {
 			return new Chest(chest, loot);
 		}
 
-		/** placed as the double chest half the structure pass worked out */
-		@Override
-		public void place(PlaceContext ctx, BlockPos pos, int rotation) {
-			BlockState target = rotatedState(rotation);
-			net.minecraft.world.level.block.state.properties.ChestType type = ctx.chestTypes.get(pos);
-			if (type != null && target.hasProperty(ChestBlock.TYPE)) {
-				target = target.setValue(ChestBlock.TYPE, type);
-			}
-			if (ctx.set(pos, target)) {
-				afterPlace(ctx, pos, target);
-			}
-		}
-
 		@Override
 		protected void afterPlace(PlaceContext ctx, BlockPos pos, BlockState placed) {
 			if (ctx.level.getBlockEntity(pos) instanceof RandomizableContainerBlockEntity c) {
@@ -323,19 +305,26 @@ public class MBlock {
 		}
 	}
 
-	/** vanilla mob spawner for one mob (1.12 MBlockVanillaSpawner) */
-	public static class VanillaSpawner extends MBlock {
-		private final Supplier<? extends EntityType<?>> type;
+	/**
+	 * A structure template block with block entity data (chest loot table, spawner setup). A container with a loot
+	 * table gets its seed from the position, like {@link Chest}.
+	 */
+	public static class WithData extends MBlock {
+		private final net.minecraft.nbt.CompoundTag tag;
 
-		public VanillaSpawner(Supplier<? extends EntityType<?>> type) {
-			super(Blocks.SPAWNER.defaultBlockState());
-			this.type = type;
+		public WithData(BlockState state, net.minecraft.nbt.CompoundTag tag) {
+			super(state);
+			this.tag = tag;
 		}
 
 		@Override
 		protected void afterPlace(PlaceContext ctx, BlockPos pos, BlockState placed) {
-			if (ctx.level.getBlockEntity(pos) instanceof SpawnerBlockEntity spawner) {
-				spawner.setEntityId(type.get(), ctx.random(pos));
+			net.minecraft.world.level.block.entity.BlockEntity be = ctx.level.getBlockEntity(pos);
+			if (be != null) {
+				be.loadWithComponents(tag, ctx.level.registryAccess());
+				if (be instanceof RandomizableContainerBlockEntity c && c.getLootTable() != null) {
+					c.setLootTable(c.getLootTable(), ctx.random(pos).nextLong());
+				}
 			}
 		}
 	}

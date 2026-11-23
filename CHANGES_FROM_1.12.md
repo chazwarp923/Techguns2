@@ -198,14 +198,22 @@ placement. All of it is datapack JSON in `data/techguns/worldgen/`.
 
 ### 4.1 Structures
 - **Scanned structures** (houses, police station, gas station, factory, train station, survivor hideout, aircraft
-  carrier and the nether buildings) are built from the original 1.12 block lists. The 1.12 blocks are converted
-  through the vanilla flattening table plus a Techguns block table (`LegacyBlocks`). Each structure is placed one
-  chunk at a time.
+  carrier and the nether buildings) are vanilla structure templates, `data/techguns/structure/scanned/<name>.nbt`,
+  converted from the original 1.12 block lists and palettes. The 1.12 rules for choosing a spot and placing them
+  (flatness, water or nether air pocket, clearing above, foundation, rotation) stay in code, and each structure is
+  placed one chunk at a time.
+  - **Editing them:** load `techguns:scanned/<name>` with a structure block in load mode, change it, and save it under
+    the same name. A datapack can replace a template the same way as any other data file.
+  - **Blocks chosen at placement** (weighted random blocks such as cracked stone bricks or supply crates, the
+    structure's rolled ore type, grass/snow/sand by biome, the camo net colour) are structure blocks in data mode.
+    Their metadata names a rule in `TGStructureDefs`, e.g. `cobble_or_mossy` or `cluster_or_ore`.
+  - Chests keep their loot table and Techguns spawners their mobs as block entity data in the template.
 - **Code-built structures** are ported line by line: the alien bug nest, the military base and the castle. They're
   generated once from the structure's seed, so every chunk gets the same result.
 - **The castle** uses the 1.12 dungeon templates, converted from the Java-serialized `.ser` files to JSON with
   `tools/dungeon_converter`.
-- **The desert oil cluster** only generates when an oil fluid exists (`FluidListOilWorldspawn`), as in 1.12.
+- **The desert oil cluster** only generates when an oil fluid exists (`FluidListOilWorldspawn`), as in 1.12. The
+  oil itself is a data marker in its template, since the fluid comes from another mod.
 - **Structure sets:**
   - `overworld_small`;
   - `overworld_medium`: medium buildings 35, bug nest 20, desert oil cluster 15, military base 8, castle 8;
@@ -242,6 +250,9 @@ placement. All of it is datapack JSON in `data/techguns/worldgen/`.
 - Skulls in templates become skeleton skulls with the right placement. The flattening table cannot convert 1.12 skulls.
 
 ### 4.3 Deliberate differences
+- **The castle's staircases are one block taller.** 1.12 left 3 blocks above each step, so you hit your head
+  walking up. The ceiling over every step of the ramps now leaves 4 blocks. The exception is the slab shelf with two
+  chests above the wooden staircase, which leaves 3.5.
 - **The military camp's ground is levelled completely.** 1.12 allowed 4 blocks of height difference and smoothed it.
   Vanilla terrain adaptation blends the surroundings in, and trees inside the camp are cleared.
 - **Tents use the biome's camo net colour.** 1.12 worked out the colour but always placed the woodland net.
@@ -324,12 +335,15 @@ sections such as `general.RestrictUnsafeModeToOP`.
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 42 headless game tests, run with `./gradlew runGameTestServer`. They run
+1.12 had no automated tests. There are now 44 headless game tests, run with `./gradlew runGameTestServer`. They run
 in `run-gametest/` and take about one minute. GitHub Actions (`.github/workflows/build.yml`) runs the build and every game test on each push and pull
 request. It doesn't keep built jars, because the license doesn't allow distributing builds.
 
 - `WorldgenTests`: every dungeon template loads; the castle, military base and bug nest build for 8 seeds each; every
-  scanned structure places in all 4 rotations with matching door halves.
+  castle staircase step has at least 3.5 blocks of headroom; every
+  scanned structure places in all 4 rotations with matching door halves. Every scanned structure has its template
+  with the footprint the code uses, a rule for each data marker and no unused rule; chests in the templates have
+  loot tables and spawners have mobs.
 - `GameplayTests`:
   - permissions and safe mode;
   - weapon swap;
