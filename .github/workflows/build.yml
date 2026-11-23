@@ -17,14 +17,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           # only builds of the default branch and the port branch write the cache; other branches read it
           cache-read-only: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/port/neoforge-1.21.1' }}
@@ -43,7 +43,7 @@ jobs:
       # No build outputs (jars) are uploaded: the license doesn't allow distributing builds.
       - name: Upload game test logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gametest-logs
           path: run-gametest/logs/
