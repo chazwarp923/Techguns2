@@ -57,7 +57,6 @@ import techguns.items.guns.ammo.DamageModifier;
 import techguns.packets.GunFiredMessage;
 import techguns.packets.ReloadStartedMessage;
 import techguns.packets.TGPackets;
-import techguns.plugins.crafttweaker.EnumGunStat;
 import techguns.util.InventoryUtil;
 import techguns.util.MathUtil;
 import techguns.util.SoundUtil;
@@ -1302,37 +1301,6 @@ public class GenericGun extends GenericItem implements IGenericGun, ICamoChangea
 	@Override
 	public boolean doesSneakBypassUse(ItemStack stack, LevelReader level, BlockPos pos, Player player) {
 		return this.handType != GunHandType.TWO_HANDED;
-	}
-
-	public boolean setGunStat(EnumGunStat stat, float value) {
-		switch (stat) {
-			case DAMAGE:
-				this.damage = value;
-				return true;
-			case DAMAGE_MIN:
-				this.damageMin = value;
-				return true;
-			case DAMAGE_DROP_START:
-				this.damageDropStart = value;
-				return true;
-			case DAMAGE_DROP_END:
-				this.damageDropEnd = value;
-				return true;
-			case BULLET_SPEED:
-				this.speed = value;
-				return true;
-			case BULLET_DISTANCE:
-				this.ticksToLive = (int) value;
-				return true;
-			case GRAVITY:
-				this.gravity = value;
-				return true;
-			case SPREAD:
-				this.spread = value;
-				return true;
-			default:
-				return false;
-		}
 	}
 
 	public float getSpread() {

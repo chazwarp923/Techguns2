@@ -73,6 +73,22 @@ old tab.
   through NeoForge damage events: Techguns penetration against armor toughness, bypassing hit cooldowns and knockback
   multipliers. Techguns damage types are data-driven (`data/techguns/damage_type`), so death messages and damage-type
   tags work like vanilla's.
+- **Gun stats are data-driven (new).** The `techguns:gun_stats` item data map
+  (`data/<namespace>/data_maps/item/gun_stats.json`) sets gun stats by name, so any datapack can rebalance guns, and
+  `/reload` applies the change. Techguns ships every gun's values in `data/techguns/data_maps/item/gun_stats.json`.
+  - Stats: `damage`, `damage_min`, `damage_drop_start`, `damage_drop_end`, `range`, `bullet_speed`, `gravity`,
+    `inaccuracy`, `penetration`, `fire_delay`, `reload_time`, and `npc_range`, `npc_attack_time`,
+    `npc_burst_count`, `npc_burst_delay` for NPCs and turrets. Shotguns also have `pellet_spread` and `pellets`;
+    charge guns `charge_time` and `ammo_per_charge`; melee tools `melee_damage`, `melee_damage_empty` and
+    `mining_speed`. Distances are in blocks, times in ticks.
+  - A pack's entry for a gun replaces Techguns' entry for it; stats it leaves out keep their default values. For
+    example, `{"values": {"techguns:pistol": {"damage": 10}}}` only changes the pistol's damage.
+  - Whole number stats are rounded and values below a stat's minimum are raised, with a warning in the log. Stats a
+    gun doesn't have are ignored with a warning. An unknown stat name is a load error in the log.
+  - The map is synced to clients, so tooltips and client-side fire rates match the server.
+  - NPCs and turrets take their `npc_*` stats when they get their gun, so a change reaches NPCs equipped after it.
+  - Magazine size, ammo, sounds and visuals stay in code: magazine size is the gun's durability, which is fixed when
+    the item registers.
 - **Muzzle-flash and TFG dynamic lights are not ported.** In 1.12 they only worked with the Albedo mod, which has no
   1.21 version.
 - **Sounds.** Gun, reload and charge sounds follow the player and sit beside the gun, as in 1.12. The charge-up
@@ -266,7 +282,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 | Mekanism radiation (new) | Optional. The two radiation systems are linked: armor protects against both, and Rad-Away and rad pills work on both; see 3.7. |
 | Create, Mekanism, Immersive Engineering (new) | Data-only recipes in `data/techguns/recipe/compat/`, each loaded only when its mod is installed. All three already process Techguns ores and ingots through the shared `c:` tags; these fill the gaps. **Create:** presses tin, bronze, obsidian steel and titanium ingots into Techguns plates (steel and lead too, unless IE is installed: Create already presses those into IE plates). Heated mixing makes bronze (3 copper + 1 tin = 4) and obsidian steel (steel + obsidian). Create crushes Techguns lead, tin and uranium ores but only had uses for the crushed ore with another metal mod installed; without one, crushed tin and lead now smelt into Techguns ingots, crushed lead washes into lead nuggets and crushed uranium into yellowcake. **Immersive Engineering:** metal press plates for obsidian steel and titanium (IE already makes Techguns tin and bronze plates); obsidian steel in the alloy kiln and arc furnace. **Mekanism:** obsidian steel in the combiner. Titanium processing and enriched uranium stay with the Techguns reaction chamber. |
 | Ponder (new) | Optional. Hold W over a fabricator, reaction chamber or ore drill part for an animated build guide: fabricator, reaction chamber, small and framed ore drill. |
-| CraftTweaker (machine recipes, gun/armor stats, death effects, ore clusters) | Machine recipes are JSON recipe types and can be edited with any datapack tool. Gun, armor, death-effect and ore-cluster scripting is not ported, because it would need a CraftTweaker dependency. |
+| CraftTweaker (machine recipes, gun/armor stats, death effects, ore clusters) | Machine recipes are JSON recipe types and gun stats a data map (see 3.2), both editable with any datapack tool. Armor, death-effect and ore-cluster scripting is not ported, because it would need a CraftTweaker dependency. |
 | Chisel (block groups) | Not ported. |
 | Thermal Expansion (block registrations) | Not ported. |
 | Albedo (dynamic lights) | Not ported, no 1.21 version. |
@@ -292,7 +308,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 39 headless game tests, run with `./gradlew runGameTestServer`. They run
+1.12 had no automated tests. There are now 41 headless game tests, run with `./gradlew runGameTestServer`. They run
 in `run-gametest/` and take about one minute. GitHub Actions (`.github/workflows/build.yml`) runs the build and every game test on each push and pull
 request. It doesn't keep built jars, because the license doesn't allow distributing builds.
 
@@ -323,7 +339,9 @@ request. It doesn't keep built jars, because the license doesn't allow distribut
   - entity conditions;
   - tracking sync.
 - `DataTests`: all machine recipe types have recipes with results, all loot tables load, and every item and block is
-  translated.
+  translated. The shipped gun_stats file lists every gun with exactly its code values (on a mismatch the test writes
+  the correct file to `run-gametest/gun_stats.expected.json`); an override changes only the stats it names, rounds
+  and raises values, ignores stats the gun lacks, and a removed entry restores the defaults.
 - `OreTests`: the deepslate ores match the stone ores in tags, tool level, drops, light and worldgen targets, and
   smelt or react like them. Each ore's placed feature has its config check, and placement stops while it's off.
 - `ModelTests`: every registered block's blockstate and every item's model, with all parents and textures they reach,

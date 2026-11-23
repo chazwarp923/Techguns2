@@ -40,6 +40,7 @@ public class Techguns {
 		TGTabs.TABS.register(modBus);
 		TGAttachments.ATTACHMENTS.register(modBus);
 		techguns.radiation.TGRadiationSystem.register(modBus);
+		techguns.items.guns.GunStats.register(modBus);
 		techguns.entities.spawn.TGSpawnManager.register(modBus);
 		techguns.world.gen.TGStructures.register(modBus);
 		techguns.world.gen.ConfigOrePlacement.register(modBus);

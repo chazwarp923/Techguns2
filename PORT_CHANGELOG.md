@@ -506,6 +506,25 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   (armor jump bonus 0, antigrav flight never given) failed with "scout jump strength: 0.42 instead of 0.52; the
   antigrav pack doesn't let the player fly".
 
+### 21. Gun stats as a data map (all 41 tests pass; not tested in game)
+
+- `GunStat` (items/guns): 22 named stats, each reading and writing a `GenericGun` field. Each stat records whether
+  it's a whole number, its minimum, and which guns have it (shotgun, charge or melee tool only).
+- `GunStats`: the `techguns:gun_stats` item data map (`Map<GunStat, Double>`, synced with mandatory sync). On
+  `DataMapsUpdatedEvent` (server reload and client sync) every gun is reset to its code values, then the map is
+  applied. Code values are captured in common setup, before any data map exists.
+- `data/techguns/data_maps/item/gun_stats.json` lists all 42 guns with their code values. The test
+  `gunStatsMatchCode` keeps it equal to TGuns and writes the correct file when they differ, which is also how it
+  was generated.
+- `gunStatsOverride` feeds `GunStats.apply` an override map: damage 99, fire delay 2.6 (rounds to 3), bullet speed
+  -1 (raised to 0.01), pellets on the pistol (ignored), pellets on the combat shotgun; then an empty map, which must
+  restore the code values. Planted bugs (shipped damage drifting from the code; no reset before applying) failed
+  with "pistol damage 9.0 instead of 8.0" and "pistol damage once the entry is gone: 99.0 instead of 8.0". The
+  first mutation check ran both bugs together and passed, because code values were then captured after the JSON
+  was applied. That's why they're now captured in common setup.
+- Removed the 1.12 CraftTweaker leftovers `EnumGunStat` and `GenericGun.setGunStat`, which nothing called.
+- Magazine size isn't a stat: it's the item's max durability, fixed at registration.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

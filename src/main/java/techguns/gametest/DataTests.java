@@ -23,7 +23,11 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import techguns.TGuns;
 import techguns.Techguns;
+import techguns.items.guns.GenericGun;
+import techguns.items.guns.GunStat;
+import techguns.items.guns.GunStats;
 import techguns.recipes.TGRecipes;
 
 /** Game tests for the mod's data: recipes, loot tables and translations load and are complete. */
@@ -267,5 +271,98 @@ public class DataTests {
 				yield false;
 			}
 		};
+	}
+
+	/**
+	 * Techguns' own gun_stats data map lists every gun with exactly its code values, so packs have them all in one
+	 * place and the file can't drift from TGuns. On a mismatch the expected file is written to
+	 * run-gametest/gun_stats.expected.json (copy it to data/techguns/data_maps/item/gun_stats.json).
+	 */
+	@GameTest(template = "empty")
+	public static void gunStatsMatchCode(GameTestHelper helper) {
+		var items = helper.getLevel().registryAccess().registryOrThrow(Registries.ITEM);
+		var loaded = items.getDataMap(GunStats.DATA_MAP);
+		List<String> problems = new ArrayList<>();
+		for (GenericGun gun : GenericGun.guns) {
+			var key = items.getResourceKey(gun).orElseThrow();
+			Map<GunStat, Double> entry = loaded.get(key);
+			if (entry == null) {
+				problems.add(key.location() + " has no entry");
+				continue;
+			}
+			var code = GunStats.codeValues(gun);
+			if (!entry.keySet().equals(code.keySet())) {
+				problems.add(key.location() + " lists " + entry.keySet() + " instead of " + code.keySet());
+				continue;
+			}
+			code.forEach((stat, v) -> {
+				if ((float) entry.get(stat).doubleValue() != (float) v.doubleValue()) {
+					problems.add(key.location() + " " + stat.getSerializedName() + " " + entry.get(stat) + " instead of " + v);
+				}
+				// and the loaded value is what the gun has now
+				if ((float) stat.get(gun) != (float) v.doubleValue()) {
+					problems.add(key.location() + " " + stat.getSerializedName() + " is " + stat.get(gun) + " after loading, not " + v);
+				}
+			});
+		}
+		if (!problems.isEmpty()) {
+			java.nio.file.Path out = java.nio.file.Path.of("gun_stats.expected.json").toAbsolutePath();
+			try {
+				java.nio.file.Files.writeString(out,
+						new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(GunStats.codeValuesJson()) + "\n");
+			} catch (java.io.IOException e) {
+				problems.add("couldn't write " + out + ": " + e);
+			}
+			problems.add(0, "expected file written to " + out);
+		}
+		helper.assertTrue(problems.isEmpty(), String.join("; ", problems.subList(0, Math.min(problems.size(), 12))));
+		helper.succeed();
+	}
+
+	/**
+	 * A data map entry overrides just the stats it names: whole number stats are rounded, values below a stat's
+	 * minimum raised, stats the gun doesn't have ignored. Applying again restores the code values first.
+	 */
+	@GameTest(template = "empty")
+	public static void gunStatsOverride(GameTestHelper helper) {
+		var items = helper.getLevel().registryAccess().registryOrThrow(Registries.ITEM);
+		GenericGun pistol = TGuns.PISTOL.get(), shotgun = TGuns.COMBATSHOTGUN.get(), ak = TGuns.AK47.get();
+		List<String> problems = new ArrayList<>();
+		try {
+			Map<GunStat, Double> pistolStats = new java.util.EnumMap<>(GunStat.class);
+			pistolStats.put(GunStat.DAMAGE, 99.0);
+			pistolStats.put(GunStat.FIRE_DELAY, 2.6);
+			pistolStats.put(GunStat.BULLET_SPEED, -1.0);
+			pistolStats.put(GunStat.PELLETS, 5.0); // not a shotgun
+			GunStats.apply(items, Map.of(items.getResourceKey(pistol).orElseThrow(), pistolStats,
+					items.getResourceKey(shotgun).orElseThrow(), Map.of(GunStat.PELLETS, 3.0)));
+			expect(problems, "pistol damage", GunStat.DAMAGE.get(pistol), 99);
+			expect(problems, "pistol fire delay (2.6 rounded)", pistol.getMinFiretime(), 3);
+			expect(problems, "pistol bullet speed (-1, raised to the minimum)", GunStat.BULLET_SPEED.get(pistol), 0.01f);
+			expect(problems, "pistol reload time (not overridden)", pistol.getReloadtime(), GunStats.codeValues(pistol).get(GunStat.RELOAD_TIME));
+			expect(problems, "combat shotgun pellets", GunStat.PELLETS.get(shotgun), 3);
+			expect(problems, "combat shotgun damage (not overridden)", GunStat.DAMAGE.get(shotgun), GunStats.codeValues(shotgun).get(GunStat.DAMAGE));
+			expect(problems, "ak47 damage (no entry)", GunStat.DAMAGE.get(ak), GunStats.codeValues(ak).get(GunStat.DAMAGE));
+			if (GunStat.PELLETS.appliesTo(pistol)) {
+				problems.add("pellets applies to the pistol");
+			}
+			// an entry that's gone: the gun goes back to its code values
+			GunStats.apply(items, Map.of());
+			expect(problems, "pistol damage once the entry is gone", GunStat.DAMAGE.get(pistol), 8.0f);
+			expect(problems, "pistol fire delay once the entry is gone", pistol.getMinFiretime(), 4);
+			expect(problems, "combat shotgun pellets once the entry is gone", GunStat.PELLETS.get(shotgun), 8);
+		} finally {
+			GunStats.apply(items);
+		}
+		expect(problems, "pistol damage after re-applying", GunStat.DAMAGE.get(pistol), GunStats.codeValues(pistol).get(GunStat.DAMAGE));
+		expect(problems, "combat shotgun pellets after re-applying", GunStat.PELLETS.get(shotgun), GunStats.codeValues(shotgun).get(GunStat.PELLETS));
+		helper.assertTrue(problems.isEmpty(), String.join("; ", problems));
+		helper.succeed();
+	}
+
+	private static void expect(List<String> problems, String what, double actual, double expected) {
+		if ((float) actual != (float) expected) {
+			problems.add(what + ": " + actual + " instead of " + expected);
+		}
 	}
 }
