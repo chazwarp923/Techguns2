@@ -14,6 +14,18 @@
       "type": "directory",
       "source": "gui/emptyslots",
       "prefix": "gui/emptyslots/"
+    },
+    {
+      "type": "single",
+      "resource": "techguns:models/armor/powerarmor"
+    },
+    {
+      "type": "single",
+      "resource": "techguns:models/armor/powerarmor_mk2_darkgrey"
+    },
+    {
+      "type": "single",
+      "resource": "techguns:models/armor/steam_armor"
     }
   ]
 }

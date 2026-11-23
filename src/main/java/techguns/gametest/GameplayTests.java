@@ -254,6 +254,37 @@ public class GameplayTests {
 		helper.succeed();
 	}
 
+	/**
+	 * Crafting a rocket launcher with a nuke rocket switches it to nukes and loads that rocket (as in 1.12); after
+	 * firing it reloads from nuke rockets only.
+	 */
+	@GameTest(template = "empty")
+	public static void rocketLauncherSwitchesToNukes(GameTestHelper helper) {
+		ServerPlayer ply = player(helper);
+		clearInventory(ply);
+		GenericGun gun = TGuns.ROCKETLAUNCHER.get();
+		var input = net.minecraft.world.item.crafting.CraftingInput.of(2, 1, List.of(new ItemStack(gun), new ItemStack(techguns.TGItems.ROCKET_NUKE.get())));
+		var recipe = helper.getLevel().getRecipeManager().getRecipeFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING, input, helper.getLevel());
+		helper.assertTrue(recipe.isPresent(), "no recipe for rocket launcher + nuke rocket");
+		ItemStack launcher = recipe.get().value().assemble(input, helper.getLevel().registryAccess());
+		helper.assertTrue(launcher.is(gun), "recipe made " + launcher);
+		helper.assertTrue(techguns.items.guns.ammo.AmmoTypes.TYPE_NUKE.equals(gun.getCurrentAmmoVariantKey(launcher)),
+				"variant after crafting: " + gun.getCurrentAmmoVariantKey(launcher));
+		helper.assertTrue(gun.getCurrentAmmo(launcher) == gun.getClipsize(), "crafted launcher not loaded with the nuke: " + gun.getCurrentAmmo(launcher));
+
+		// fired: reloads from a nuke rocket, not a plain one
+		launcher.set(TGDataComponents.AMMO.get(), 0);
+		ply.setItemInHand(InteractionHand.MAIN_HAND, launcher);
+		ply.getInventory().add(new ItemStack(techguns.TGItems.ROCKET.get(), 3));
+		ply.getInventory().add(new ItemStack(techguns.TGItems.ROCKET_NUKE.get(), 2));
+		TGExtendedPlayer.get(ply).fireDelayMainhand = 0;
+		gun.tryForcedReload(launcher, helper.getLevel(), ply, InteractionHand.MAIN_HAND);
+		helper.assertTrue(gun.getCurrentAmmo(launcher) == gun.getClipsize(), "not reloaded, ammo " + gun.getCurrentAmmo(launcher));
+		helper.assertTrue(count(ply, techguns.TGItems.ROCKET_NUKE.get()) == 1 && count(ply, techguns.TGItems.ROCKET.get()) == 3,
+				"used the wrong rocket: nukes " + count(ply, techguns.TGItems.ROCKET_NUKE.get()) + ", rockets " + count(ply, techguns.TGItems.ROCKET.get()));
+		helper.succeed();
+	}
+
 	/* ---------------------------------------------------------------- off hand rules */
 
 	@GameTest(template = "empty")

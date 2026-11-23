@@ -80,7 +80,11 @@ old tab.
 - **Shishkebap.** Its flaming blade is shown while it has fuel. 1.12 switched it on and off with server packets; the
   client now does this itself.
 - **Swapping hands** with guns in both hands carries their fire delays and recoil/reload animations along.
-- **Ammo change crafting.** Crafting a gun with a different ammo type gives back the loaded ammo, as in 1.12.
+- **Ammo change crafting.** Crafting a gun with a different ammo type (for example a Rocket Launcher with a Tactical
+  Nuke rocket) switches it to that ammo and loads the item used, and gives back the ammo it held, as in 1.12.
+- **Gun sounds are no longer off to the left.** 1.12 played gun sounds one block to the side of the shooter's head,
+  which 1.21's 3D audio pans fully left. Your own gun sounds now play centred, and other players' and mobs' gun
+  sounds come from their position.
 - **Two-handed guns** block off-hand item, block and entity use, as in 1.12.
 - **Safe mode.** The `techguns.allowunsafemode` permission now uses the NeoForge permission API. The
   `RestrictUnsafeModeToOP` config overrides it. Both are checked on toggle and on login.
@@ -227,7 +231,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 28 headless game tests, run with `./gradlew runGameTestServer`. They run
+1.12 had no automated tests. There are now 29 headless game tests, run with `./gradlew runGameTestServer`. They run
 in `run-gametest/` and take about one minute. GitHub Actions (`.github/workflows/build.yml`) runs the build and every game test on each push and pull
 request. It doesn't keep built jars, because the license doesn't allow distributing builds.
 
@@ -236,7 +240,7 @@ request. It doesn't keep built jars, because the license doesn't allow distribut
 - `GameplayTests`:
   - permissions and safe mode;
   - weapon swap;
-  - ammo change refund;
+  - ammo change refund, and the rocket launcher switching to nukes, loading and reloading them;
   - off-hand rules;
   - area mining selection;
   - the Shishkebap ambient effect;
@@ -248,7 +252,8 @@ request. It doesn't keep built jars, because the license doesn't allow distribut
 - `OreTests`: the deepslate ores match the stone ores in tags, tool level, drops, light and worldgen targets, and
   smelt or react like them. Each ore's placed feature has its config check, and placement stops while it's off.
 - `ModelTests`: every registered block's blockstate and every item's model, with all parents and textures they reach,
-  exists (the missing-texture checkerboard never shows on a server, so this is the only headless check), and no
+  exists and is in the block atlas (the missing-texture checkerboard never shows on a server, so this is the only
+  headless check), and no
   blockstate file is left without a block.
 - `TeamTests`: `/team` members, other teams and players without a team get the right security access and turret
   PvP decisions, and Techguns damage is blocked between teammates when friendly fire is off.

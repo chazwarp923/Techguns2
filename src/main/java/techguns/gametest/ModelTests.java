@@ -27,7 +27,8 @@ import techguns.Techguns;
 
 /**
  * Every registered Techguns block has a blockstate file and every item has an item model, and every model, parent
- * and texture they reach exists in the mod's assets. Catches the purple-and-black missing model/texture in game,
+ * and texture they reach exists in the mod's assets, with each texture in the block atlas
+ * (assets/minecraft/atlases/blocks.json, or vanilla's block/ and item/ folders). Catches the purple-and-black missing model/texture in game,
  * which the server never loads. Vanilla and other namespaces are assumed present. Also: no blockstate file without a
  * registered block (1.12 leftovers).
  */
@@ -36,7 +37,38 @@ import techguns.Techguns;
 public class ModelTests {
 
 	private static Path asset(String path) {
-		return ModList.get().getModFileById(Techguns.MODID).getFile().findResource(("assets/techguns/" + path).split("/"));
+		return modFile("assets/techguns/" + path);
+	}
+
+	private static Path modFile(String path) {
+		return ModList.get().getModFileById(Techguns.MODID).getFile().findResource(path.split("/"));
+	}
+
+	/** Block atlas sprites a model may use: our directory prefixes and single sprites, plus vanilla's own folders. */
+	private record Atlas(List<String> prefixes, Set<String> singles) {
+		boolean contains(ResourceLocation tex) {
+			if (tex.getNamespace().equals("minecraft")) {
+				return tex.getPath().startsWith("block/") || tex.getPath().startsWith("item/");
+			}
+			return singles.contains(tex.toString()) || prefixes.stream().anyMatch(tex.getPath()::startsWith);
+		}
+	}
+
+	private static Atlas blockAtlas() throws IOException {
+		List<String> prefixes = new ArrayList<>(List.of("block/", "item/")); // vanilla's sources apply to every namespace
+		Set<String> singles = new HashSet<>();
+		try (Reader r = Files.newBufferedReader(modFile("assets/minecraft/atlases/blocks.json"))) {
+			for (JsonElement e : JsonParser.parseReader(r).getAsJsonObject().getAsJsonArray("sources")) {
+				JsonObject src = e.getAsJsonObject();
+				switch (src.get("type").getAsString()) {
+					case "directory", "minecraft:directory" -> prefixes.add(src.get("prefix").getAsString());
+					case "single", "minecraft:single" -> singles.add(ResourceLocation.parse(src.get("resource").getAsString()).toString());
+					default -> {
+					}
+				}
+			}
+		}
+		return new Atlas(prefixes, singles);
 	}
 
 	private static JsonObject json(String path) throws IOException {
@@ -46,6 +78,8 @@ public class ModelTests {
 	}
 
 	/** Checks a model reference (as written in a blockstate or "parent") and everything it reaches. */
+	private static Atlas atlas;
+
 	private static void checkModel(String ref, String from, Set<String> seen, List<String> problems) throws IOException {
 		ResourceLocation rl = ResourceLocation.parse(ref);
 		if (!rl.getNamespace().equals(Techguns.MODID) || rl.getPath().startsWith("builtin/") || !seen.add(rl.getPath())) {
@@ -72,6 +106,9 @@ public class ModelTests {
 				ResourceLocation t = ResourceLocation.parse(tex);
 				if (t.getNamespace().equals(Techguns.MODID) && !Files.exists(asset("textures/" + t.getPath() + ".png"))) {
 					problems.add(file + " -> missing texture " + tex);
+				} else if (!atlas.contains(t)) {
+					// the file can exist and still render as missing: models only see block atlas sprites
+					problems.add(file + " -> texture not in the block atlas " + tex);
 				}
 			}
 		}
@@ -95,6 +132,7 @@ public class ModelTests {
 	public static void allModelsAndTexturesResolve(GameTestHelper helper) throws IOException {
 		List<String> problems = new ArrayList<>();
 		Set<String> seen = new HashSet<>();
+		atlas = blockAtlas();
 		for (var e : BuiltInRegistries.BLOCK.entrySet()) {
 			ResourceLocation id = e.getKey().location();
 			if (!id.getNamespace().equals(Techguns.MODID) || e.getValue().defaultBlockState().getRenderShape() == RenderShape.INVISIBLE) {

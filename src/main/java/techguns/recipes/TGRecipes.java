@@ -75,7 +75,7 @@ public class TGRecipes {
 	public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<UpgradeBenchRecipe>> UPGRADE_BENCH_SERIALIZER = SERIALIZERS
 			.register("upgrade_bench", () -> new Simple<>(UpgradeBenchRecipe.CODEC, UpgradeBenchRecipe.STREAM_CODEC));
 
-	/** gun + ammo item: switch the gun's ammo variant, gun comes out unloaded (1.12 AmmoSwitchRecipeFactory) */
+	/** gun + ammo item: switch the gun's ammo variant and load that item (1.12 AmmoSwitchRecipeFactory) */
 	public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<AmmoSwitchRecipe>> AMMO_CHANGE_CRAFTING = SERIALIZERS
 			.register("ammo_change_crafting", () -> shapeless(AmmoSwitchRecipe::new));
 	/** mining tool + head item: install the head (1.12 MiningToolUpgradeHeadRecipeFactory) */
@@ -129,8 +129,10 @@ public class TGRecipes {
 			}
 			ItemStack out = gun.copyWithCount(1);
 			g.setCurrentAmmoVariantKey(out, g.getAmmoType().getAmmoVariantKeyfor(ammo, 0));
-			// gun comes out empty; the ammo it held goes back to the player (GunInteractEvents.onCraft)
-			out.set(techguns.TGDataComponents.AMMO.get(), 0);
+			// the ammo item used in the recipe is loaded (as in 1.12): a full clip for one-item reloads, one item's
+			// worth otherwise. The ammo the gun held before goes back to the player (GunInteractEvents.onCraft).
+			int perItem = g.getAmmoCount() > 1 ? Math.max(1, g.getClipsize() / g.getAmmoCount()) : g.getClipsize();
+			out.set(techguns.TGDataComponents.AMMO.get(), ammo.isEmpty() ? 0 : perItem);
 			return out;
 		}
 

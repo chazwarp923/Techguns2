@@ -335,6 +335,31 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   no profile cache, so the team test supplies the name lookup (`TGTeams.setNameLookupForTests`). A run with the
   same-team check broken failed exactly the teammate checks.
 
+### 12. Nuke rockets, ammo switch loading, gun sound direction, atlas sprites (all 29 tests pass; sound not tested in game)
+
+- **Reported:** Tactical Nuke rockets wouldn't load into the rocket launcher. The ammo switch recipe
+  (`techguns:ammo_change_crafting`) did set the nuke variant, but it emptied the gun and used up the nuke in the
+  grid. 1.12 loaded that item into the gun. With one nuke rocket there was nothing left to reload with. This
+  affected every ammo switch (incendiary and explosive magazines too). `AmmoSwitchRecipe.assemble` now loads the
+  ingredient: a full clip for guns that reload from one item, `clipsize / ammoCount` otherwise (1.12 gave 1, which
+  is the same for those guns). Ammo the gun held is still refunded. Only the plain Rocket Launcher takes nukes; the
+  guided missile launcher and Grim Reaper don't, as in 1.12.
+- New test `GameplayTests.rocketLauncherSwitchesToNukes`: the recipe exists, gives the nuke variant and loads it,
+  and a reload takes a nuke rocket, not a plain one.
+- **Reported:** gun sounds always came from the left. `TGSound` placed gun position sounds at
+  `polarOffsetXZ(x, z, 1, yaw)`, one block to the player's left (same code as 1.12). The local player's own gun
+  sounds are now listener-relative (centred), and other entities' come from their middle.
+- **Reported:** bullet projectiles showed the missing texture. `bullet1.png`, `dirt3x3.png`, `dustclouds02.png` and
+  `muzzleflash_minigun.png` failed with FileNotFoundException at 21:34:54, the same second my `processResources` run
+  rewrote `build/resources/main` while the dev client was open. Entity and FX textures load on first use and stay
+  missing for the session. Not a mod bug: F3+T or a restart fixes it, and a jar can't hit it.
+- The same log showed real startup warnings: the steam, T3 and T4 armor item models used
+  `techguns:models/armor/*` as particle sprites, which aren't in the block atlas. The nether metal lava border used
+  1.12's `minecraft:blocks/lava_still`. Added the three armor textures to `assets/minecraft/atlases/blocks.json` as
+  single sprites, and changed the lava path to `minecraft:block/lava_still`.
+- `ModelTests` now also checks that each model texture is in the block atlas (our directory and single sources,
+  vanilla's `block/` and `item/`). With the two fixes reverted it reported exactly those 5 problems.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,
