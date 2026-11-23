@@ -77,8 +77,6 @@ public class TGConfig {
 	private static final ModConfigSpec.DoubleValue damageTurretToPlayer_V = BUILDER_S.comment("Damage factor Techguns Turrets deal when hitting players").defineInRange("damage_factors.DamageTurretToPlayer", (double)0.5f, (double)0.0f, (double)100.0f);
 	public static float damageFactorNPC;
 	private static final ModConfigSpec.DoubleValue damageFactorNPC_V = BUILDER_S.comment("Damage factor for all NPCs other than turrets, they already have a difficulty dependent damage penalty, this can be used to further reduce their damage, or increase it").defineInRange("damage_factors.DamageFactorNPC", (double)1.0f, (double)0.0f, (double)100.0f);
-	public static boolean doOreGenCopper;
-	private static final ModConfigSpec.BooleanValue doOreGenCopper_V = BUILDER_S.comment("Generate Copper Ore, disable if other mod does").define("worldgen.doOreGenCopper", true);
 	public static boolean doOreGenTin;
 	private static final ModConfigSpec.BooleanValue doOreGenTin_V = BUILDER_S.comment("Generate Tin Ore, disable if other mod does").define("worldgen.doOreGenTin", true);
 	public static boolean doOreGenLead;
@@ -213,7 +211,6 @@ public class TGConfig {
 		damagePvP = (float)damagePvP_V.get().doubleValue();
 		damageTurretToPlayer = (float)damageTurretToPlayer_V.get().doubleValue();
 		damageFactorNPC = (float)damageFactorNPC_V.get().doubleValue();
-		doOreGenCopper = doOreGenCopper_V.get();
 		doOreGenTin = doOreGenTin_V.get();
 		doOreGenLead = doOreGenLead_V.get();
 		doOreGenTitanium = doOreGenTitanium_V.get();

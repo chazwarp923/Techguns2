@@ -284,9 +284,18 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
 - **Metal Blast Furnace:** English block, container and manual names. German and Russian didn't clash with vanilla.
 - New `gametest/OreTests.java`. A model reference check found no broken references from this change; the 7 that
   exist were already there.
-- Found, not fixed: the `doOreGen*` configs are never checked by worldgen. `CHANGES_FROM_1.12.md` claimed they work;
-  that's corrected.
+- Found: the `doOreGen*` configs were never checked by worldgen (fixed in 9).
 - Needs an in-game look: the new textures, and deepslate ores appearing below y 0.
+
+### 9. Ore generation config options work (all 25 tests pass)
+
+- New placement modifier `techguns:config_enabled` (`world/gen/ConfigOrePlacement.java`), registered on the mod bus.
+  `{"type": "techguns:config_enabled", "ore": "tin"}` lets the feature through only while that `doOreGen*` option
+  is on. It's the first modifier in each of the four ore placed features, so it covers both stone and deepslate.
+- It reads the config as chunks generate, so a changed value applies to newly generated chunks without touching
+  registries. Chunks that already exist keep their ore.
+- `doOreGenCopper` is removed: Techguns has no copper ore. NeoForge drops the key from existing config files.
+- New test `OreTests.oreGenConfigIsApplied`.
 
 ## Where things stand
 

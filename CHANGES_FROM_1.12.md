@@ -133,8 +133,9 @@ placement. All of it is datapack JSON in `data/techguns/worldgen/`.
   removed; use a datapack to change the weights or spacing. `SpawnStructures` and `SpawnOreClusterStructures` still
   switch structures on and off.
 - **Ores** (tin, lead, titanium, uranium) are vanilla placed features, added through a NeoForge biome modifier.
-  Copper ore is vanilla's. The `doOreGen*` config options are read, but worldgen doesn't check them yet, so they
-  can't turn ores off.
+  Copper ore is vanilla's, so `doOreGenCopper` is gone. `doOreGenTin`, `doOreGenLead`, `doOreGenTitanium` and
+  `doOreGenUranium` work as in 1.12: each ore's placed feature starts with a `techguns:config_enabled` check, read
+  as chunks generate (stone and deepslate variants both). Datapacks can use the same check in their own features.
 - **Deepslate ores (new).** Each ore has a deepslate variant, placed into deepslate like vanilla's. Each spawn range
   reaches 64 blocks deeper (the world floor moved from y 0 to y -64). The count per chunk went up in proportion,
   so the density per layer is the same as 1.12:
@@ -221,7 +222,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 24 headless game tests, run with `./gradlew runGameTestServer`. They run
+1.12 had no automated tests. There are now 25 headless game tests, run with `./gradlew runGameTestServer`. They run
 in `run-gametest/` and take about one minute.
 
 - `WorldgenTests`: every dungeon template loads; the castle, military base and bug nest build for 8 seeds each; every
@@ -239,7 +240,7 @@ in `run-gametest/` and take about one minute.
 - `DataTests`: all machine recipe types have recipes with results, all loot tables load, and every item and block is
   translated.
 - `OreTests`: the deepslate ores match the stone ores in tags, tool level, drops, light and worldgen targets, and
-  smelt or react like them.
+  smelt or react like them. Each ore's placed feature has its config check, and placement stops while it's off.
 - `GuideTests`: every item, recipe, multiblock block, armor-stand entity, image and link in the manual resolves; the
   manual recipes make the Techguns book; every Ponder schematic forms with the real multiblock code.
 

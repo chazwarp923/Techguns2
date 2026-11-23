@@ -23,12 +23,14 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration;
+import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import techguns.TGBlocks;
 import techguns.TGItems;
 import techguns.Techguns;
 import techguns.recipes.TGRecipes;
+import techguns.world.gen.ConfigOrePlacement;
 
 /** The deepslate ore variants behave like the stone ores: tags, tool level, drops, recipes and worldgen. */
 @GameTestHolder(Techguns.MODID)
@@ -109,5 +111,58 @@ public class OreTests {
 		}
 		helper.assertTrue(problems.isEmpty(), String.join("; ", problems));
 		helper.succeed();
+	}
+
+	/** Each ore's placed feature checks its worldgen.doOreGen* option, and placement stops while it is off. */
+	@GameTest(template = "empty")
+	public static void oreGenConfigIsApplied(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		List<String> problems = new ArrayList<>();
+		var placed = level.registryAccess().registryOrThrow(Registries.PLACED_FEATURE);
+		for (ConfigOrePlacement.Ore ore : ConfigOrePlacement.Ore.values()) {
+			PlacedFeature pf = placed.get(Techguns.rl("ore_" + ore.getSerializedName()));
+			if (pf == null) {
+				problems.add(ore + ": no placed feature");
+				continue;
+			}
+			var check = pf.placement().stream().filter(m -> m instanceof ConfigOrePlacement c && c.getOre() == ore).findFirst();
+			if (check.isEmpty()) {
+				problems.add(ore + ": placed feature has no config check");
+				continue;
+			}
+			BlockPos pos = helper.absolutePos(BlockPos.ZERO);
+			boolean saved = getFlag(ore);
+			try {
+				setFlag(ore, true);
+				long on = check.get().getPositions(null, level.getRandom(), pos).count();
+				setFlag(ore, false);
+				long off = check.get().getPositions(null, level.getRandom(), pos).count();
+				if (on != 1 || off != 0) {
+					problems.add(ore + ": positions on=" + on + " off=" + off);
+				}
+			} finally {
+				setFlag(ore, saved);
+			}
+		}
+		helper.assertTrue(problems.isEmpty(), String.join("; ", problems));
+		helper.succeed();
+	}
+
+	private static boolean getFlag(ConfigOrePlacement.Ore ore) {
+		return switch (ore) {
+			case TIN -> techguns.TGConfig.doOreGenTin;
+			case LEAD -> techguns.TGConfig.doOreGenLead;
+			case TITANIUM -> techguns.TGConfig.doOreGenTitanium;
+			case URANIUM -> techguns.TGConfig.doOreGenUranium;
+		};
+	}
+
+	private static void setFlag(ConfigOrePlacement.Ore ore, boolean value) {
+		switch (ore) {
+			case TIN -> techguns.TGConfig.doOreGenTin = value;
+			case LEAD -> techguns.TGConfig.doOreGenLead = value;
+			case TITANIUM -> techguns.TGConfig.doOreGenTitanium = value;
+			case URANIUM -> techguns.TGConfig.doOreGenUranium = value;
+		}
 	}
 }

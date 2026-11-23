@@ -41,6 +41,7 @@ public class Techguns {
 		techguns.radiation.TGRadiationSystem.register(modBus);
 		techguns.entities.spawn.TGSpawnManager.register(modBus);
 		techguns.world.gen.TGStructures.register(modBus);
+		techguns.world.gen.ConfigOrePlacement.register(modBus);
 
 		modBus.addListener(TGEntities::registerAttributes);
 		modBus.addListener(TGEntities::registerSpawnPlacements);
