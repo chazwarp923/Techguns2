@@ -22,7 +22,7 @@
             "type": "text",
             "title": "Security Settings",
             "anchor": "security2",
-            "text": "To make use of the 'allies' and 'team' settings you need FTBUtilies installed. Without FTBU 'allies' and 'team' is equal to 'public'."
+            "text": "'team' means players on the owner's $(thing)/team$() (or FTB Teams team, if installed). 'allies' also includes the team's FTB Teams allies. A player on no team is neither."
         },
         {
             "type": "text",

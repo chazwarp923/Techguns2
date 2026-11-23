@@ -25,7 +25,6 @@ import techguns.TGItems;
 import techguns.api.tginventory.ITGSpecialSlot;
 import techguns.api.tginventory.TGSlotType;
 import techguns.entities.npcs.NPCTurret;
-import techguns.factions.TGTeams;
 import techguns.gui.containers.TurretMenu;
 import techguns.recipes.ChargingStationRecipe;
 import techguns.items.guns.GenericGun;
@@ -372,11 +371,7 @@ public class TurretTileEnt extends BasicPoweredTileEnt {
 			this.attackAnimals = !this.attackAnimals;
 			this.needUpdate();
 		} else if (id == BUTTON_ID_PVP_SETTING && this.isOwnedByPlayer(ply)) {
-			if (TGTeams.isTeamModLoaded()) {
-				this.pvpsetting = (byte) ((this.pvpsetting + 1) % 5);
-			} else {
-				this.pvpsetting = (byte) (this.pvpsetting == 0 ? 4 : 0);
-			}
+			this.pvpsetting = (byte) ((this.pvpsetting + 1) % 5);
 			this.needUpdate();
 		}
 	}

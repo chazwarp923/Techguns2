@@ -1,19 +1,39 @@
 package techguns.factions;
 
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BiFunction;
 
+import javax.annotation.Nullable;
+
+import com.mojang.authlib.GameProfile;
+
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.scores.PlayerTeam;
 import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import techguns.plugins.ftbteams.TeamSystemIntegration;
 
 /**
- * Player team checks (the player part of 1.12 TGNpcFactions). With FTB Teams installed the machine security levels
- * 1 (allies) and 2 (team) use the owner's FTB team; without it they behave like level 0, as in 1.12.
+ * Player team checks (the player part of 1.12 TGNpcFactions), used by machine security and turret PvP settings.
+ * <p>
+ * Two team systems count, whichever says yes:
+ * <ul>
+ * <li><b>Vanilla scoreboard teams</b> ({@code /team}), always available. Players on the same team are team members
+ * (and so also allies). Players on two different teams are enemies. Vanilla has no separate "ally" rank.</li>
+ * <li><b>FTB Teams</b>, when installed: its members, allies and enemies.</li>
+ * </ul>
+ * A player on no team, with no FTB team, is only their own team: a neutral to everyone else.
  */
 public final class TGTeams {
 
 	public static final String FTB_TEAMS = "ftbteams";
 
 	private static Boolean loaded;
+
+	/** Player UUID to scoreboard name. Game tests swap it, because the test server has no profile cache. */
+	private static BiFunction<MinecraftServer, UUID, String> nameLookup = TGTeams::scoreboardName;
 
 	private TGTeams() {
 	}
@@ -41,15 +61,23 @@ public final class TGTeams {
 	}
 
 	public static boolean isAlliedOrTeamMember(UUID owner, UUID target) {
-		return !isTeamModLoaded() || TeamSystemIntegration.isAllied(owner, target);
+		return owner.equals(target) || sameVanillaTeam(owner, target) || (isTeamModLoaded() && TeamSystemIntegration.isAllied(owner, target));
 	}
 
 	public static boolean isTeamMember(UUID owner, UUID target) {
-		return !isTeamModLoaded() || TeamSystemIntegration.isTeamMember(owner, target);
+		return owner.equals(target) || sameVanillaTeam(owner, target) || (isTeamModLoaded() && TeamSystemIntegration.isTeamMember(owner, target));
 	}
 
 	public static boolean isEnemy(UUID owner, UUID target) {
-		return isTeamModLoaded() && TeamSystemIntegration.isEnemy(owner, target);
+		if (owner.equals(target)) {
+			return false;
+		}
+		if (isTeamModLoaded() && TeamSystemIntegration.isEnemy(owner, target)) {
+			return true;
+		}
+		// on two different vanilla teams, unless FTB Teams makes them allies
+		PlayerTeam a = vanillaTeam(owner), b = vanillaTeam(target);
+		return a != null && b != null && a != b && !isAlliedOrTeamMember(owner, target);
 	}
 
 	/**
@@ -67,5 +95,44 @@ public final class TGTeams {
 			case 4 -> true;
 			default -> false;
 		};
+	}
+
+	/* ---- vanilla scoreboard teams ---- */
+
+	private static boolean sameVanillaTeam(UUID owner, UUID target) {
+		PlayerTeam a = vanillaTeam(owner);
+		return a != null && a == vanillaTeam(target);
+	}
+
+	/** The /team of a player, online or offline; null without a running server, a known name, or a team. */
+	@Nullable
+	public static PlayerTeam vanillaTeam(UUID player) {
+		MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+		if (server == null) {
+			return null;
+		}
+		String name = nameLookup.apply(server, player);
+		return name == null ? null : server.getScoreboard().getPlayersTeam(name);
+	}
+
+	/** For game tests: replaces the UUID to scoreboard name lookup and returns the previous one. */
+	public static BiFunction<MinecraftServer, UUID, String> setNameLookupForTests(BiFunction<MinecraftServer, UUID, String> lookup) {
+		BiFunction<MinecraftServer, UUID, String> old = nameLookup;
+		nameLookup = lookup;
+		return old;
+	}
+
+	@Nullable
+	private static String scoreboardName(MinecraftServer server, UUID player) {
+		ServerPlayer online = server.getPlayerList().getPlayer(player);
+		if (online != null) {
+			return online.getScoreboardName();
+		}
+		var cache = server.getProfileCache();
+		if (cache == null) {
+			return null;
+		}
+		Optional<GameProfile> profile = cache.get(player);
+		return profile.map(GameProfile::getName).orElse(null);
 	}
 }

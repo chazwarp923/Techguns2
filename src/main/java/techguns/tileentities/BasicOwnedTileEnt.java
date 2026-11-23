@@ -14,7 +14,7 @@ import techguns.factions.TGTeams;
 
 /**
  * Block entity with an owner (1.12 BasicOwnedTileEnt). Security: 0 anyone, 1 allies + team, 2 team, 3 owner only.
- * Levels 1 and 2 need FTB Teams (see {@link TGTeams}), without it the button toggles between 0 and 3 like in 1.12.
+ * Levels 1 (allies) and 2 (team) use vanilla /team teams and, if installed, FTB Teams (see {@link TGTeams}).
  */
 public abstract class BasicOwnedTileEnt extends BasicInventoryTileEnt {
 
@@ -71,11 +71,7 @@ public abstract class BasicOwnedTileEnt extends BasicInventoryTileEnt {
 	public void buttonClicked(int id, Player ply) {
 		if (id == BUTTON_ID_SECURITY) {
 			if (this.isOwnedByPlayer(ply)) {
-				if (TGTeams.isTeamModLoaded()) {
-					this.security = (byte) ((this.security + 1) % 4);
-				} else {
-					this.security = (byte) (this.security == 0 ? 3 : 0);
-				}
+				this.security = (byte) ((this.security + 1) % 4);
 				this.needUpdate();
 			}
 		} else {

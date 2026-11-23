@@ -317,6 +317,24 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   executable in git (it was 644, which fails on Linux). A failed game test makes the Gradle run exit non-zero
   (checked locally), so it fails the job.
 
+### 11. Vanilla /team support (all 28 tests pass; not tested in game)
+
+- `factions/TGTeams` now checks vanilla scoreboard teams alongside FTB Teams, and either one can say yes. Same
+  `/team` means team member, and so also ally (vanilla has no ally rank). Two different `/team`s means enemies,
+  unless FTB Teams makes them allies. No team means neutral.
+- The owner can be offline: the UUID becomes a scoreboard name through the online player list, then the server's
+  profile cache. Unknown players have no team.
+- Removed the "no FTB Teams, so everyone counts as a team member" fallback. The security button now cycles all four
+  levels and the turret PvP button all five settings, with or without FTB Teams. In a world that had FTB Teams
+  removed, a machine left on security 1 or 2 now admits only the owner and their `/team`, where before it admitted
+  everyone.
+- Guns needed no change. Techguns damage sources name the shooting player as attacker, so `ServerPlayer.hurt`
+  applies the team's friendly-fire rule, as for arrows. NPCs and turrets use vanilla targeting, which already skips
+  entities on the same scoreboard team.
+- New `gametest/TeamTests.java`, with `vanillaTeamsCount` and `gunDamageHonoursFriendlyFire`. The test server has
+  no profile cache, so the team test supplies the name lookup (`TGTeams.setNameLookupForTests`). A run with the
+  same-team check broken failed exactly the teammate checks.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

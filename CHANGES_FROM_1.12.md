@@ -21,6 +21,11 @@ The 1.12.2 source is kept in `legacy/` for reference. It is not compiled.
 
 - **Curios is required.** The Techguns inventory tab was replaced by Curios slots (see 3.1).
 - **FTB Teams** replaces FTB Library for the machine and turret security "team" levels.
+- **Vanilla `/team` teams (new)** count too, with or without FTB Teams. Players on the owner's `/team` are team
+  members (and allies), and players on a different `/team` are enemies. So all four machine security levels and all
+  five turret PvP settings now work without any team mod. In 1.12 without FTB Library, the buttons only switched
+  between public and owner-only, and between no PvP and everyone. Techguns gun and explosion damage already
+  follows a `/team`'s friendly-fire setting, because the shooting player is the attacker, as with vanilla arrows.
 - **JEI** shows recipes for every machine: ammo press, metal press, blast furnace, grinder, chem lab, reaction chamber,
   fabricator, charging station, ore drill, camo bench and upgrade bench. It is only needed at runtime.
 - The dev client also loads Powah (to power machines for testing) and C2ME (to test worldgen under multithreaded
@@ -222,7 +227,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 26 headless game tests, run with `./gradlew runGameTestServer`. They run
+1.12 had no automated tests. There are now 28 headless game tests, run with `./gradlew runGameTestServer`. They run
 in `run-gametest/` and take about one minute. GitHub Actions (`.github/workflows/build.yml`) runs the build and every game test on each push and pull
 request. It doesn't keep built jars, because the license doesn't allow distributing builds.
 
@@ -245,6 +250,8 @@ request. It doesn't keep built jars, because the license doesn't allow distribut
 - `ModelTests`: every registered block's blockstate and every item's model, with all parents and textures they reach,
   exists (the missing-texture checkerboard never shows on a server, so this is the only headless check), and no
   blockstate file is left without a block.
+- `TeamTests`: `/team` members, other teams and players without a team get the right security access and turret
+  PvP decisions, and Techguns damage is blocked between teammates when friendly fire is off.
 - `GuideTests`: every item, recipe, multiblock block, armor-stand entity, image and link in the manual resolves; the
   manual recipes make the Techguns book; every Ponder schematic forms with the real multiblock code.
 
