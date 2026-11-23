@@ -628,7 +628,7 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
 - The rest of the Fabric port content followed: ammo bench and ammo boxes (entry 26), grappling hook (entry 27),
   magic rifle (entry 28).
 
-### 26. Fabric port content: ammo bench and ammo boxes (all 48 tests pass; not tested in game)
+### 26. Fabric port content: ammo bench and ammo boxes (all 48 tests pass; bench checked in game)
 
 - Ammo bench: block (Fabric model, textures and shape, faces the player), `AmmoBenchMenu` and `AmmoBenchScreen`.
   They follow vanilla's stonecutter menu and screen, with three input slots painted over its single one, as in
@@ -645,10 +645,10 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
 - New `AmmoBenchTests` (4 tests). The bench test caught a bug: in the result slot, `container` named the slot's own
   container, so taking the result used no inputs. Removing the box from the ammo use made the gun reload for free,
   and the reload test failed.
-- Needs an in-game look: the bench's screen (slots over the stonecutter background, the buttons, scrolling), the
-  box's tooltip and bundle-style clicks, and the bench model's facing.
+- Checked in game: the bench's screen and the bench model's facing are fine.
+- Still needs an in-game look: the ammo box's tooltip and bundle-style clicks.
 
-### 27. Fabric port content: grappling hook (all 50 tests pass; not tested in game)
+### 27. Fabric port content: grappling hook (all 50 tests pass; works in game)
 
 - `GrapplingHook` gun (Fabric stats): holding use fires `GrapplingHookProjectile`; letting go fires nothing.
   `startCharge` clears the fire delay that `GenericGunCharge.use` has just set, or the shot never happens; a game
@@ -664,10 +664,10 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
 - Sounds `guns.grapplinghookfire` and `guns.grapplinghookpull`, textures, lang, gun_stats entry; our own recipe.
 - New `GrapplingHookTests` (2 tests). Removing the entity pull makes `hookPullsEntity` fail. The tests first counted
   the hooks of tests running alongside; they now count only their own player's.
-- Needs an in-game look: the gun and hook models, the wire's start at the gun in first and third person, the wheel
-  spin, and how the pull feels (the Fabric port's speed of 2 blocks a tick).
+- Tried in game: it works. Not looked at in detail: the wire's start at the gun in first and third person, the
+  wheel spin, and how the pull feels (the Fabric port's speed of 2 blocks a tick).
 
-### 28. Fabric port content: magic rifle (all 53 tests pass; not tested in game)
+### 28. Fabric port content: magic rifle (all 53 tests pass; checked in game)
 
 - The Fabric port's magic rifle was unfinished (no names, recipes or sounds of its own). Ported: the gun (Fabric
   stats, 6 textures as camos), 3 magic bullets (ammo type `MAGIC_BULLETS`, variants `fire` and `lightning`, with
@@ -692,8 +692,20 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
 - Model converted by script. One part has texture offset -16, kept as in the Fabric port.
 - New `MagicRifleTests` (3 tests). Removing the hit-entity exclusion, the explosion fire or the lingering each makes
   its test fail.
-- Needs an in-game look: the model and camos, the charge circle in first and third person (its size and spot),
-  the trails and explosions, and whether the explosion sound and lightning are too much.
+- Checked in game: the model and camos, the charge circle, the trails and explosions are fine. The lightning was
+  too much, so it now lingers half as long as in the Fabric port (5 to 20 ticks).
+
+### 29. Fix: machine fronts textured wrong (ammo press, metal press, chemical laboratory) (all 53 tests pass; checked in game)
+
+- Seen in game: the side of the ammo and metal press facing the player when placed had its textures mapped wrong.
+- Cause: the script that made the JSON models in entry 22's commit (`c3a9421`) checked each face against its own
+  copy of vanilla's `ModelPart.Cube`, and that copy had the south face's corners in the wrong order (`v6, v3, v4, v5`
+  instead of `v3, v4, v5, v6`). Every face from a cube's south side, which the machine renderer turns to the
+  block's north side (the front at placement), got its texture turned 90 degrees, and the check passed anyway.
+- Fix: the script's cube copy now matches the vanilla source face for face (its JSON face baking was checked
+  against `FaceBakery`, `BlockFaceUV` and `FaceInfo` too). The 6 models (block and item, all three machines) were
+  made again from the Java models as they were before that commit. Only faces from cube south sides changed (north,
+  or west/east on parts turned 90 degrees); the shapes didn't. The chemical laboratory's front had the same fault.
 
 ## Where things stand
 

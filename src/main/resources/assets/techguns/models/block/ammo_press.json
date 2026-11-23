@@ -71,8 +71,7 @@
       9.25,
       12.5
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -143,8 +142,7 @@
       10.75,
       4.0
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -213,8 +211,7 @@
       7.875,
       1.0
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -283,8 +280,7 @@
       6.75,
       3.25
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -353,8 +349,7 @@
       8.0,
       4.5
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -425,8 +420,7 @@
       7.0,
       9.25
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -495,8 +489,7 @@
       9.625,
       7.5
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -565,8 +558,7 @@
       13.625,
       11.25
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -635,8 +627,7 @@
       2.25,
       7.25
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -705,8 +696,7 @@
       5.625,
       7.75
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -775,8 +765,7 @@
       6.75,
       3.25
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -845,8 +834,7 @@
       7.875,
       1.0
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -917,8 +905,7 @@
       7.125,
       0.5
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -989,8 +976,7 @@
       7.875,
       1.0
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -1059,8 +1045,7 @@
       6.75,
       3.25
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -1129,8 +1114,7 @@
       6.75,
       3.25
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -1199,8 +1183,7 @@
       10.75,
       4.0
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -1269,8 +1252,7 @@
       5.625,
       7.75
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -1339,8 +1321,7 @@
       7.875,
       1.0
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -1409,8 +1390,7 @@
       7.875,
       1.0
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -1481,8 +1461,7 @@
       3.0,
       12.5
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -1553,8 +1532,7 @@
       7.875,
       1.0
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -1625,8 +1603,7 @@
       7.125,
       0.5
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -1695,8 +1672,7 @@
       10.75,
       4.0
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -1765,8 +1741,7 @@
       16.0,
       3.25
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -1835,8 +1810,7 @@
       16.0,
       3.25
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -1905,8 +1879,7 @@
       13.0,
       14.75
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -1975,8 +1948,7 @@
       16.0,
       8.25
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -2045,8 +2017,7 @@
       9.625,
       7.5
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -2115,8 +2086,7 @@
       9.25,
       12.5
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   },
@@ -2185,8 +2155,7 @@
       2.25,
       7.25
      ],
-     "texture": "#tex",
-     "rotation": 90
+     "texture": "#tex"
     }
    }
   }
