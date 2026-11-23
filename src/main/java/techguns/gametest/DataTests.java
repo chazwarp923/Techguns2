@@ -191,4 +191,81 @@ public class DataTests {
 			}
 		}
 	}
+
+	/**
+	 * Compat recipes (data/techguns/recipe/compat/&lt;modid&gt;/): each is gated on its mod, and loads exactly when its
+	 * conditions say so. Without the mods this checks the gating; run with -Pcompat_mods=true (Create, Mekanism and
+	 * Immersive Engineering) a recipe that should load but doesn't is one that failed to parse. For the single-input
+	 * smelting, blasting, pressing and washing recipes it also checks that no other recipe already takes the same input.
+	 */
+	@GameTest(template = "empty")
+	public static void compatRecipes(GameTestHelper helper) throws Exception {
+		MinecraftServer server = helper.getLevel().getServer();
+		var dir = net.neoforged.fml.ModList.get().getModFileById(Techguns.MODID).getFile().findResource("data", "techguns", "recipe", "compat");
+		List<java.nio.file.Path> files = new ArrayList<>();
+		try (var walk = java.nio.file.Files.walk(dir)) {
+			walk.filter(f -> f.toString().endsWith(".json")).forEach(files::add);
+		}
+		helper.assertTrue(files.size() >= 15, "only " + files.size() + " compat recipes");
+		List<String> problems = new ArrayList<>();
+		int loadedCount = 0;
+		for (var f : files) {
+			String rel = dir.relativize(f).toString().replace(java.io.File.separatorChar, '/');
+			String mod = rel.substring(0, rel.indexOf('/'));
+			ResourceLocation id = Techguns.rl("compat/" + rel.substring(0, rel.length() - 5));
+			JsonObject json;
+			try (var r = java.nio.file.Files.newBufferedReader(f)) {
+				json = JsonParser.parseReader(r).getAsJsonObject();
+			}
+			var conds = json.getAsJsonArray("neoforge:conditions");
+			if (conds == null || conds.isEmpty() || !conds.get(0).getAsJsonObject().get("type").getAsString().equals("neoforge:mod_loaded")
+					|| !conds.get(0).getAsJsonObject().get("modid").getAsString().equals(mod)) {
+				problems.add(rel + " is not gated on " + mod + " first");
+				continue;
+			}
+			boolean expected = true;
+			for (var c : conds) {
+				expected &= modCondition(c.getAsJsonObject(), rel, problems);
+			}
+			var holder = server.getRecipeManager().byKey(id);
+			if (expected && holder.isEmpty()) {
+				problems.add(rel + " should load but didn't (parse error?)");
+			} else if (!expected && holder.isPresent()) {
+				problems.add(rel + " loaded although its conditions are false");
+			}
+			if (holder.isEmpty()) {
+				continue;
+			}
+			loadedCount++;
+			var recipe = holder.get().value();
+			String type = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType()).toString();
+			if (List.of("minecraft:smelting", "minecraft:blasting", "create:pressing", "create:splashing").contains(type)
+					&& recipe.getIngredients().size() == 1 && recipe.getIngredients().get(0).getItems().length > 0) {
+				var probe = recipe.getIngredients().get(0).getItems()[0];
+				for (var other : server.getRecipeManager().getRecipes()) {
+					if (other.id().equals(id) || other.value().getType() != recipe.getType() || other.value().getIngredients().size() != 1) {
+						continue;
+					}
+					if (other.value().getIngredients().get(0).test(probe)) {
+						problems.add(rel + " duplicates " + other.id() + " for " + BuiltInRegistries.ITEM.getKey(probe.getItem()));
+					}
+				}
+			}
+		}
+		Techguns.LOGGER.info("compat recipes: {} files, {} loaded", files.size(), loadedCount);
+		helper.assertTrue(problems.isEmpty(), String.join("; ", problems));
+		helper.succeed();
+	}
+
+	/** evaluates neoforge:mod_loaded and neoforge:not, the only conditions compat recipes use */
+	private static boolean modCondition(JsonObject c, String file, List<String> problems) {
+		return switch (c.get("type").getAsString()) {
+			case "neoforge:mod_loaded" -> net.neoforged.fml.ModList.get().isLoaded(c.get("modid").getAsString());
+			case "neoforge:not" -> !modCondition(c.getAsJsonObject("value"), file, problems);
+			default -> {
+				problems.add(file + ": unexpected condition " + c.get("type"));
+				yield false;
+			}
+		};
+	}
 }

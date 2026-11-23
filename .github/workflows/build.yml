@@ -36,9 +36,25 @@ jobs:
         run: ./gradlew build --console=plain
 
       # Headless game server running every @GameTest (worldgen, gameplay, data, manual, ores, models).
-      # Any failed required test exits non-zero and fails the job.
+      # A failed required test exits non-zero. A crash while loading mods exits 0, so each run also has to log
+      # "All N required tests passed". Every run's log is kept for the upload below.
       - name: Game tests
-        run: ./gradlew runGameTestServer --console=plain
+        run: |
+          mkdir -p gametest-logs
+          ./gradlew runGameTestServer --console=plain 2>&1 | tee gametest-logs/plain.log
+          grep -qE "All [0-9]+ required tests passed" gametest-logs/plain.log
+
+      # Again with the mods the compat recipes are for, all three and Create alone (its crushed-ore recipes only
+      # load without Mekanism and IE). The compatRecipes test checks that every recipe that should load parses.
+      - name: Game tests with Create, Mekanism and Immersive Engineering
+        run: |
+          ./gradlew runGameTestServer -Pcompat_mods=true --console=plain 2>&1 | tee gametest-logs/compat_all.log
+          grep -qE "All [0-9]+ required tests passed" gametest-logs/compat_all.log
+
+      - name: Game tests with Create only
+        run: |
+          ./gradlew runGameTestServer -Pcompat_mods=create --console=plain 2>&1 | tee gametest-logs/compat_create.log
+          grep -qE "All [0-9]+ required tests passed" gametest-logs/compat_create.log
 
       # No build outputs (jars) are uploaded: the license doesn't allow distributing builds.
       - name: Upload game test logs
@@ -46,5 +62,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: gametest-logs
-          path: run-gametest/logs/
+          path: |
+            gametest-logs/
+            run-gametest/logs/
           if-no-files-found: ignore

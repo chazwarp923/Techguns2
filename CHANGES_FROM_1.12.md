@@ -17,7 +17,7 @@ The 1.12.2 source is kept in `legacy/` for reference. It is not compiled.
 | Build | ForgeGradle | ModDevGradle |
 | Mod version | `1.12.2-2.0.2.0` | `1.21.1-2.1.0.0` |
 | Required mods | none | **Curios** (9.6.0+) |
-| Optional mods | FTB Library (teams), JEI, CraftTweaker, Chisel, Thermal Expansion, Patchouli | FTB Teams, JEI, Patchouli, Ponder, Jade |
+| Optional mods | FTB Library (teams), JEI, CraftTweaker, Chisel, Thermal Expansion, Patchouli | FTB Teams, JEI, Patchouli, Ponder, Jade; recipes for Create, Mekanism and Immersive Engineering |
 
 - **Curios is required.** The Techguns inventory tab was replaced by Curios slots (see 3.1).
 - **FTB Teams** replaces FTB Library for the machine and turret security "team" levels.
@@ -217,6 +217,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 | FTB Library teams | Ported to FTB Teams (optional). |
 | Patchouli (Techguns Manual) | Ported. Since Patchouli 1.20, `book.json` lives in `data/` and the pages in `assets/`. The book now uses that layout, with flattened ids, Curios and FE wording, and fixed broken links. Craft it from an iron ingot, a glass pane and stone bullets or pistol rounds. |
 | Jade (new) | Optional. Looking at a machine (or any part of a formed multiblock) shows its progress, owner and security level; Jade's own providers add energy, items and fluids. Toggle under Jade's plugin settings ("Techguns Machines"). |
+| Create, Mekanism, Immersive Engineering (new) | Data-only recipes in `data/techguns/recipe/compat/`, each loaded only when its mod is installed. All three already process Techguns ores and ingots through the shared `c:` tags; these fill the gaps. **Create:** presses tin, bronze, obsidian steel and titanium ingots into Techguns plates (steel and lead too, unless IE is installed: Create already presses those into IE plates). Heated mixing makes bronze (3 copper + 1 tin = 4) and obsidian steel (steel + obsidian). Create crushes Techguns lead, tin and uranium ores but only had uses for the crushed ore with another metal mod installed; without one, crushed tin and lead now smelt into Techguns ingots, crushed lead washes into lead nuggets and crushed uranium into yellowcake. **Immersive Engineering:** metal press plates for obsidian steel and titanium (IE already makes Techguns tin and bronze plates); obsidian steel in the alloy kiln and arc furnace. **Mekanism:** obsidian steel in the combiner. Titanium processing and enriched uranium stay with the Techguns reaction chamber. |
 | Ponder (new) | Optional. Hold W over a fabricator, reaction chamber or ore drill part for an animated build guide: fabricator, reaction chamber, small and framed ore drill. |
 | CraftTweaker (machine recipes, gun/armor stats, death effects, ore clusters) | Machine recipes are JSON recipe types and can be edited with any datapack tool. Gun, armor, death-effect and ore-cluster scripting is not ported, because it would need a CraftTweaker dependency. |
 | Chisel (block groups) | Not ported. |
@@ -244,7 +245,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 32 headless game tests, run with `./gradlew runGameTestServer`. They run
+1.12 had no automated tests. There are now 33 headless game tests, run with `./gradlew runGameTestServer`. They run
 in `run-gametest/` and take about one minute. GitHub Actions (`.github/workflows/build.yml`) runs the build and every game test on each push and pull
 request. It doesn't keep built jars, because the license doesn't allow distributing builds.
 
@@ -257,6 +258,9 @@ request. It doesn't keep built jars, because the license doesn't allow distribut
   - the Jade overlay's server data (owner, security, progress);
   - waterloggable sandbags, camo nets and ladders;
   - the advancements: all load, lead to the root, use real item and entity ids and are translated;
+  - the compat recipes: each is gated on its mod and loads exactly when it should. CI also runs the tests with
+    Create, Mekanism and IE installed, and with Create alone (`-Pcompat_mods=true` or `=create`), where a recipe
+    that fails to parse, or takes an input another recipe of that type already uses, fails the test;
   - off-hand rules;
   - area mining selection;
   - the Shishkebap ambient effect;

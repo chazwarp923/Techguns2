@@ -133,8 +133,8 @@ dependencies {
     localRuntime "vazkii.patchouli:Patchouli:${patchouli_version}"
     // Ponder: optional, multiblock scenes (techguns.plugins.ponder). The NeoForge jar already contains the common
     // classes, so its pom's Ponder-Common is left out; Flywheel is only needed by the client at runtime
-    compileOnly("net.createmod.ponder:Ponder-NeoForge-${minecraft_version}:${ponder_version}") { transitive = false }
-    localRuntime("net.createmod.ponder:Ponder-NeoForge-${minecraft_version}:${ponder_version}") { transitive = false }
+    compileOnly("net.createmod.ponder:ponder-neoforge:${ponder_version}") { transitive = false }
+    localRuntime("net.createmod.ponder:ponder-neoforge:${ponder_version}") { transitive = false }
     localRuntime "dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}"
     // Jade: optional, machine progress / owner / security in the look-at overlay (techguns.plugins.jade)
     compileOnly "maven.modrinth:jade:${jade_version}"
@@ -145,6 +145,15 @@ dependencies {
     localRuntime "maven.modrinth:guideme:${guideme_version}"
     // C2ME (multithreaded chunk generation), dev client only: tests worldgen code under concurrency; bundles its own libraries
     localRuntime "maven.modrinth:c2me-neoforge:${c2me_version}"
+    // Create, Mekanism and Immersive Engineering: the compat recipes in data/techguns/recipe/compat are pure data, loaded
+    // only when that mod is installed. Off by default so the dev client stays light. -Pcompat_mods=true loads all three,
+    // or name some, e.g. -Pcompat_mods=create (the game tests then check that every compat recipe that should load parses)
+    def compatMods = (project.findProperty("compat_mods") ?: "").toString()
+    def compatAll = compatMods == "true"
+    def compatList = compatMods.split(",")*.trim()
+    if (compatAll || "create" in compatList) localRuntime "maven.modrinth:create:${create_version}"
+    if (compatAll || "mekanism" in compatList) localRuntime "maven.modrinth:mekanism:${mekanism_version}"
+    if (compatAll || "immersiveengineering" in compatList) localRuntime "maven.modrinth:immersiveengineering:${immersive_engineering_version}"
 }
 
 var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
