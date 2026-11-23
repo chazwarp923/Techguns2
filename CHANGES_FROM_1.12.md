@@ -85,6 +85,12 @@ old tab.
 - **Gun sounds are no longer off to the left.** 1.12 played gun sounds one block to the side of the shooter's head,
   which 1.21's 3D audio pans fully left. Your own gun sounds now play centred, and other players' and mobs' gun
   sounds come from their position.
+- **Vibrations (new).** Guns now set off sculk sensors and draw Wardens, which 1.12 didn't have. A shot sends its
+  own `techguns:gunfire` vibration (frequency 3, like a bow shot) that sneaking does **not** hide, unlike vanilla's
+  bow and crossbow shots. Players, NPCs and turrets all count. Reloading is a vanilla item-use vibration, so you
+  can reload quietly while sneaking. Techguns explosions send vanilla's explosion vibration. Thrown grenades and
+  bullets hitting blocks behave like a thrown snowball and a landing arrow. A Warden that hears a bullet land goes
+  after the shooter.
 - **Two-handed guns** block off-hand item, block and entity use, as in 1.12.
 - **Safe mode.** The `techguns.allowunsafemode` permission now uses the NeoForge permission API. The
   `RestrictUnsafeModeToOP` config overrides it. Both are checked on toggle and on login.
@@ -245,7 +251,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 33 headless game tests, run with `./gradlew runGameTestServer`. They run
+1.12 had no automated tests. There are now 37 headless game tests, run with `./gradlew runGameTestServer`. They run
 in `run-gametest/` and take about one minute. GitHub Actions (`.github/workflows/build.yml`) runs the build and every game test on each push and pull
 request. It doesn't keep built jars, because the license doesn't allow distributing builds.
 
@@ -258,6 +264,8 @@ request. It doesn't keep built jars, because the license doesn't allow distribut
   - the Jade overlay's server data (owner, security, progress);
   - waterloggable sandbags, camo nets and ladders;
   - the advancements: all load, lead to the root, use real item and entity ids and are translated;
+  - vibrations: a sneaking player's gunshot, a reload and a Techguns explosion each set off a sculk sensor, and
+    the gunfire event's tags and frequency;
   - the compat recipes: each is gated on its mod and loads exactly when it should. CI also runs the tests with
     Create, Mekanism and IE installed, and with Create alone (`-Pcompat_mods=true` or `=create`), where a recipe
     that fails to parse, or takes an input another recipe of that type already uses, fails the test;

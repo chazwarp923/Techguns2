@@ -24,6 +24,7 @@ public class Techguns {
 		net.neoforged.neoforge.common.NeoForge.EVENT_BUS.register(techguns.damagesystem.DamageSystem.class);
 
 		TGSounds.SOUNDS.register(modBus);
+		TGGameEvents.GAME_EVENTS.register(modBus);
 		TGDataComponents.COMPONENTS.register(modBus);
 		TGEntities.ENTITIES.register(modBus);
 		TGFluids.init(modBus);

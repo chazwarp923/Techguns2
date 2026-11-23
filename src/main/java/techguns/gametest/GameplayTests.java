@@ -543,4 +543,76 @@ public class GameplayTests {
 		ArmorEvents.onStartTracking(new PlayerEvent.StartTracking(watcher, flyer));
 		helper.succeed();
 	}
+
+	/* ---------------------------------------------------------------- vibrations (sculk sensors, Wardens) */
+
+	private static final BlockPos SENSOR = new BlockPos(1, 1, 1);
+
+	/** A sculk sensor at SENSOR and a fake player 5 blocks away, facing up so bullets don't land near the sensor. */
+	private static ServerPlayer listenedPlayer(GameTestHelper helper, boolean sneaking) {
+		helper.setBlock(SENSOR, net.minecraft.world.level.block.Blocks.SCULK_SENSOR);
+		ServerPlayer ply = player(helper);
+		clearInventory(ply);
+		var at = helper.absoluteVec(new net.minecraft.world.phys.Vec3(5.5, 1, 5.5));
+		ply.moveTo(at.x, at.y, at.z, 0.0f, -90.0f);
+		ply.setShiftKeyDown(sneaking);
+		ply.setPose(sneaking ? net.minecraft.world.entity.Pose.CROUCHING : net.minecraft.world.entity.Pose.STANDING);
+		return ply;
+	}
+
+	private static void succeedWhenSensorActive(GameTestHelper helper, String what) {
+		helper.succeedWhen(() -> helper.assertTrue(
+				net.minecraft.world.level.block.SculkSensorBlock.getPhase(helper.getBlockState(SENSOR)) == net.minecraft.world.level.block.state.properties.SculkSensorPhase.ACTIVE,
+				"the sculk sensor didn't hear " + what));
+	}
+
+	/** Gunfire triggers a sculk sensor, even from a sneaking player (vanilla's projectile_shoot would not). */
+	@GameTest(template = "empty_large")
+	public static void gunfireTriggersSculkSensor(GameTestHelper helper) {
+		ServerPlayer ply = listenedPlayer(helper, true);
+		helper.assertTrue(ply.isShiftKeyDown() && ply.isCrouching(), "fake player isn't sneaking");
+		GenericGun gun = TGuns.PISTOL.get();
+		ItemStack stack = new ItemStack(gun);
+		ply.setItemInHand(InteractionHand.MAIN_HAND, stack);
+		TGExtendedPlayer.get(ply).fireDelayMainhand = 0;
+		gun.shootGunPrimary(stack, helper.getLevel(), ply, false, InteractionHand.MAIN_HAND, null);
+		helper.assertTrue(gun.getCurrentAmmo(stack) == gun.getClipsize() - 1, "the gun didn't fire");
+		succeedWhenSensorActive(helper, "a sneaking player's gunshot");
+	}
+
+	/** Reloading is a vanilla item-use vibration: heard when standing (and hidden by sneaking, like eating). */
+	@GameTest(template = "empty_large")
+	public static void reloadTriggersSculkSensor(GameTestHelper helper) {
+		ServerPlayer ply = listenedPlayer(helper, false);
+		GenericGun gun = TGuns.PISTOL.get();
+		ItemStack stack = new ItemStack(gun);
+		stack.set(TGDataComponents.AMMO.get(), 0);
+		ply.setItemInHand(InteractionHand.MAIN_HAND, stack);
+		ply.getInventory().add(ammoFor(helper, gun));
+		TGExtendedPlayer.get(ply).fireDelayMainhand = 0;
+		gun.tryForcedReload(stack, helper.getLevel(), ply, InteractionHand.MAIN_HAND);
+		helper.assertTrue(gun.getCurrentAmmo(stack) > 0, "the gun didn't reload");
+		succeedWhenSensorActive(helper, "a reload");
+	}
+
+	/** Techguns explosions don't go through vanilla's Explosion.explode(), so they send the explode vibration themselves. */
+	@GameTest(template = "empty_large")
+	public static void explosionTriggersSculkSensor(GameTestHelper helper) {
+		helper.setBlock(SENSOR, net.minecraft.world.level.block.Blocks.SCULK_SENSOR);
+		var at = helper.absoluteVec(new net.minecraft.world.phys.Vec3(5.5, 2, 5.5));
+		new techguns.damagesystem.TGExplosion(helper.getLevel(), null, null, at.x, at.y, at.z, 0, 0, 1, 1, 0.0).doExplosion(false);
+		succeedWhenSensorActive(helper, "an explosion");
+	}
+
+	/** The gunfire event's data: vibration and Warden tags, not muted by sneaking, frequency 3 from the data map. */
+	@GameTest(template = "empty")
+	public static void gunfireVibrationData(GameTestHelper helper) {
+		var ev = techguns.TGGameEvents.GUNFIRE;
+		helper.assertTrue(ev.is(net.minecraft.tags.GameEventTags.VIBRATIONS), "gunfire not in #minecraft:vibrations");
+		helper.assertTrue(ev.is(net.minecraft.tags.GameEventTags.WARDEN_CAN_LISTEN), "gunfire not in #minecraft:warden_can_listen");
+		helper.assertFalse(ev.is(net.minecraft.tags.GameEventTags.IGNORE_VIBRATIONS_SNEAKING), "sneaking would hide gunfire");
+		int freq = net.minecraft.world.level.gameevent.vibrations.VibrationSystem.getGameEventFrequency(ev);
+		helper.assertTrue(freq == 3, "gunfire frequency " + freq);
+		helper.succeed();
+	}
 }

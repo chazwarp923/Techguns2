@@ -98,6 +98,8 @@ public class TGExplosion {
 	/** Destroys blocks and damages entities. Server side only. */
 	public void doExplosion(boolean playSound) {
 		if (world.isClientSide) return;
+		// what vanilla's Explosion.explode() sends; this class doesn't go through it
+		this.world.gameEvent(this.projectile != null ? this.projectile : this.exploder, net.minecraft.world.level.gameevent.GameEvent.EXPLODE, this.position);
 		if (playSound) {
 			this.world.playSound(null, this.x, this.y, this.z, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 4.0F,
 					(1.0F + (this.world.random.nextFloat() - this.world.random.nextFloat()) * 0.2F) * 0.7F);
@@ -185,7 +187,7 @@ public class TGExplosion {
 
 		TGDamageSource tgs;
 		if (this.dmgSrc == null) {
-			tgs = TGDamageSource.causeExplosionDamage(projectile, exploder, DeathType.GORE);
+			tgs = TGDamageSource.causeExplosionDamage(this.world, projectile, exploder, DeathType.GORE);
 		} else {
 			tgs = TGDamageSource.copyWithNewEnt(this.dmgSrc, projectile, exploder);
 		}

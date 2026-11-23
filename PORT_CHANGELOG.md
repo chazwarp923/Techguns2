@@ -430,6 +430,28 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
 - CI runs the game tests three times: plain, all compat mods, and Create only. A crash while loading mods made
   `runGameTestServer` exit 0, so each step now also requires "All N required tests passed" in its log.
 
+### 17. Gunfire vibrations (all 37 tests pass; not tested in game)
+
+- New game event `techguns:gunfire` (`TGGameEvents`, radius 16). It's in `#minecraft:vibrations` and
+  `#minecraft:warden_can_listen`, and has frequency 3 in the `neoforge:vibration_frequencies` data map (NeoForge
+  reads frequencies from there; an unlisted event would be 0). It's a separate event because vanilla's
+  `projectile_shoot` is in `#minecraft:ignore_vibrations_sneaking`, and a gunshot shouldn't be hidden by sneaking.
+- Sent once per shot (not per shotgun pellet) at the shooter's eyes, from `GenericGun.shootGun` (players, NPCs,
+  turrets) and `GenericGunCharge.releaseUsing` (charged shots).
+- Vanilla events elsewhere: a reload sends `item_interact_finish` (from `startReloadEffects`, so both reload paths).
+  `TGExplosion` sends `explode`, since it doesn't go through vanilla's `Explosion.explode()`. A thrown grenade sends
+  `projectile_shoot`. A bullet hitting a block sends `projectile_land`. Bullets are plain entities, not vanilla
+  `Projectile`s, so vanilla sent none of these; the shooter is named as the source, as vanilla does with an arrow's
+  owner.
+- **Fixed a crash found by the new test.** A `TGExplosion` with neither a projectile nor an exploder threw a
+  NullPointerException building its damage source (`TGDamageSource.levelOf`). The bioblob's poison burst had the
+  same bug when it had no attacker. Both now pass the world in through new `causeExplosionDamage(Level, ...)` and
+  `causePoisonDamage(Level, ...)` overloads.
+- Four new tests in `GameplayTests`: a sneaking fake player fires a pistol 5 blocks from a sculk sensor (aimed up,
+  so the bullet lands far away), a standing reload, a Techguns explosion, and the event's tags and frequency.
+  Planted bugs (gunfire sent as `projectile_shoot`; the explosion event removed) failed with "didn't hear a sneaking
+  player's gunshot" and "didn't hear an explosion".
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

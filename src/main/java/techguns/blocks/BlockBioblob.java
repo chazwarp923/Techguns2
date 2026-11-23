@@ -107,7 +107,7 @@ public class BlockBioblob extends Block {
 		int size = state.getValue(SIZE) + power;
 		if (size > 2) {
 			float radius = 3.0f;
-			TGDamageSource dmgSrc = TGDamageSource.causePoisonDamage(null, attacker, DeathType.BIO);
+			TGDamageSource dmgSrc = TGDamageSource.causePoisonDamage(level, null, attacker, DeathType.BIO);
 			dmgSrc.goreChance = 1.0f;
 			dmgSrc.armorPenetration = 0.35f;
 			double x = pos.getX() + 0.5, y = pos.getY() + 0.5, z = pos.getZ() + 0.5;

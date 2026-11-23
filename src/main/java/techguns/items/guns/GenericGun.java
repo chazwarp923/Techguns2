@@ -28,6 +28,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.fml.loading.FMLEnvironment;
@@ -680,7 +681,14 @@ public class GenericGun extends GenericItem implements IGenericGun, ICamoChangea
 			client_startReload();
 		} else {
 			TGPackets.sendToAllAround(new ReloadStartedMessage(player, hand, time, attackType), player, 100.0);
+			// a vanilla item-use vibration: sneaking hides it, unlike gunfire
+			level.gameEvent(player, GameEvent.ITEM_INTERACT_FINISH, player.position());
 		}
+	}
+
+	/** Gunfire vibration at the shooter (sculk sensors, Wardens), not hidden by sneaking. Server side, once per shot. */
+	public static void gunfireVibration(Level level, LivingEntity shooter) {
+		level.gameEvent(techguns.TGGameEvents.GUNFIRE, shooter.getEyePosition(), GameEvent.Context.of(shooter));
 	}
 
 	@Nullable
@@ -699,6 +707,7 @@ public class GenericGun extends GenericItem implements IGenericGun, ICamoChangea
 	protected void shootGun(Level level, LivingEntity player, ItemStack itemstack, float accuracybonus, float damagebonus, int attackType,
 			InteractionHand hand, EnumBulletFirePos firePos, @Nullable Entity target) {
 		if (!level.isClientSide) {
+			gunfireVibration(level, player);
 			TGPackets.sendToAllAround(new GunFiredMessage(player, ticksToMillis(recoiltime), ticksToMillis(muzzleFlashtime), attackType, checkRecoil,
 					hand == InteractionHand.OFF_HAND), player, 100.0);
 		}

@@ -60,11 +60,21 @@ public class TGDamageSource extends DamageSource {
 	}
 
 	public static TGDamageSource causeExplosionDamage(Entity projectile, Entity shooter, DeathType deathType) {
-		return new TGDamageSource(levelOf(projectile, shooter), TGDamageTypes.EXPLOSION, projectile, shooter, DamageType.EXPLOSION, deathType);
+		return causeExplosionDamage(levelOf(projectile, shooter), projectile, shooter, deathType);
+	}
+
+	/** for explosions that may have neither a projectile nor a shooter */
+	public static TGDamageSource causeExplosionDamage(Level level, @Nullable Entity projectile, @Nullable Entity shooter, DeathType deathType) {
+		return new TGDamageSource(level, TGDamageTypes.EXPLOSION, projectile, shooter, DamageType.EXPLOSION, deathType);
 	}
 
 	public static TGDamageSource causePoisonDamage(Entity projectile, Entity shooter, DeathType deathType) {
-		TGDamageSource src = new TGDamageSource(levelOf(projectile, shooter), TGDamageTypes.POISON, projectile, shooter, DamageType.POISON, deathType);
+		return causePoisonDamage(levelOf(projectile, shooter), projectile, shooter, deathType);
+	}
+
+	/** for poison that may have neither a projectile nor a shooter (a bursting bioblob) */
+	public static TGDamageSource causePoisonDamage(Level level, @Nullable Entity projectile, @Nullable Entity shooter, DeathType deathType) {
+		TGDamageSource src = new TGDamageSource(level, TGDamageTypes.POISON, projectile, shooter, DamageType.POISON, deathType);
 		src.ignoreHurtresistTime = true;
 		src.knockbackOnShieldBlock = false;
 		return src;

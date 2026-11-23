@@ -143,6 +143,7 @@ public class GenericGunCharge extends GenericGun {
 		}
 
 		if (!level.isClientSide) {
+			gunfireVibration(level, player);
 			EnumBulletFirePos firePos = player.getMainArm() == HumanoidArm.RIGHT ? EnumBulletFirePos.RIGHT : EnumBulletFirePos.LEFT;
 			// charged shot is always from the main hand
 			spawnChargedProjectile(level, player, item, accuracy, f, ammoConsumed, firePos);

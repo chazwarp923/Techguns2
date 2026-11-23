@@ -114,6 +114,8 @@ public class GenericGrenade extends GenericItem {
 
 		if (!level.isClientSide) {
 			spawnGrenade(level, entity, f, firePos);
+			// like a thrown snowball or egg (hidden by sneaking)
+			level.gameEvent(entity, net.minecraft.world.level.gameevent.GameEvent.PROJECTILE_SHOOT, entity.getEyePosition());
 		}
 		if (!(entity instanceof Player ply && ply.getAbilities().instabuild)) {
 			stack.shrink(1);

@@ -312,6 +312,12 @@ public class GenericProjectile extends Entity implements IEntityWithComplexSpawn
 			}
 			if (this.discardOnHit) this.discard();
 		} else if (hit instanceof BlockHitResult bhr) {
+			if (!this.level().isClientSide) {
+				// like an arrow landing; the shooter is the source, so a Warden goes for them (vanilla uses the arrow's owner)
+				Entity source = this.shooter != null ? this.shooter : this;
+				this.level().gameEvent(net.minecraft.world.level.gameevent.GameEvent.PROJECTILE_LAND, bhr.getBlockPos(),
+						net.minecraft.world.level.gameevent.GameEvent.Context.of(source, this.level().getBlockState(bhr.getBlockPos())));
+			}
 			this.hitBlock(bhr);
 			if (this.discardOnHit) this.discard();
 		}
