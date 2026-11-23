@@ -38,20 +38,26 @@ public class ArmorBonusUtil {
 	}
 
 	public static float getArmorBonusForPlayer(Player ply, TGArmorBonus type, boolean consumePower) {
-		float bonus = ARMOR_PIECES.get(ply, type, consumePower);
-		// worn Curios face / back / hand items
+		return ARMOR_PIECES.get(ply, type, consumePower) + getSlotBonus(ply, type, consumePower);
+	}
+
+	/** Sum of the worn Curios face / back / hand items only */
+	public static float getSlotBonus(Player ply, TGArmorBonus type, boolean consumePower) {
+		float bonus = 0f;
 		for (ItemStack stack : TGCurios.getSpecialSlotItems(ply)) {
 			bonus += getBonusForSlot(stack, type, consumePower, ply);
 		}
 		return bonus;
 	}
 
+	/** whether a worn slot item still works: slot items at max damage are out of charge (they never break) */
+	public static boolean slotItemWorks(ItemStack stack) {
+		return !stack.isEmpty() && (!stack.isDamageableItem() || stack.getDamageValue() < stack.getMaxDamage());
+	}
+
 	private static float getBonusForSlot(ItemStack stack, TGArmorBonus type, boolean consumePower, Player ply) {
-		if (!stack.isEmpty() && stack.getItem() instanceof ITGSpecialSlot item) {
-			// slot items at max damage are out of charge (they never break)
-			if (!stack.isDamageableItem() || stack.getDamageValue() < stack.getMaxDamage()) {
-				return item.getBonus(type, stack, consumePower, ply);
-			}
+		if (slotItemWorks(stack) && stack.getItem() instanceof ITGSpecialSlot item) {
+			return item.getBonus(type, stack, consumePower, ply);
 		}
 		return 0f;
 	}

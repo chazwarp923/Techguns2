@@ -64,10 +64,7 @@ public class GenericItemShared extends GenericItem {
 				tooltip.add(TextUtil.transTG("tooltip.sneakrightclickunload").withStyle(ChatFormatting.GRAY));
 			}
 		}
-		float breakspeed = getBonus(TGArmorBonus.BREAKSPEED, stack, false, null);
-		if (breakspeed > 0f) {
-			tooltip.add(TextUtil.transTG("armorTooltip.miningspeed").append(": +" + breakspeed * 100.0f + "%"));
-		}
+		// the gloves' mining speed is a block_break_speed attribute: Curios lists it ("When worn on hands")
 		if (getBonus(TGArmorBonus.OXYGEN_GEAR, stack, false, null) > 0f) {
 			tooltip.add(TextUtil.transTG("armorTooltip.oxygengear"));
 		}

@@ -33,15 +33,19 @@ import techguns.items.guns.GenericGunMeleeCharge;
 import techguns.util.TGFXHooks;
 
 /**
- * Applies Techguns armor / special slot bonuses (1.12 TGTickHandler armor part and TGEventHandler jump / fall /
- * break speed / cooling events). Bonuses come from {@link ArmorBonusUtil#getArmorBonusForPlayer}.
+ * Techguns armor / special slot bonuses that aren't attributes (1.12 TGTickHandler armor part and TGEventHandler jump /
+ * fall / break speed / cooling events).
+ * <p>
+ * Passive bonuses are vanilla / NeoForge attributes on the items: max health, knockback resistance, jump strength,
+ * safe fall distance, fall damage multiplier, block break speed, submerged mining speed and creative flight
+ * ({@link techguns.items.armors.GenericArmor#getDefaultAttributeModifiers}, {@link techguns.curios.TGCurioItem}). What
+ * stays here: bonuses that depend on the situation (sprint-doubled speed, speed in water) or on a player toggle (step
+ * assist, night vision, the jump pack), the cooling system, and power use when a bonus is used.
  */
 @EventBusSubscriber(modid = Techguns.MODID)
 public class ArmorEvents {
 
 	private static final ResourceLocation SPEED_ID = Techguns.rl("armor_speed");
-	private static final ResourceLocation HEALTH_ID = Techguns.rl("armor_health");
-	private static final ResourceLocation KNOCKBACK_ID = Techguns.rl("armor_knockback_resistance");
 	private static final ResourceLocation STEP_ID = Techguns.rl("armor_step_assist");
 
 	private static final float DEFAULT_FLYSPEED = 0.05f;
@@ -92,9 +96,6 @@ public class ArmorEvents {
 			speed *= 2.0f;
 		}
 		setModifier(player, Attributes.MOVEMENT_SPEED, SPEED_ID, speed, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
-		setModifier(player, Attributes.MAX_HEALTH, HEALTH_ID, bonus(player, TGArmorBonus.EXTRA_HEART, false), AttributeModifier.Operation.ADD_VALUE);
-		setModifier(player, Attributes.KNOCKBACK_RESISTANCE, KNOCKBACK_ID, bonus(player, TGArmorBonus.KNOCKBACK_RESISTANCE, false),
-				AttributeModifier.Operation.ADD_VALUE);
 
 		// step assist: 0.6 -> 1.1 blocks (toggle key: TGExtendedPlayer.enableStepAssist)
 		float stepassist = bonus(player, TGArmorBonus.STEPASSIST, false);
@@ -109,17 +110,13 @@ public class ArmorEvents {
 		tickFlight(player, props, client);
 	}
 
-	/** antigrav pack creative flight / jetpack fly speed */
+	/**
+	 * Antigrav pack effects and jetpack fly speed. Flight itself is NeoForge's creative_flight attribute (on the item):
+	 * NeoForge lets the player fly while it's above 0 and ends the flight when it drops.
+	 */
 	private static void tickFlight(Player player, TGExtendedPlayer props, boolean client) {
-		float flightbonus = bonus(player, TGArmorBonus.CREATIVE_FLIGHT, false);
 		var abilities = player.getAbilities();
-		if (flightbonus > 0) {
-			if (!abilities.mayfly) {
-				abilities.mayfly = true;
-				if (!client) {
-					player.onUpdateAbilities();
-				}
-			}
+		if (player.getAttributeValue(net.neoforged.neoforge.common.NeoForgeMod.CREATIVE_FLIGHT) > 0) {
 			props.gotCreativeFlightLastTick = true;
 			if (abilities.flying) {
 				if (!props.wasFlying) {
@@ -135,13 +132,6 @@ public class ArmorEvents {
 				props.wasFlying = false;
 			}
 		} else {
-			if (props.gotCreativeFlightLastTick && !player.isCreative() && !player.isSpectator()) {
-				abilities.mayfly = false;
-				abilities.flying = false;
-				if (!client) {
-					player.onUpdateAbilities();
-				}
-			}
 			props.gotCreativeFlightLastTick = false;
 			props.wasFlying = false;
 		}
@@ -192,25 +182,38 @@ public class ArmorEvents {
 		syncToggles(event.getEntity());
 	}
 
-	/** fires on the client (motion) and the server (power use, sound) */
+	/**
+	 * The armor jump bonus is the jump_strength attribute; here powered armor uses power for it. The jump pack (only
+	 * with the jetpack toggle on) still adds its boost here. Fires on the client (motion) and the server (power, sound).
+	 */
 	@SubscribeEvent
 	public static void onJump(LivingEvent.LivingJumpEvent event) {
 		if (event.getEntity() instanceof Player ply) {
-			float jumpbonus = bonus(ply, TGArmorBonus.JUMP, true);
+			ArmorBonusUtil.ARMOR_PIECES.get(ply, TGArmorBonus.JUMP, true);
+			float jumpbonus = ArmorBonusUtil.getSlotBonus(ply, TGArmorBonus.JUMP, true);
 			if (jumpbonus != 0f) {
 				ply.setDeltaMovement(ply.getDeltaMovement().add(0, jumpbonus, 0));
 			}
 		}
 	}
 
+	/**
+	 * Armor fall protection is the safe_fall_distance and fall_damage_multiplier attributes; here powered armor uses
+	 * power for it on a real fall, and the jump pack (jetpack toggle on) cushions the fall.
+	 */
 	@SubscribeEvent
 	public static void onFall(LivingFallEvent event) {
 		if (event.getEntity() instanceof Player ply) {
 			boolean consume = event.getDistance() > 3.0f;
-			float fallbonus = bonus(ply, TGArmorBonus.FALLDMG, consume);
-			float reduction = fallbonus < 1 ? 1 - fallbonus : 0.0f;
-			float freeheight = bonus(ply, TGArmorBonus.FREEHEIGHT, false);
-			event.setDistance(Math.max(0f, event.getDistance() - freeheight) * reduction);
+			if (consume) {
+				ArmorBonusUtil.ARMOR_PIECES.get(ply, TGArmorBonus.FALLDMG, true);
+			}
+			float fallbonus = ArmorBonusUtil.getSlotBonus(ply, TGArmorBonus.FALLDMG, consume);
+			float freeheight = ArmorBonusUtil.getSlotBonus(ply, TGArmorBonus.FREEHEIGHT, false);
+			if (fallbonus != 0f || freeheight != 0f) {
+				float reduction = fallbonus < 1 ? 1 - fallbonus : 0.0f;
+				event.setDistance(Math.max(0f, event.getDistance() - freeheight) * reduction);
+			}
 		}
 	}
 
@@ -246,15 +249,17 @@ public class ArmorEvents {
 		}
 	}
 
+	/**
+	 * Mining bonuses are the block_break_speed and submerged_mining_speed attributes (armor, working gloves); here
+	 * powered armor uses power while mining.
+	 */
 	@SubscribeEvent
 	public static void onBreakSpeed(PlayerEvent.BreakSpeed event) {
 		Player ply = event.getEntity();
-		float b = 1.0f + bonus(ply, TGArmorBonus.BREAKSPEED, true);
-		float waterbonus = 1.0f;
+		ArmorBonusUtil.ARMOR_PIECES.get(ply, TGArmorBonus.BREAKSPEED, true);
 		if (inWaterOrLava(ply)) {
-			waterbonus += bonus(ply, TGArmorBonus.BREAKSPEED_WATER, true);
+			ArmorBonusUtil.ARMOR_PIECES.get(ply, TGArmorBonus.BREAKSPEED_WATER, true);
 		}
-		event.setNewSpeed(event.getNewSpeed() * b * waterbonus);
 	}
 
 	/** cooling system: immune to fire / lava damage */

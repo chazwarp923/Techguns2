@@ -148,6 +148,32 @@ Mekanism's Sv, each with its own meter and sickness), but protection and cures w
 
 ---
 
+### 3.8 Armor and gear bonuses as attributes
+1.12 added up the bonuses of worn pieces every tick and applied them in its own jump, fall and mining events. Most
+of them are now vanilla or NeoForge attributes on the items:
+
+| Bonus | Attribute |
+|---|---|
+| extra health | `max_health` |
+| knockback resistance | `knockback_resistance` |
+| jump height | `jump_strength` |
+| fall protection | `safe_fall_distance` and `fall_damage_multiplier` |
+| mining speed (armor, working gloves) | `block_break_speed` |
+| underwater mining speed | `submerged_mining_speed` |
+| antigrav pack flight | NeoForge `creative_flight` |
+
+What this changes in game:
+- Item tooltips show these bonuses in vanilla's "When on feet:" list (Curios: "When worn on hands:") instead of
+  Techguns' own lines. Movement speed, night vision, step assist, oxygen gear and the cooling system keep their lines.
+- Other mods and commands (`/attribute`) see and can stack the bonuses.
+- Fall damage uses vanilla's formula: the multiplier applies after the safe distance is subtracted, so a long fall
+  in fall-protection armor does a little more damage than in 1.12 (20 blocks at 50% protection: 9 damage instead of 7).
+- An empty antigrav pack ends the flight through NeoForge, which also stops it cleanly in creative and spectator.
+
+Powered armor still gives its unpowered values without power, and still uses power when you jump, fall or mine.
+Movement speed stays in code (it doubles while sprinting and adds a water bonus), and so do the toggled bonuses:
+step assist, night vision, and the jump pack's boost and fall cushion.
+
 ## 4. World generation
 
 1.12 placed structures from its own world generator on a grid. They now use Minecraft's structure system, so
@@ -266,7 +292,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 38 headless game tests, run with `./gradlew runGameTestServer`. They run
+1.12 had no automated tests. There are now 39 headless game tests, run with `./gradlew runGameTestServer`. They run
 in `run-gametest/` and take about one minute. GitHub Actions (`.github/workflows/build.yml`) runs the build and every game test on each push and pull
 request. It doesn't keep built jars, because the license doesn't allow distributing builds.
 
@@ -284,6 +310,9 @@ request. It doesn't keep built jars, because the license doesn't allow distribut
   - the Mekanism radiation bridge (with Mekanism installed): shielding values of Techguns armor, RAD resistance of
     Mekanism's hazmat suit, Mekanism's own radiate() letting nothing through full Techguns hazmat, Rad-Away
     lowering the Mekanism dose, and rad pills blocking 75% of new exposure;
+  - armor and gear attributes: scout boots' jump and fall values, mining speed of the miner suit and the gloves,
+    underwater mining of the commando suit, knockback resistance, steam armor health only with power, nothing from
+    broken armor, and antigrav flight only with charge;
   - the compat recipes: each is gated on its mod and loads exactly when it should. CI also runs the tests with
     Create, Mekanism and IE installed, and with Create alone (`-Pcompat_mods=true` or `=create`), where a recipe
     that fails to parse, or takes an input another recipe of that type already uses, fails the test;

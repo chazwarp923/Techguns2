@@ -488,6 +488,24 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   the expected 0.0794 Sv; with rad pills III, Mekanism's `radiate(player, 1.0)` adds 0.25 Sv. Planted bugs (hook not
   set, effect blocking 0) failed with "10.0 instead of 0.0794" and "1.0 instead of 0.25".
 
+### 20. Armor and gear bonuses as vanilla attributes (all 39 tests pass; not tested in game)
+
+- `GenericArmor.getDefaultAttributeModifiers` adds health, knockback resistance, jump strength, safe fall distance,
+  fall damage multiplier, block break speed, submerged mining speed and creative flight next to armor and RAD
+  resistance. The values come from `getBonus(stack, type, false, null)`, so powered armor without power and broken
+  armor give their reduced values; a power change changes the stack, so vanilla re-applies them. Percentages use
+  `ADD_MULTIPLIED_BASE`, which sums across pieces like 1.12 did.
+- `TGCurioItem.getAttributeModifiers` gives the antigrav pack `creative_flight` while it has charge and the working
+  gloves `block_break_speed`, next to the gas mask's RAD resistance.
+- `ArmorEvents` no longer sets health and knockback modifiers each tick or toggles `mayfly`: NeoForge's
+  `Player.mayFly()` reads `creative_flight`, and `ServerPlayer` ends the flight when it drops. The jump, fall and
+  break speed events now only use powered armor's power, plus the jump pack's toggle-dependent boost and cushion
+  (`ArmorBonusUtil.getSlotBonus`). Sprint-doubled speed, step assist, night vision and cooling are unchanged.
+- The hand-written tooltip lines for the moved bonuses are gone (the attribute list shows them).
+- New test `armorBonusAttributes` applies each item's modifiers as equipping does and checks the totals. Planted bugs
+  (armor jump bonus 0, antigrav flight never given) failed with "scout jump strength: 0.42 instead of 0.52; the
+  antigrav pack doesn't let the player fly".
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

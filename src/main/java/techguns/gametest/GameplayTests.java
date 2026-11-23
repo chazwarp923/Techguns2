@@ -36,6 +36,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.neoforged.neoforge.server.permission.PermissionAPI;
 import techguns.TGConfig;
 import techguns.TGDataComponents;
+import techguns.TGItems;
 import techguns.TGPermissions;
 import techguns.TGSounds;
 import techguns.TGuns;
@@ -629,5 +630,122 @@ public class GameplayTests {
 			MekanismRadiationChecks.run(helper);
 		}
 		helper.succeed();
+	}
+
+	/**
+	 * Armor and slot item bonuses are vanilla / NeoForge attributes: each item's modifiers, applied to a player as
+	 * equipping does, give the 1.12 bonus values. Powered armor without power and broken armor give nothing.
+	 */
+	@GameTest(template = "empty")
+	public static void armorBonusAttributes(GameTestHelper helper) {
+		java.util.List<String> problems = new java.util.ArrayList<>();
+
+		// scout boots: jump +0.1, safe fall +1 block, 20% less fall damage
+		Player scout = fresh(helper, "tg_attr_scout");
+		wear(scout, new ItemStack(techguns.TGArmors.T1_SCOUT_BOOTS.get()));
+		near(problems, "scout jump strength", scout, net.minecraft.world.entity.ai.attributes.Attributes.JUMP_STRENGTH, 0.42 + 0.1);
+		near(problems, "scout safe fall distance", scout, net.minecraft.world.entity.ai.attributes.Attributes.SAFE_FALL_DISTANCE, 3.0 + 1.0);
+		near(problems, "scout fall damage multiplier", scout, net.minecraft.world.entity.ai.attributes.Attributes.FALL_DAMAGE_MULTIPLIER, 0.8);
+
+		// full miner suit: 4 x 5% mining speed; commando: 4 x 125% underwater mining; t1 combat: knockback 0.4
+		Player miner = fresh(helper, "tg_attr_miner");
+		for (var item : java.util.List.of(techguns.TGArmors.T1_MINER_HELMET, techguns.TGArmors.T1_MINER_CHESTPLATE, techguns.TGArmors.T1_MINER_LEGGINGS,
+				techguns.TGArmors.T1_MINER_BOOTS)) {
+			wear(miner, new ItemStack(item.get()));
+		}
+		near(problems, "miner block break speed", miner, net.minecraft.world.entity.ai.attributes.Attributes.BLOCK_BREAK_SPEED, 1.2);
+		near(problems, "miner fall damage (boots 20%)", miner, net.minecraft.world.entity.ai.attributes.Attributes.FALL_DAMAGE_MULTIPLIER, 0.8);
+		Player commando = fresh(helper, "tg_attr_commando");
+		for (var item : java.util.List.of(techguns.TGArmors.T2_COMMANDO_HELMET, techguns.TGArmors.T2_COMMANDO_CHESTPLATE,
+				techguns.TGArmors.T2_COMMANDO_LEGGINGS, techguns.TGArmors.T2_COMMANDO_BOOTS)) {
+			wear(commando, new ItemStack(item.get()));
+		}
+		near(problems, "commando submerged mining speed", commando, net.minecraft.world.entity.ai.attributes.Attributes.SUBMERGED_MINING_SPEED, 0.2 * (1 + 4 * 1.25));
+		Player combat = fresh(helper, "tg_attr_combat");
+		for (var item : java.util.List.of(techguns.TGArmors.T1_COMBAT_HELMET, techguns.TGArmors.T1_COMBAT_CHESTPLATE, techguns.TGArmors.T1_COMBAT_LEGGINGS,
+				techguns.TGArmors.T1_COMBAT_BOOTS)) {
+			wear(combat, new ItemStack(item.get()));
+		}
+		near(problems, "t1 combat knockback resistance", combat, net.minecraft.world.entity.ai.attributes.Attributes.KNOCKBACK_RESISTANCE, 0.4);
+
+		// steam chestplate: +2 health only with power
+		ItemStack steam = new ItemStack(techguns.TGArmors.STEAM_CHESTPLATE.get());
+		steam.set(TGDataComponents.ARMOR_POWER.get(), 0);
+		Player unpowered = fresh(helper, "tg_attr_steam0");
+		wear(unpowered, steam.copy());
+		near(problems, "unpowered steam chestplate health", unpowered, net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH, 20.0);
+		steam.set(TGDataComponents.ARMOR_POWER.get(), 100);
+		Player powered = fresh(helper, "tg_attr_steam1");
+		wear(powered, steam);
+		near(problems, "powered steam chestplate health", powered, net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH, 22.0);
+
+		// broken scout boots give nothing
+		ItemStack broken = new ItemStack(techguns.TGArmors.T1_SCOUT_BOOTS.get());
+		broken.setDamageValue(broken.getMaxDamage() - 1);
+		Player brokenPly = fresh(helper, "tg_attr_broken");
+		wear(brokenPly, broken);
+		if (techguns.items.armors.GenericArmor.isBroken(broken)) {
+			near(problems, "broken scout boots jump", brokenPly, net.minecraft.world.entity.ai.attributes.Attributes.JUMP_STRENGTH, 0.42);
+		} else {
+			problems.add("couldn't break the scout boots for the test");
+		}
+
+		// slot items through Curios: antigrav pack flight (only with charge), working gloves mining speed
+		Player flyer = fresh(helper, "tg_attr_antigrav");
+		ItemStack pack = new ItemStack(TGItems.ANTI_GRAV_PACK.get());
+		curio(flyer, pack);
+		if (!flyer.mayFly()) {
+			problems.add("the antigrav pack doesn't let the player fly");
+		}
+		Player emptyFlyer = fresh(helper, "tg_attr_antigrav_empty");
+		ItemStack emptyPack = new ItemStack(TGItems.ANTI_GRAV_PACK.get());
+		emptyPack.setDamageValue(emptyPack.getMaxDamage());
+		curio(emptyFlyer, emptyPack);
+		if (emptyFlyer.mayFly()) {
+			problems.add("an empty antigrav pack still lets the player fly");
+		}
+		Player gloves = fresh(helper, "tg_attr_gloves");
+		curio(gloves, new ItemStack(TGItems.WORKING_GLOVES.get()));
+		near(problems, "working gloves block break speed", gloves, net.minecraft.world.entity.ai.attributes.Attributes.BLOCK_BREAK_SPEED, 1.1);
+		helper.assertTrue(problems.isEmpty(), String.join("; ", problems));
+		helper.succeed();
+	}
+
+	private static Player fresh(GameTestHelper helper, String name) {
+		return FakePlayerFactory.get(helper.getLevel(), new com.mojang.authlib.GameProfile(java.util.UUID.nameUUIDFromBytes(name.getBytes()), name));
+	}
+
+	/** what equipping does (LivingEntity.collectEquipmentChanges): the item's modifiers for its slot */
+	private static void wear(Player ply, ItemStack stack) {
+		var slot = ((net.minecraft.world.item.ArmorItem) stack.getItem()).getEquipmentSlot();
+		stack.forEachModifier(slot, (attr, mod) -> {
+			var inst = ply.getAttribute(attr);
+			if (inst != null) {
+				inst.removeModifier(mod.id());
+				inst.addTransientModifier(mod);
+			}
+		});
+	}
+
+	/** what Curios does for an item in its matching slot */
+	private static void curio(Player ply, ItemStack stack) {
+		String slot = techguns.curios.TGCurios.slotFor(((ITGSpecialSlot) stack.getItem()).getSlot(stack));
+		var ctx = new top.theillusivec4.curios.api.SlotContext(slot, ply, 0, false, true);
+		ResourceLocation id = Techguns.rl("test_curio." + slot);
+		techguns.curios.TGCurioItem.INSTANCE.getAttributeModifiers(ctx, id, stack).forEach((attr, mod) -> {
+			var inst = ply.getAttribute(attr);
+			if (inst != null) {
+				inst.removeModifier(mod.id());
+				inst.addTransientModifier(mod);
+			}
+		});
+	}
+
+	private static void near(java.util.List<String> problems, String what, Player ply,
+			net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> attr, double expected) {
+		double actual = ply.getAttributeValue(attr);
+		if (Math.abs(actual - expected) > 1.0e-4) {
+			problems.add(what + ": " + actual + " instead of " + expected);
+		}
 	}
 }

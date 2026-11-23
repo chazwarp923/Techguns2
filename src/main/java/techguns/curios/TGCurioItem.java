@@ -1,5 +1,18 @@
 package techguns.curios;
 
+import com.google.common.collect.LinkedHashMultimap;
+import com.google.common.collect.Multimap;
+
+import net.minecraft.core.Holder;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.neoforged.neoforge.common.NeoForgeMod;
+import techguns.items.additionalslots.ItemGasMask;
+import techguns.items.armors.ArmorBonusUtil;
+import techguns.items.armors.TGArmorBonus;
+import techguns.radiation.TGRadiationSystem;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -26,15 +39,30 @@ public class TGCurioItem implements ICurioItem {
 		}
 	}
 
-	/** gas mask RAD resistance */
+	/**
+	 * Passive bonuses of worn slot items as attributes: gas mask RAD resistance, antigrav pack creative flight, working
+	 * gloves mining speed. Curios re-reads these when the stack changes, so an empty antigrav pack stops the flight. The
+	 * jump pack's boost and fall cushion depend on the jetpack toggle and use charge, so they stay in ArmorEvents.
+	 */
 	@Override
-	public com.google.common.collect.Multimap<net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute>, net.minecraft.world.entity.ai.attributes.AttributeModifier> getAttributeModifiers(
-			SlotContext ctx, net.minecraft.resources.ResourceLocation id, ItemStack stack) {
-		com.google.common.collect.Multimap<net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute>, net.minecraft.world.entity.ai.attributes.AttributeModifier> map = com.google.common.collect.LinkedHashMultimap
-				.create();
-		if (rightSlot(ctx, stack) && stack.getItem() instanceof techguns.items.additionalslots.ItemGasMask mask && mask.getRadresist() > 0) {
-			map.put(techguns.radiation.TGRadiationSystem.RADIATION_RESISTANCE,
-					new net.minecraft.world.entity.ai.attributes.AttributeModifier(id, mask.getRadresist(), net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_VALUE));
+	public Multimap<Holder<Attribute>, AttributeModifier> getAttributeModifiers(SlotContext ctx, ResourceLocation id, ItemStack stack) {
+		Multimap<Holder<Attribute>, AttributeModifier> map = LinkedHashMultimap.create();
+		if (!rightSlot(ctx, stack)) {
+			return map;
+		}
+		if (stack.getItem() instanceof ItemGasMask mask && mask.getRadresist() > 0) {
+			map.put(TGRadiationSystem.RADIATION_RESISTANCE, new AttributeModifier(id, mask.getRadresist(), AttributeModifier.Operation.ADD_VALUE));
+		}
+		if (ArmorBonusUtil.slotItemWorks(stack)) {
+			ITGSpecialSlot item = (ITGSpecialSlot) stack.getItem();
+			Player ply = ctx.entity() instanceof Player p ? p : null;
+			if (item.getBonus(TGArmorBonus.CREATIVE_FLIGHT, stack, false, ply) > 0) {
+				map.put(NeoForgeMod.CREATIVE_FLIGHT, new AttributeModifier(id, 1.0, AttributeModifier.Operation.ADD_VALUE));
+			}
+			float breakspeed = item.getBonus(TGArmorBonus.BREAKSPEED, stack, false, ply);
+			if (breakspeed != 0) {
+				map.put(Attributes.BLOCK_BREAK_SPEED, new AttributeModifier(id, breakspeed, AttributeModifier.Operation.ADD_MULTIPLIED_BASE));
+			}
 		}
 		return map;
 	}

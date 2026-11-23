@@ -301,7 +301,28 @@ public class GenericArmor extends ArmorItem implements ITGArmor {
 			b.add(techguns.radiation.TGRadiationSystem.RADIATION_RESISTANCE, new AttributeModifier(id, this.radresistance, AttributeModifier.Operation.ADD_VALUE),
 					group);
 		}
+		// passive bonuses as vanilla / NeoForge attributes; powered armor gives its unpowered values without power
+		// (a change of power changes the stack, so the game re-applies these)
+		addBonus(b, stack, id, group, TGArmorBonus.EXTRA_HEART, Attributes.MAX_HEALTH, 1.0, AttributeModifier.Operation.ADD_VALUE);
+		addBonus(b, stack, id, group, TGArmorBonus.KNOCKBACK_RESISTANCE, Attributes.KNOCKBACK_RESISTANCE, 1.0, AttributeModifier.Operation.ADD_VALUE);
+		addBonus(b, stack, id, group, TGArmorBonus.JUMP, Attributes.JUMP_STRENGTH, 1.0, AttributeModifier.Operation.ADD_VALUE);
+		addBonus(b, stack, id, group, TGArmorBonus.FREEHEIGHT, Attributes.SAFE_FALL_DISTANCE, 1.0, AttributeModifier.Operation.ADD_VALUE);
+		// ADD_MULTIPLIED_BASE adds up like the 1.12 bonuses did: base 1 * (1 + sum of all pieces)
+		addBonus(b, stack, id, group, TGArmorBonus.FALLDMG, Attributes.FALL_DAMAGE_MULTIPLIER, -1.0, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
+		addBonus(b, stack, id, group, TGArmorBonus.BREAKSPEED, Attributes.BLOCK_BREAK_SPEED, 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
+		addBonus(b, stack, id, group, TGArmorBonus.BREAKSPEED_WATER, Attributes.SUBMERGED_MINING_SPEED, 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
+		if (getBonus(stack, TGArmorBonus.CREATIVE_FLIGHT, false, null) > 0) {
+			b.add(net.neoforged.neoforge.common.NeoForgeMod.CREATIVE_FLIGHT, new AttributeModifier(id, 1.0, AttributeModifier.Operation.ADD_VALUE), group);
+		}
 		return b.build();
+	}
+
+	private void addBonus(ItemAttributeModifiers.Builder b, ItemStack stack, ResourceLocation id, EquipmentSlotGroup group, TGArmorBonus type,
+			net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> attr, double sign, AttributeModifier.Operation op) {
+		float v = getBonus(stack, type, false, null);
+		if (v != 0.0f) {
+			b.add(attr, new AttributeModifier(id, sign * v, op), group);
+		}
 	}
 
 	// ------------------------------------------------------------------ durability
@@ -400,28 +421,9 @@ public class GenericArmor extends ArmorItem implements ITGArmor {
 			}
 			list.add(TextUtil.transTG("armorTooltip.resistances").append(":").withStyle(ChatFormatting.BLUE));
 			this.addArmorvaluesInformation(item, list);
-			if (getBonus(TGArmorBonus.EXTRA_HEART) > 0.0f) {
-				list.add(TextUtil.transTG("armorTooltip.healthbonus").append(": +" + (int) getBonus(TGArmorBonus.EXTRA_HEART) + " ")
-						.append(TextUtil.transTG("armorTooltip.hearts")));
-			} else if (getBonus(TGArmorBonus.SPEED) > 0.0f) {
+			// health, jump, fall, mining and knockback bonuses are attributes now: the vanilla tooltip lists them
+			if (getBonus(TGArmorBonus.SPEED) > 0.0f) {
 				list.add(TextUtil.transTG("armorTooltip.movespeed").append(": +" + pct(getBonus(TGArmorBonus.SPEED))));
-			} else if (getBonus(TGArmorBonus.JUMP) > 0.0f) {
-				list.add(TextUtil.transTG("armorTooltip.jumpheight").append(": +" + getBonus(TGArmorBonus.JUMP)));
-			}
-			if (getBonus(TGArmorBonus.FALLDMG) > 0.0f) {
-				list.add(TextUtil.transTG("armorTooltip.falldamage").append(": -" + pct(getBonus(TGArmorBonus.FALLDMG))));
-			}
-			if (getBonus(TGArmorBonus.FREEHEIGHT) > 0.0f) {
-				list.add(TextUtil.transTG("armorTooltip.fallheight").append(": -" + getBonus(TGArmorBonus.FREEHEIGHT)));
-			}
-			if (getBonus(TGArmorBonus.BREAKSPEED) > 0.0f) {
-				list.add(TextUtil.transTG("armorTooltip.miningspeed").append(": +" + pct(getBonus(TGArmorBonus.BREAKSPEED))));
-			}
-			if (getBonus(TGArmorBonus.BREAKSPEED_WATER) > 0.0f) {
-				list.add(TextUtil.transTG("armorTooltip.underwatermining").append(": +" + pct(getBonus(TGArmorBonus.BREAKSPEED_WATER))));
-			}
-			if (getBonus(TGArmorBonus.KNOCKBACK_RESISTANCE) > 0.0f) {
-				list.add(TextUtil.transTG("armorTooltip.knockbackresistance").append(": +" + pct(getBonus(TGArmorBonus.KNOCKBACK_RESISTANCE))));
 			}
 			if (getBonus(TGArmorBonus.NIGHTVISION) > 0.0f) {
 				list.add(TextUtil.transTG("armorTooltip.nightvision"));
