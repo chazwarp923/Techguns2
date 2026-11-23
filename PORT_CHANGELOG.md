@@ -628,7 +628,7 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
 - The rest of the Fabric port content followed: ammo bench and ammo boxes (entry 26), grappling hook (entry 27),
   magic rifle (entry 28).
 
-### 26. Fabric port content: ammo bench and ammo boxes (all 48 tests pass; bench checked in game)
+### 26. Fabric port content: ammo bench and ammo boxes (all 48 tests pass; checked in game)
 
 - Ammo bench: block (Fabric model, textures and shape, faces the player), `AmmoBenchMenu` and `AmmoBenchScreen`.
   They follow vanilla's stonecutter menu and screen, with three input slots painted over its single one, as in
@@ -645,8 +645,8 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
 - New `AmmoBenchTests` (4 tests). The bench test caught a bug: in the result slot, `container` named the slot's own
   container, so taking the result used no inputs. Removing the box from the ammo use made the gun reload for free,
   and the reload test failed.
-- Checked in game: the bench's screen and the bench model's facing are fine.
-- Still needs an in-game look: the ammo box's tooltip and bundle-style clicks.
+- Checked in game: the bench's screen and the bench model's facing are fine; the ammo box's tooltip, clicking ammo
+  into it and reloading from it work.
 
 ### 27. Fabric port content: grappling hook (all 50 tests pass; works in game)
 
