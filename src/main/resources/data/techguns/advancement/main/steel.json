@@ -1,0 +1,35 @@
+{
+  "parent": "techguns:main/blast_furnace",
+  "display": {
+    "icon": {
+      "id": "techguns:ingotsteel"
+    },
+    "title": {
+      "translate": "advancements.techguns.steel.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.steel.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "steel": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:ingotsteel"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "steel"
+    ]
+  ]
+}

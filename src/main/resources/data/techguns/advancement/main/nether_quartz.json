@@ -1,0 +1,35 @@
+{
+  "parent": "techguns:main/nether_ready",
+  "display": {
+    "icon": {
+      "id": "minecraft:quartz"
+    },
+    "title": {
+      "translate": "advancements.techguns.nether_quartz.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.nether_quartz.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "quartz": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:quartz"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "quartz"
+    ]
+  ]
+}

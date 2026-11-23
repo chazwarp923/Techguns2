@@ -1,0 +1,35 @@
+{
+  "parent": "techguns:main/cybernetic_parts",
+  "display": {
+    "icon": {
+      "id": "techguns:fabricator_controller"
+    },
+    "title": {
+      "translate": "advancements.techguns.fabricator.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.fabricator.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "controller": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:fabricator_controller"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "controller"
+    ]
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "parent": "techguns:main/hand_cannon",
+  "display": {
+    "icon": {
+      "id": "techguns:ironreceiver"
+    },
+    "title": {
+      "translate": "advancements.techguns.iron_receiver.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.iron_receiver.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "receiver": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:ironreceiver"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "receiver"
+    ]
+  ]
+}

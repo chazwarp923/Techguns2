@@ -1,0 +1,35 @@
+{
+  "parent": "techguns:main/root",
+  "display": {
+    "icon": {
+      "id": "techguns:metal_press"
+    },
+    "title": {
+      "translate": "advancements.techguns.metal_press.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.metal_press.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "press": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:metal_press"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "press"
+    ]
+  ]
+}

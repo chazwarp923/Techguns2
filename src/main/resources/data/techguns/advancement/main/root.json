@@ -1,0 +1,28 @@
+{
+  "display": {
+    "icon": {
+      "id": "techguns:handcannon"
+    },
+    "title": {
+      "translate": "advancements.techguns.root.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.root.description"
+    },
+    "frame": "task",
+    "show_toast": false,
+    "announce_to_chat": false,
+    "hidden": false,
+    "background": "techguns:textures/blocks/concrete_grey_dark.png"
+  },
+  "criteria": {
+    "joined": {
+      "trigger": "minecraft:tick"
+    }
+  },
+  "requirements": [
+    [
+      "joined"
+    ]
+  ]
+}

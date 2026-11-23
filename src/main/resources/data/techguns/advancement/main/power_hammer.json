@@ -1,0 +1,35 @@
+{
+  "parent": "techguns:main/iron_receiver",
+  "display": {
+    "icon": {
+      "id": "techguns:powerhammer"
+    },
+    "title": {
+      "translate": "advancements.techguns.power_hammer.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.power_hammer.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "hammer": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:powerhammer"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "hammer"
+    ]
+  ]
+}

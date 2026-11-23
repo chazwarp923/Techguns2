@@ -1,0 +1,64 @@
+{
+  "parent": "techguns:main/suit_up",
+  "display": {
+    "icon": {
+      "id": "techguns:steam_chestplate"
+    },
+    "title": {
+      "translate": "advancements.techguns.nether_ready.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.nether_ready.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "steam": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:steam_helmet"
+          },
+          {
+            "items": "techguns:steam_chestplate"
+          },
+          {
+            "items": "techguns:steam_leggings"
+          },
+          {
+            "items": "techguns:steam_boots"
+          }
+        ]
+      }
+    },
+    "ranger": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:t2_riot_helmet"
+          },
+          {
+            "items": "techguns:t2_riot_chestplate"
+          },
+          {
+            "items": "techguns:t2_riot_leggings"
+          },
+          {
+            "items": "techguns:t2_riot_boots"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "steam",
+      "ranger"
+    ]
+  ]
+}

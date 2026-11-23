@@ -1,0 +1,35 @@
+{
+  "parent": "techguns:main/tier3_armor",
+  "display": {
+    "icon": {
+      "id": "techguns:antigravpack"
+    },
+    "title": {
+      "translate": "advancements.techguns.anti_gravity.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.anti_gravity.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "device": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:antigravpack"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "device"
+    ]
+  ]
+}

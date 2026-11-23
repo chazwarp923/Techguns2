@@ -1,0 +1,35 @@
+{
+  "parent": "techguns:main/root",
+  "display": {
+    "icon": {
+      "id": "techguns:handcannon"
+    },
+    "title": {
+      "translate": "advancements.techguns.hand_cannon.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.hand_cannon.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "gun": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:handcannon"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "gun"
+    ]
+  ]
+}

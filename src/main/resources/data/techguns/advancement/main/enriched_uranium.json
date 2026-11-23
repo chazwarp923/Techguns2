@@ -1,0 +1,35 @@
+{
+  "parent": "techguns:main/reaction_chamber",
+  "display": {
+    "icon": {
+      "id": "techguns:enricheduranium"
+    },
+    "title": {
+      "translate": "advancements.techguns.enriched_uranium.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.enriched_uranium.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "uranium": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:enricheduranium"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "uranium"
+    ]
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "parent": "techguns:main/metal_press",
+  "display": {
+    "icon": {
+      "id": "techguns:chem_lab"
+    },
+    "title": {
+      "translate": "advancements.techguns.chem_lab.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.chem_lab.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "lab": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:chem_lab"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "lab"
+    ]
+  ]
+}

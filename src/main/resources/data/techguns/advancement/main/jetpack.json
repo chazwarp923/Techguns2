@@ -1,0 +1,35 @@
+{
+  "parent": "techguns:main/nether_quartz",
+  "display": {
+    "icon": {
+      "id": "techguns:jetpack"
+    },
+    "title": {
+      "translate": "advancements.techguns.jetpack.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.jetpack.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "jetpack": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:jetpack"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "jetpack"
+    ]
+  ]
+}

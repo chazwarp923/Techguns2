@@ -1,0 +1,104 @@
+{
+  "parent": "techguns:main/titanium",
+  "display": {
+    "icon": {
+      "id": "techguns:t3_power_chestplate"
+    },
+    "title": {
+      "translate": "advancements.techguns.tier3_armor.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.tier3_armor.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "combat": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:t3_combat_helmet"
+          },
+          {
+            "items": "techguns:t3_combat_chestplate"
+          },
+          {
+            "items": "techguns:t3_combat_leggings"
+          },
+          {
+            "items": "techguns:t3_combat_boots"
+          }
+        ]
+      }
+    },
+    "power": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:t3_power_helmet"
+          },
+          {
+            "items": "techguns:t3_power_chestplate"
+          },
+          {
+            "items": "techguns:t3_power_leggings"
+          },
+          {
+            "items": "techguns:t3_power_boots"
+          }
+        ]
+      }
+    },
+    "hev": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:t3_miner_helmet"
+          },
+          {
+            "items": "techguns:t3_miner_chestplate"
+          },
+          {
+            "items": "techguns:t3_miner_leggings"
+          },
+          {
+            "items": "techguns:t3_miner_boots"
+          }
+        ]
+      }
+    },
+    "exo": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:t3_exo_helmet"
+          },
+          {
+            "items": "techguns:t3_exo_chestplate"
+          },
+          {
+            "items": "techguns:t3_exo_leggings"
+          },
+          {
+            "items": "techguns:t3_exo_boots"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "combat",
+      "power",
+      "hev",
+      "exo"
+    ]
+  ]
+}

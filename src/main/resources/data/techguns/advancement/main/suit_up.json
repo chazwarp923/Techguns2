@@ -1,0 +1,84 @@
+{
+  "parent": "techguns:main/hand_cannon",
+  "display": {
+    "icon": {
+      "id": "techguns:t1_combat_chestplate"
+    },
+    "title": {
+      "translate": "advancements.techguns.suit_up.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.suit_up.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "bandit": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:t1_scout_helmet"
+          },
+          {
+            "items": "techguns:t1_scout_chestplate"
+          },
+          {
+            "items": "techguns:t1_scout_leggings"
+          },
+          {
+            "items": "techguns:t1_scout_boots"
+          }
+        ]
+      }
+    },
+    "miner": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:t1_miner_helmet"
+          },
+          {
+            "items": "techguns:t1_miner_chestplate"
+          },
+          {
+            "items": "techguns:t1_miner_leggings"
+          },
+          {
+            "items": "techguns:t1_miner_boots"
+          }
+        ]
+      }
+    },
+    "soldier": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:t1_combat_helmet"
+          },
+          {
+            "items": "techguns:t1_combat_chestplate"
+          },
+          {
+            "items": "techguns:t1_combat_leggings"
+          },
+          {
+            "items": "techguns:t1_combat_boots"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "bandit",
+      "miner",
+      "soldier"
+    ]
+  ]
+}

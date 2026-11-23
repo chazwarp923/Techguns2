@@ -1,0 +1,38 @@
+{
+  "parent": "techguns:main/iron_receiver",
+  "display": {
+    "icon": {
+      "id": "techguns:ak47"
+    },
+    "title": {
+      "translate": "advancements.techguns.rifleman.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.rifleman.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "rifle": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "techguns:ak47",
+              "techguns:boltaction"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "rifle"
+    ]
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "parent": "techguns:main/cyberdemon",
+  "display": {
+    "icon": {
+      "id": "techguns:cyberneticparts"
+    },
+    "title": {
+      "translate": "advancements.techguns.cybernetic_parts.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.cybernetic_parts.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "parts": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:cyberneticparts"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "parts"
+    ]
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "parent": "techguns:main/fabricator",
+  "display": {
+    "icon": {
+      "id": "techguns:reactionchamber_controller"
+    },
+    "title": {
+      "translate": "advancements.techguns.reaction_chamber.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.reaction_chamber.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "controller": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:reactionchamber_controller"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "controller"
+    ]
+  ]
+}

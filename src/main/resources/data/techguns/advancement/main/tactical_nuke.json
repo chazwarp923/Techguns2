@@ -1,0 +1,35 @@
+{
+  "parent": "techguns:main/enriched_uranium",
+  "display": {
+    "icon": {
+      "id": "techguns:rocket_nuke"
+    },
+    "title": {
+      "translate": "advancements.techguns.tactical_nuke.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.tactical_nuke.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "nuke": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:rocket_nuke"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "nuke"
+    ]
+  ]
+}

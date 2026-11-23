@@ -1,0 +1,33 @@
+{
+  "parent": "techguns:main/nether_quartz",
+  "display": {
+    "icon": {
+      "id": "techguns:cyberneticparts"
+    },
+    "title": {
+      "translate": "advancements.techguns.cyberdemon.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.cyberdemon.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "kill": {
+      "trigger": "minecraft:player_killed_entity",
+      "conditions": {
+        "entity": {
+          "type": "techguns:cyberdemon"
+        }
+      }
+    }
+  },
+  "requirements": [
+    [
+      "kill"
+    ]
+  ]
+}

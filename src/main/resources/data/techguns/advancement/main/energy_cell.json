@@ -1,0 +1,35 @@
+{
+  "parent": "techguns:main/fabricator",
+  "display": {
+    "icon": {
+      "id": "techguns:energycell"
+    },
+    "title": {
+      "translate": "advancements.techguns.energy_cell.title"
+    },
+    "description": {
+      "translate": "advancements.techguns.energy_cell.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "cell": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "techguns:energycell"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "cell"
+    ]
+  ]
+}

@@ -115,7 +115,13 @@ old tab.
   ladders already could, because they are based on the vanilla ladder. Metal panels, containers and steel frames are
   full blocks, which can't hold water (like stone).
 
-### 3.6 Radiation
+### 3.6 Advancements (new)
+- A **Techguns advancement tab** follows the manual's progression guide, tiers 0 to 3: Hand Cannon, first armor
+  set and machines; steel, obsidian steel, rifles and Nether-ready armor; Nether quartz, Jetpack, Cyber Demon and
+  Cybernetic Parts; then Fabricator, Reaction Chamber, titanium, enriched uranium, tier 3 armor, the Tactical Nuke
+  and the Anti Gravity Device. 26 advancements, data only, in English, German and Russian.
+
+### 3.7 Radiation
 Unchanged in behaviour: radioactive items in the inventory, radiation sickness, Rad-Away, rad pills, radiation
 resistance, radiation potions (brewing recipes) and the HUD. Items get their radiation level through the radiation
 registry as in 1.12, and the tooltip shows the level.
@@ -238,7 +244,7 @@ sections such as `general.RestrictUnsafeModeToOP`.
 ---
 
 ## 8. Testing (new)
-1.12 had no automated tests. There are now 31 headless game tests, run with `./gradlew runGameTestServer`. They run
+1.12 had no automated tests. There are now 32 headless game tests, run with `./gradlew runGameTestServer`. They run
 in `run-gametest/` and take about one minute. GitHub Actions (`.github/workflows/build.yml`) runs the build and every game test on each push and pull
 request. It doesn't keep built jars, because the license doesn't allow distributing builds.
 
@@ -250,6 +256,7 @@ request. It doesn't keep built jars, because the license doesn't allow distribut
   - ammo change refund, and the rocket launcher switching to nukes, loading and reloading them;
   - the Jade overlay's server data (owner, security, progress);
   - waterloggable sandbags, camo nets and ladders;
+  - the advancements: all load, lead to the root, use real item and entity ids and are translated;
   - off-hand rules;
   - area mining selection;
   - the Shishkebap ambient effect;
