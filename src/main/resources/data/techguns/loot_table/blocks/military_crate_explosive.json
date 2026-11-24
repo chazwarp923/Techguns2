@@ -31,7 +31,7 @@
             },
             {
               "type": "minecraft:loot_table",
-              "value": "techguns:military_crate/explosives",
+              "value": "techguns:military_crate/explosive",
               "conditions": [
                 {
                   "condition": "minecraft:entity_properties",

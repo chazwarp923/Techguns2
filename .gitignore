@@ -36,6 +36,7 @@ run-data
 repo
 
 run-gametest
+run-clienttest
 
 # CI game test logs
 gametest-logs/

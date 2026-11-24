@@ -707,6 +707,36 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   made again from the Java models as they were before that commit. Only faces from cube south sides changed (north,
   or west/east on parts turned 90 degrees); the shapes didn't. The chemical laboratory's front had the same fault.
 
+### 30. Automated client test harness, jetpack sounds (all 53 tests pass; client run: all 126 checks pass, no Techguns warnings in the log)
+
+- `./gradlew runClientTest` starts a real client in its own game dir `run-clienttest/` (system property
+  `techguns.clientTest`; `techguns.client.test.ClientTestHarness`). It makes a fresh world (seed 20261123,
+  creative), works through a script on the client tick and quits by itself after about 7 minutes. Sound is muted.
+- Checks: every Techguns item and block state has a model without missing textures (custom-renderer items are
+  skipped); every gun and camo texture exists; every sound event is in sounds.json and its files exist; the
+  particle effect lists load; every Techguns structure is found by the same search as `/locate`, in the overworld
+  or the nether (the desert oil cluster only when an oil mod is loaded).
+- Screenshots on a platform at y 200: every item in grids; every gun held, fired and in third person; every block
+  entity block, machines in all 4 wrench rotations, and its screen if it has one; every mob; every particle
+  effect; the Patchouli manual and the 3 Ponder scenes. A step that throws is reported and skipped.
+- Output: `run-clienttest/clienttest/report.txt` (fails first; also Techguns errors and warnings from the log,
+  including stack traces through Techguns code) and about 450 PNGs in `run-clienttest/clienttest/screenshots/`.
+  `run-clienttest/` is git-ignored. The exit code is 0 even with fails: read the report's first line.
+- It found, and these are fixed:
+  - `guns.shishkebabfire` named two files `shishkebap_swing_b/c`, which don't exist (a 1.12 typo); only one of
+    the three swing sounds played.
+  - The explosive military crate's loot table pointed at `techguns:military_crate/explosives`; the table is
+    `explosive`, so the crate dropped nothing when broken without silk touch.
+  - The jetpack played no sounds in the port. Now, as in 1.12 (`TGExtendedPlayerClient#setJumpkeyPressed`), a
+    boost plays `jetpack.start` and loops `jetpack.loop` on the player, and stopping ends the loop and plays the
+    stop sound, all at 0.75 volume, for every player in view (`client.audio.JetpackLoopSound`, which follows the
+    boost flag each client tick). 1.12 played `jetpack.end`, which sounds.json never had, so its stop sound was
+    silent; `TGSounds.JETPACK_END` is now `jetpack.stop`, the entry with the `jetpack_stop_*` files. The harness
+    checks the three sounds play.
+  - `guns.cyberdemonblasterreload`, the nether blaster's reload, was registered but had no sounds.json entry, so
+    it reloaded silently (in 1.12 too). There's no reload file of its own, so it uses the alien blaster's
+    (`alienblaster_reload`), the gun with the same fire rate, clip and reload time. Our choice, not from 1.12.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

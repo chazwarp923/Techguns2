@@ -83,6 +83,14 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
+        // automated in-game checks (techguns.client.test.ClientTestHarness): makes a test world, takes screenshots,
+        // writes run-clienttest/clienttest/report.txt and quits
+        clientTest {
+            client()
+            gameDirectory = project.file('run-clienttest')
+            systemProperty 'techguns.clientTest', 'true'
+        }
+
         gameTestServer {
             type = 'gameTestServer'
             gameDirectory = project.file('run-gametest')

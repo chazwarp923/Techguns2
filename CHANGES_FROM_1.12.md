@@ -393,6 +393,11 @@ sections such as `general.RestrictUnsafeModeToOP`.
 in `run-gametest/` and take about one minute. GitHub Actions (`.github/workflows/build.yml`) runs the build and every game test on each push and pull
 request. It doesn't keep built jars, because the license doesn't allow distributing builds.
 
+`./gradlew runClientTest` runs an automated in-game check in a real client (`run-clienttest/`): model, texture,
+sound and particle audits, a `/locate` search for every structure, and screenshots of every item, gun, machine
+(all rotations and screens), mob, particle effect, the manual and the Ponder scenes. It writes
+`run-clienttest/clienttest/report.txt` and quits by itself. It needs a display, so CI doesn't run it.
+
 - `WorldgenTests`: every dungeon template loads; the castle, military base and bug nest build for 8 seeds each; every
   castle staircase step has at least 3.5 blocks of headroom; every
   scanned structure places in all 4 rotations with matching door halves. Every scanned structure has its template

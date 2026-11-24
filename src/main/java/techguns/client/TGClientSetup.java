@@ -38,6 +38,7 @@ public class TGClientSetup {
 			}
 		});
 		techguns.util.TGFXHooks.setHandler(ClientFX.INSTANCE);
+		techguns.client.test.ClientTestHarness.init();
 		techguns.util.SoundUtil.setClientPlayer((ent, sound, volume, pitch, repeat, moving, gunPosition, category, condition) -> net.minecraft.client.Minecraft
 				.getInstance().getSoundManager().play(new techguns.client.audio.TGSound(sound, ent, volume, pitch, repeat, moving, gunPosition, category, condition)));
 	}

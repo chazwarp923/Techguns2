@@ -108,7 +108,7 @@ public class TGSounds {
 	public static final DeferredHolder<SoundEvent, SoundEvent> DEATH_BIO = create("effects.biodeath");
 	public static final DeferredHolder<SoundEvent, SoundEvent> DEATH_LASER = create("effects.disintegrate");
 	public static final DeferredHolder<SoundEvent, SoundEvent> JETPACK_START = create("jetpack.start");
-	public static final DeferredHolder<SoundEvent, SoundEvent> JETPACK_END = create("jetpack.end");
+	public static final DeferredHolder<SoundEvent, SoundEvent> JETPACK_END = create("jetpack.stop"); // 1.12 named it jetpack.end, which sounds.json never had
 	public static final DeferredHolder<SoundEvent, SoundEvent> JETPACK_LOOP = create("jetpack.loop");
 	public static final DeferredHolder<SoundEvent, SoundEvent> AMMO_PRESS_WORK1 = create("machines.ammopresswork1");
 	public static final DeferredHolder<SoundEvent, SoundEvent> AMMO_PRESS_WORK2 = create("machines.ammopresswork2");
