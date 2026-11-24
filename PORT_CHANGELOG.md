@@ -766,6 +766,12 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   such as `-Pcompat_mods=create` still picks some.
 - CI's plain game test run now passes `-Pcompat_mods=false`, so it still tests without them.
 
+### 33. NeoForge requirement lowered to 21.1.265
+
+- `neo_version=21.1.265`: the mod is now built and tested against 21.1.265, and the jar's `neoforge.mods.toml`
+  requires `[21.1.265,)` (the range comes from `neo_version`). It compiles, all 53 game tests pass with the compat
+  mods loaded, and the client test passes on 21.1.265.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

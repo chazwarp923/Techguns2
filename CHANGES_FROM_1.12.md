@@ -12,7 +12,7 @@ The 1.12.2 source is kept in `legacy/` for reference. It is not compiled.
 
 | | 1.12.2 | 1.21.1 |
 |---|---|---|
-| Minecraft / loader | 1.12.2, Forge 14.23.5.2807 | 1.21.1, NeoForge 21.1.267 |
+| Minecraft / loader | 1.12.2, Forge 14.23.5.2807 | 1.21.1, NeoForge 21.1.265 or newer |
 | Java | 8 | 21 |
 | Build | ForgeGradle | ModDevGradle |
 | Mod version | `1.12.2-2.0.2.0` | `1.21.1-2.1.0.0` |
