@@ -161,8 +161,9 @@ dependencies {
     // Mekanism API: optional radiation bridge (techguns.plugins.mekanism), only loaded when Mekanism is installed
     compileOnly "mekanism:Mekanism:${minecraft_version}-${mekanism_version}:api"
     // Create, Mekanism and Immersive Engineering: the compat recipes in data/techguns/recipe/compat are pure data, loaded
-    // only when that mod is installed. Off by default so the dev client stays light. -Pcompat_mods=true loads all three,
-    // or name some, e.g. -Pcompat_mods=create (the game tests then check that every compat recipe that should load parses)
+    // only when that mod is installed. All three are in the dev runs by default (compat_mods=true in gradle.properties);
+    // -Pcompat_mods=false leaves them out, or name some, e.g. -Pcompat_mods=create (the game tests then check that
+    // every compat recipe that should load parses)
     def compatMods = (project.findProperty("compat_mods") ?: "").toString()
     def compatAll = compatMods == "true"
     def compatList = compatMods.split(",")*.trim()

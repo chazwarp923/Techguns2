@@ -35,13 +35,14 @@ jobs:
       - name: Build
         run: ./gradlew build --console=plain
 
-      # Headless game server running every @GameTest (worldgen, gameplay, data, manual, ores, models).
+      # Headless game server running every @GameTest (worldgen, gameplay, data, manual, ores, models), without the
+      # compat mods (gradle.properties loads them by default).
       # A failed required test exits non-zero. A crash while loading mods exits 0, so each run also has to log
       # "All N required tests passed". Every run's log is kept for the upload below.
       - name: Game tests
         run: |
           mkdir -p gametest-logs
-          ./gradlew runGameTestServer --console=plain 2>&1 | tee gametest-logs/plain.log
+          ./gradlew runGameTestServer -Pcompat_mods=false --console=plain 2>&1 | tee gametest-logs/plain.log
           grep -qE "All [0-9]+ required tests passed" gametest-logs/plain.log
 
       # Again with the mods the compat recipes are for, all three and Create alone (its crushed-ore recipes only

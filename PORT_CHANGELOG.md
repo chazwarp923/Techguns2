@@ -759,6 +759,13 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   once), the chem lab's liquids (its tanks are empty), formed multiblocks (parts are placed one at a time), and
   anything that moves or makes sound.
 
+### 32. Create, Mekanism and Immersive Engineering in the dev runs by default (53 tests pass; client run: all 126 checks pass)
+
+- `gradle.properties`: `compat_mods=true`, so `runClient`, `runClientTest` and `runGameTestServer` load all three
+  for testing the compat recipes and the Mekanism radiation bridge. `-Pcompat_mods=false` leaves them out; a list
+  such as `-Pcompat_mods=create` still picks some.
+- CI's plain game test run now passes `-Pcompat_mods=false`, so it still tests without them.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,
