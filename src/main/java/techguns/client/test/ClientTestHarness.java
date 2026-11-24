@@ -47,6 +47,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameRules;
@@ -62,6 +64,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -70,8 +73,10 @@ import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.model.data.ModelData;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.EventHooks;
 import techguns.TGDataComponents;
 import techguns.Techguns;
+import techguns.blocks.door.BlockDoor3x3;
 import techguns.capabilities.TGExtendedPlayer;
 import techguns.client.particle.TGFX;
 import techguns.items.guns.GenericGun;
@@ -600,8 +605,19 @@ public final class ClientTestHarness {
 			boolean[] rotates = { false };
 			list.add(server(s -> {
 				ServerLevel level = s.overworld();
-				level.setBlock(SHOW, Blocks.AIR.defaultBlockState(), 3);
-				level.setBlock(SHOW, block.defaultBlockState(), 3);
+				clearShow(level);
+				if (block instanceof BlockDoor3x3) {
+					// the default state is an invisible slave block: place the whole door as ItemDoor3x3 does,
+					// master in the middle, so SHOW (its bottom middle) is a slave that opens the master's screen
+					BlockState slave = block.defaultBlockState().setValue(BlockDoor3x3.MASTER, false).setValue(BlockDoor3x3.ZPLANE, false);
+					BlockPos master = SHOW.above();
+					for (BlockPos p : BlockDoor3x3.slaves(master, false)) {
+						level.setBlock(p, slave, 3);
+					}
+					level.setBlock(master, slave.setValue(BlockDoor3x3.MASTER, true), 3);
+				} else {
+					level.setBlock(SHOW, block.defaultBlockState(), 3);
+				}
 				BlockEntity be = level.getBlockEntity(SHOW);
 				rotates[0] = be instanceof BasicTGTileEntity tg && tg.hasRotation();
 			}));
@@ -660,9 +676,19 @@ public final class ClientTestHarness {
 				return sub;
 			}));
 		}
-		list.add(server(s -> s.overworld().setBlock(SHOW, Blocks.AIR.defaultBlockState(), 3)));
+		list.add(server(s -> clearShow(s.overworld())));
 		list.add(run(() -> look(0, 0)));
 		return list;
+	}
+
+	/** empties the 3x3x3 around the show spot, so multi-block placements (3x3 doors) leave nothing behind */
+	private static void clearShow(ServerLevel level) {
+		// a door's master first: removing a slave makes the master drop the door item
+		level.setBlock(SHOW.above(), Blocks.AIR.defaultBlockState(), 3 | Block.UPDATE_SUPPRESS_DROPS);
+		for (BlockPos p : BlockPos.betweenClosed(SHOW.offset(-1, 0, -1), SHOW.offset(1, 2, 1))) {
+			level.setBlock(p, Blocks.AIR.defaultBlockState(), 3 | Block.UPDATE_SUPPRESS_DROPS);
+		}
+		level.getEntitiesOfClass(ItemEntity.class, new AABB(SHOW).inflate(4)).forEach(Entity::discard);
 	}
 
 	private List<Step> mobSteps() {
@@ -683,6 +709,8 @@ public final class ClientTestHarness {
 				double back = Math.max(4.0, e.getBbWidth() * 1.5 + 2.5);
 				e.moveTo(P.getX() + 0.5, P.getY(), P.getZ() + 0.5 + back, 180f, 0f);
 				if (e instanceof Mob m) {
+					// as /summon does, so NPCs get their guns and armor
+					EventHooks.finalizeMobSpawn(m, level, level.getCurrentDifficultyAt(m.blockPosition()), MobSpawnType.COMMAND, null);
 					m.setNoAi(true);
 					m.setPersistenceRequired();
 					m.setYHeadRot(180f);

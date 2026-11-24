@@ -1,7 +1,9 @@
 # Port changelog (unattended session)
 
-Running log of changes made while working unattended, for review. Nothing here is committed.
-Newest entries at the bottom. Every entry was compile-checked (`gradlew compileJava processResources`); none were tested in game unless stated.
+Running log of changes made while working unattended, for review. Everything here is committed on `port/neoforge-1.21.1`.
+Newest entries at the bottom. Every entry was compile-checked (`gradlew compileJava processResources`); an entry's
+heading says whether it was checked in game. Since entry 30, the client test harness (`runClientTest`) also covers
+models, textures, sounds, particles, structure search and screenshots of every item, gun, block, mob and screen.
 
 ## Already done earlier this session (with you)
 
@@ -737,20 +739,43 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
     it reloaded silently (in 1.12 too). There's no reload file of its own, so it uses the alien blaster's
     (`alienblaster_reload`), the gun with the same fire rate, clip and reload time. Our choice, not from 1.12.
 
+### 31. Screenshot review; harness spawns equipped mobs and whole 3x3 doors
+
+- Went through the client test screenshots. Fine: all 417 items (no missing textures), every machine in its 4
+  rotations, the multiblock parts, every screen, the Jade overlay (owner, tank, energy), the Patchouli manual's
+  category page, the 3 Ponder scenes, the mobs, the particle effects, and the Shishkebap flames in first and third
+  person.
+- Two harness gaps, not mod bugs, fixed in `ClientTestHarness`:
+  - Mobs were made with `EntityType.create` and never finalized, so NPCs showed empty-handed. They now go through
+    `EventHooks.finalizeMobSpawn` with `MobSpawnType.COMMAND`, as `/summon` does, and carry their guns and armor.
+  - 3x3 doors were placed as their default state, an invisible slave block. The harness now places the whole door
+    as `ItemDoor3x3` does (master in the middle) and clears the 3x3x3 around the show spot between blocks,
+    master first, then removes loose items.
+- Left as it is, for you to decide: removing any slave block of a 3x3 door by any means (`/fill`, `/setblock`, a
+  structure replacing it) makes the master drop the door item (`BlockDoor3x3.onRemove` calls `destroyBlock(master,
+  true)`). Vanilla doors and beds drop nothing when a command replaces them. Player breaking is right either way.
+- What the screenshots can't show: the grappling hook's wire (it fires only while use is held, the harness clicks
+  once), the chem lab's liquids (its tanks are empty), formed multiblocks (parts are placed one at a time), and
+  anything that moves or makes sound.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,
-  the castle and the desert oil cluster.
+  the castle and the desert oil cluster. The client harness finds all of them with the `/locate` search (the desert
+  oil cluster only with an oil mod).
 - Not ported:
   - the nether dungeon and the tech fortress, which 1.12 never spawned;
-  - the dev-only dungeon scanner/generator blocks, debug markers, and the building scan / worldgen test tools.
+  - the dev-only dungeon scanner/generator blocks, debug markers, and the building scan / worldgen test tools;
+  - CraftTweaker support for gun, armor and death-effect stats (would need a new dependency; gun stats are a data
+    map and machine recipes are datapack recipes already).
 - JEI: every machine already has a category, so nothing new was needed.
-- Entry 5 needs an in-game look:
-  - Shishkebap flames, first and third person;
-  - reload and charge sounds following the player;
-  - the charge sound stopping when you let go;
-  - swapping two guns between hands;
-  - the mining outlines.
-- Nothing from this session has been checked in game. The game tests only prove the code runs without errors. In game,
-  check `/locate structure techguns:castle` and `techguns:military_base`, and `techguns:desert_oil_cluster` with an
-  oil mod installed.
+- Checked in game: entries 26 to 30, and through the harness screenshots everything listed in entry 31.
+- Still needs a look in game:
+  - reload and charge sounds following the player, and the charge sound stopping when you let go;
+  - swapping two guns between hands; charge guns and grenades not bobbing while in use;
+  - the mining outlines;
+  - walking up the castle staircases (entry 24);
+  - the grappling hook's wire start, wheel spin and pull (entry 27);
+  - formed multiblocks next to how they looked before, and the chem lab glass over liquids (entry 22);
+  - a structure loaded with a structure block (entry 23);
+  - the compat recipes and the Mekanism radiation bridge with those mods installed (entries 16, 18, 19).
