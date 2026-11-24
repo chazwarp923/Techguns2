@@ -751,9 +751,10 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   - 3x3 doors were placed as their default state, an invisible slave block. The harness now places the whole door
     as `ItemDoor3x3` does (master in the middle) and clears the 3x3x3 around the show spot between blocks,
     master first, then removes loose items.
-- Left as it is, for you to decide: removing any slave block of a 3x3 door by any means (`/fill`, `/setblock`, a
-  structure replacing it) makes the master drop the door item (`BlockDoor3x3.onRemove` calls `destroyBlock(master,
-  true)`). Vanilla doors and beds drop nothing when a command replaces them. Player breaking is right either way.
+- Checked, no change: removing any slave block of a 3x3 door by any means (`/fill`, `/setblock`, a structure
+  replacing it) makes the master drop the door item (`BlockDoor3x3.onRemove` calls `destroyBlock(master, true)`).
+  Vanilla does the same: both commands place with flag 2, `Level.setBlock` clears `UPDATE_SUPPRESS_DROPS` before
+  the neighbour shape updates, and `Block.updateOrDestroy` destroys the other door or bed half with drops.
 - What the screenshots can't show: the grappling hook's wire (it fires only while use is held, the harness clicks
   once), the chem lab's liquids (its tanks are empty), formed multiblocks (parts are placed one at a time), and
   anything that moves or makes sound.
