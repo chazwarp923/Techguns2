@@ -16,7 +16,7 @@ The 1.12.2 source is kept in `legacy/` for reference. It is not compiled.
 | Java | 8 | 21 |
 | Build | ForgeGradle | ModDevGradle |
 | Mod version | `1.12.2-2.0.2.0` | `1.21.1-2.1.0.0` |
-| Required mods | none | **Curios** (9.6.0+) |
+| Required mods | none | **Curios** (9.5.1+) |
 | Optional mods | FTB Library (teams), JEI, CraftTweaker, Chisel, Thermal Expansion, Patchouli | FTB Teams, JEI, Patchouli, Ponder, Jade; recipes for Create, Mekanism and Immersive Engineering |
 
 - **Curios is required.** The Techguns inventory tab was replaced by Curios slots (see 3.1).

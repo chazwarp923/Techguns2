@@ -21,7 +21,7 @@ description='''${mod_description}'''
 [[dependencies.${mod_id}]]
     modId="curios"
     type="required"
-    versionRange="[9.6.0,)"
+    versionRange="[9.5.1,)"
     ordering="NONE"
     side="BOTH"
 
