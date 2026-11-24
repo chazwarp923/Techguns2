@@ -58,8 +58,13 @@ public class MagicRifleTests {
 		return ply;
 	}
 
+	/**
+	 * the 7x9x7 empty_large structure from relative y 0 (where lingering strikes land), with a block of margin.
+	 * Tests run side by side, so a much wider box sees the neighbours' bolts and lightning. Lightning bolts have no
+	 * size, so one exactly on a box edge isn't inside it.
+	 */
 	private static AABB area(GameTestHelper helper) {
-		return new AABB(helper.absolutePos(BlockPos.ZERO)).inflate(16);
+		return new AABB(helper.absoluteVec(new Vec3(-1, -1, -1)), helper.absoluteVec(new Vec3(8, 10, 8)));
 	}
 
 	private static List<MagicRifleProjectile> bolts(GameTestHelper helper) {
@@ -112,14 +117,18 @@ public class MagicRifleTests {
 		helper.assertTrue(bolt.magicType == MagicRifleProjectile.TYPE_LIGHTNING, "not a lightning bolt");
 		Set<UUID> strikes = new HashSet<>();
 		boolean[] lingered = { false };
+		Vec3[] lingerAt = { null };
 		helper.onEachTick(() -> {
-			helper.getLevel().getEntitiesOfClass(LightningBolt.class, area(helper).inflate(8)).forEach(b -> strikes.add(b.getUUID()));
+			helper.getLevel().getEntitiesOfClass(LightningBolt.class, area(helper)).forEach(b -> strikes.add(b.getUUID()));
 			if (bolt.postImpactTicks > 0 && !bolt.isRemoved()) {
 				lingered[0] = true;
+				lingerAt[0] = helper.relativeVec(bolt.position());
 			}
 		});
 		helper.succeedWhen(() -> {
 			helper.assertTrue(lingered[0], "the bolt didn't stay after the hit");
+			// at the wall's face (x 6), not carried on by the motion it had before the hit
+			helper.assertTrue(lingerAt[0].x > 5.0 && lingerAt[0].x <= 6.001, "the bolt lingers at " + lingerAt[0] + ", not at the wall");
 			helper.assertTrue(strikes.size() >= 2, "lightning strikes: " + strikes.size());
 			helper.assertTrue(bolt.isRemoved(), "the bolt is still there");
 		});

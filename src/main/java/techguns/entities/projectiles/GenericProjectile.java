@@ -211,11 +211,16 @@ public class GenericProjectile extends Entity implements IEntityWithComplexSpawn
 		if (this.isRemoved()) {
 			return;
 		}
+		// onHit may have stopped or redirected the projectile (a lingering magic rifle bolt sets itself to the hit spot
+		// with no motion): move on from that, not with the motion from before the hit
+		motion = this.getDeltaMovement();
 
 		double nx = this.getX() + motion.x;
 		double ny = this.getY() + motion.y;
 		double nz = this.getZ() + motion.z;
-		this.updateRotationFromMotion(motion);
+		if (motion.lengthSqr() > 0) {
+			this.updateRotationFromMotion(motion);
+		}
 
 		float f1 = this.inWaterUpdateBehaviour(0.99F);
 		motion = motion.scale(f1);

@@ -783,8 +783,25 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
 - New test `GameplayTests.antigravSoundOnlyForPackFlight`: a charged pack in survival counts; the pack in creative,
   an empty pack, and another source's `creative_flight` don't. Without the `mayfly` check it fails with "creative
   flight with the pack on counts as pack flight".
-- Seen while testing, not fixed: `MagicRifleTests.lightningBoltLingers` failed once in about eight runs with
-  "lightning strikes: 1" (the bolt lingered, but no strike after the hit). Cause not found yet.
+- Seen while testing: `MagicRifleTests.lightningBoltLingers` failed once in about eight runs with "lightning
+  strikes: 1". Fixed in entry 35.
+
+### 35. Fix: lightning magic bullet lingered past what it hit (all 54 tests pass in every CI setup)
+
+- `lightningBoltLingers` failed in CI (Create-only run of `ac227c0`) and now and then locally. Run 60 times in one
+  server, with the test's entity search limited to its own structure, it failed every time: the bolt lingered at
+  x 9.7 instead of the wall at x 6.
+- Cause: `GenericProjectile.tick` read the motion before `onHit` and moved the projectile by it afterwards.
+  `MagicRifleProjectile.onHit` puts a lingering lightning bolt at the hit spot with no motion, so the tick carried it
+  one tick's travel (about 3.7 blocks) on, through the wall. In game, its follow-up strikes came down behind the
+  wall or block it hit. The test only failed when nothing within 3 blocks behind the wall let a strike land.
+- Fix: the tick reads the motion again after `onHit`, and doesn't turn a stopped projectile. Other projectiles
+  don't change their motion in `onHit` (the grenade bounce spawns a new projectile), so they move as before.
+- `MagicRifleTests`: entity searches cover only the test's own 7x9x7 structure plus a block (tests run side by side;
+  the old 16 to 24 block box saw the neighbours' bolts and lightning), built from relative coordinates because
+  `getBounds()` starts a block above relative y 0, where the strikes land, and lightning bolts have no size.
+  `lightningBoltLingers` also checks that the bolt lingers at the wall. Without the fix all 61 copies failed with
+  "the bolt lingers at (9.6, ...), not at the wall"; with it all pass.
 
 ## Where things stand
 
