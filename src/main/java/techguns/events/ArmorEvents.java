@@ -116,23 +116,18 @@ public class ArmorEvents {
 	 */
 	private static void tickFlight(Player player, TGExtendedPlayer props, boolean client) {
 		var abilities = player.getAbilities();
-		if (player.getAttributeValue(net.neoforged.neoforge.common.NeoForgeMod.CREATIVE_FLIGHT) > 0) {
-			props.gotCreativeFlightLastTick = true;
-			if (abilities.flying) {
-				if (!props.wasFlying) {
-					if (client) {
-						TGFXHooks.createFXOnEntity("AntiGravRing", player);
-					} else {
-						player.level().playSound(null, player.getX(), player.getY(), player.getZ(), TGSounds.ANTI_GRAV_START.get(), player.getSoundSource(), 1.0f,
-								1.0f);
-					}
+		props.gotCreativeFlightLastTick = player.getAttributeValue(net.neoforged.neoforge.common.NeoForgeMod.CREATIVE_FLIGHT) > 0;
+		if (abilities.flying && fliesByTechgunsGear(player)) {
+			if (!props.wasFlying) {
+				if (client) {
+					TGFXHooks.createFXOnEntity("AntiGravRing", player);
+				} else {
+					player.level().playSound(null, player.getX(), player.getY(), player.getZ(), TGSounds.ANTI_GRAV_START.get(), player.getSoundSource(), 1.0f,
+							1.0f);
 				}
-				props.wasFlying = true;
-			} else {
-				props.wasFlying = false;
 			}
+			props.wasFlying = true;
 		} else {
-			props.gotCreativeFlightLastTick = false;
 			props.wasFlying = false;
 		}
 
@@ -144,6 +139,14 @@ public class ArmorEvents {
 				abilities.setFlyingSpeed(DEFAULT_FLYSPEED);
 			}
 		}
+	}
+
+	/**
+	 * Whether Techguns gear (the antigrav pack) is what lets the player fly, so its start ring and sound belong to
+	 * this flight. Not for creative or spectator mode (abilities.mayfly) or another mod's creative_flight attribute.
+	 */
+	public static boolean fliesByTechgunsGear(Player player) {
+		return !player.getAbilities().mayfly && bonus(player, TGArmorBonus.CREATIVE_FLIGHT, false) > 0;
 	}
 
 	private static void syncToggles(Player p) {

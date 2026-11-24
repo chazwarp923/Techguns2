@@ -772,6 +772,20 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   requires `[21.1.265,)` (the range comes from `neo_version`). It compiles, all 53 game tests pass with the compat
   mods loaded, and the client test passes on 21.1.265.
 
+### 34. Fix: antigrav start sound and ring for any creative flight (all 54 tests pass)
+
+- **Reported:** the antigrav pack's start sound played for any creative flight. `ArmorEvents.tickFlight` played
+  `items.antigravstart` and the `AntiGravRing` effect whenever the player started flying with NeoForge's
+  `creative_flight` attribute above 0, whatever gave it. 1.12 also played them in creative mode with the pack on.
+- Now only when the pack is what lets the player fly: `ArmorEvents.fliesByTechgunsGear` needs a Techguns
+  `CREATIVE_FLIGHT` bonus (a charged antigrav pack) and `abilities.mayfly` off. Creative and spectator mode set
+  `mayfly`, and another mod's `creative_flight` gives no Techguns bonus. Fly speed handling is unchanged.
+- New test `GameplayTests.antigravSoundOnlyForPackFlight`: a charged pack in survival counts; the pack in creative,
+  an empty pack, and another source's `creative_flight` don't. Without the `mayfly` check it fails with "creative
+  flight with the pack on counts as pack flight".
+- Seen while testing, not fixed: `MagicRifleTests.lightningBoltLingers` failed once in about eight runs with
+  "lightning strikes: 1" (the bolt lingered, but no strike after the hit). Cause not found yet.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

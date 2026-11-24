@@ -711,6 +711,49 @@ public class GameplayTests {
 		helper.succeed();
 	}
 
+	/** the antigrav start ring and sound only for flight the pack gives, not creative mode or other flight */
+	@GameTest(template = "empty")
+	public static void antigravSoundOnlyForPackFlight(GameTestHelper helper) {
+		List<String> problems = new java.util.ArrayList<>();
+		Player survival = fresh(helper, "tg_antigrav_survival");
+		helper.assertTrue(techguns.curios.TGCurios.getStacks(survival, techguns.curios.TGCurios.SLOT_BACK).size() > 0, "no Curios back slot");
+		techguns.curios.TGCurios.getStacks(survival, techguns.curios.TGCurios.SLOT_BACK).set(0, new ItemStack(TGItems.ANTI_GRAV_PACK.get()));
+		if (!techguns.events.ArmorEvents.fliesByTechgunsGear(survival)) {
+			problems.add("survival flight with a charged pack isn't pack flight");
+		}
+
+		Player creative = fresh(helper, "tg_antigrav_creative");
+		techguns.curios.TGCurios.getStacks(creative, techguns.curios.TGCurios.SLOT_BACK).set(0, new ItemStack(TGItems.ANTI_GRAV_PACK.get()));
+		creative.getAbilities().mayfly = true; // what creative and spectator mode set
+		if (techguns.events.ArmorEvents.fliesByTechgunsGear(creative)) {
+			problems.add("creative flight with the pack on counts as pack flight");
+		}
+
+		Player empty = fresh(helper, "tg_antigrav_empty_pack");
+		ItemStack emptyPack = new ItemStack(TGItems.ANTI_GRAV_PACK.get());
+		emptyPack.setDamageValue(emptyPack.getMaxDamage());
+		techguns.curios.TGCurios.getStacks(empty, techguns.curios.TGCurios.SLOT_BACK).set(0, emptyPack);
+		if (techguns.events.ArmorEvents.fliesByTechgunsGear(empty)) {
+			problems.add("an empty pack counts as pack flight");
+		}
+
+		Player other = fresh(helper, "tg_antigrav_other_flight");
+		var flight = other.getAttribute(net.neoforged.neoforge.common.NeoForgeMod.CREATIVE_FLIGHT);
+		flight.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(Techguns.rl("test_other_flight"), 1.0,
+				net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_VALUE));
+		if (techguns.events.ArmorEvents.fliesByTechgunsGear(other)) {
+			problems.add("another mod's creative_flight counts as pack flight");
+		}
+		flight.removeModifier(Techguns.rl("test_other_flight"));
+
+		for (Player p : List.of(survival, creative, empty)) {
+			techguns.curios.TGCurios.getStacks(p, techguns.curios.TGCurios.SLOT_BACK).set(0, ItemStack.EMPTY);
+		}
+		creative.getAbilities().mayfly = false;
+		helper.assertTrue(problems.isEmpty(), String.join("; ", problems));
+		helper.succeed();
+	}
+
 	private static Player fresh(GameTestHelper helper, String name) {
 		return FakePlayerFactory.get(helper.getLevel(), new com.mojang.authlib.GameProfile(java.util.UUID.nameUUIDFromBytes(name.getBytes()), name));
 	}
