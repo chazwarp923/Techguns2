@@ -803,6 +803,33 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   `lightningBoltLingers` also checks that the bolt lingers at the wall. Without the fix all 61 copies failed with
   "the bolt lingers at (9.6, ...), not at the wall"; with it all pass.
 
+### 36. Compat recipes run in the real machines; fix: Create's mixer could make raw obsidian steel (all 60 tests pass in every CI setup)
+
+- New `CompatMachineTests` (6 tests). Each recipe runs in the other mod's machine, built in the test world:
+  - Create's crushed tin and lead: a furnace and a blast furnace.
+  - Create pressing: six mechanical presses over depots on one creative motor.
+  - Create mixing: a mixer over a basin on a burner lit with coal. The mixer has no shaft, so a cog beside it drives
+    it.
+  - Create washing: a fan blowing through water onto a depot.
+  - Mekanism: a combiner, filled and powered through Mekanism's slot and energy API (`MekanismMachineChecks`); a new
+    machine's unsided item and Forge Energy capabilities take nothing from outside.
+  - IE: its metal press, alloy smelter and arc furnace are multiblocks, so the test asks IE's own recipe lookups
+    (`MetalPressRecipe`, `AlloyRecipe`, `ArcFurnaceRecipe.findRecipe`), the ones those machines call.
+- Expected results are written in the tests, not read from the recipes. A recipe its conditions leave out is skipped
+  (`DataTests.compatRecipes` checks the gating), and each test does nothing without its mod. Block ids, NeoForge
+  capabilities and some reflection drive Create and IE, so no new compile dependencies.
+- **Found and fixed:** in the Create-only setup, steel and obsidian in a heated mixer made `raw_obsidian_steel_ingot`,
+  not the finished ingot. Create's mixer also runs shapeless crafting recipes and sorts matches only by ingredient
+  count; the shapeless raw ingot recipe and the compat mixing recipe both have two, so recipe load order decided (it
+  went the right way with all three mods). The shapeless recipe is now `raw_obsidian_steel_ingot_manual_only`, an
+  id ending Create leaves out of automation; the crafting table recipe is unchanged. `createMixing` first checks
+  that no recipe the mixer may use ties with a compat mixing recipe, which caught the old name every time.
+- Planted bugs, all caught: wrong tin plate, crushed tin and Mekanism and IE results, 8 lead nuggets instead of 9, 3
+  bronze instead of 4.
+- Recipes loaded: 14 with Create only, 11 with all three mods, 0 without them. With all three, the crushed ore
+  recipes are left out (Mekanism and IE handle those ores), so the furnace and washing tests run only in the
+  Create-only setup; CI runs both.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,
@@ -823,4 +850,5 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   - the grappling hook's wire start, wheel spin and pull (entry 27);
   - formed multiblocks next to how they looked before, and the chem lab glass over liquids (entry 22);
   - a structure loaded with a structure block (entry 23);
-  - the compat recipes and the Mekanism radiation bridge with those mods installed (entries 16, 18, 19).
+  - the Mekanism radiation bridge with Mekanism installed (entries 18, 19). The compat recipes now run in the real
+    machines in the game tests (entry 36).
