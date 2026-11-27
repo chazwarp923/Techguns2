@@ -3,6 +3,7 @@ package techguns.events;
 import java.util.List;
 
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodData;
@@ -29,6 +30,11 @@ public class AutoFeeder {
 		if (ply.level().isClientSide || TGConfig.disableAutofeeder) {
 			return;
 		}
+		feed(ply);
+	}
+
+	/** one auto feeder step on the server: tops up hunger from banked nutrition, else eats one food item */
+	public static void feed(Player ply) {
 		FoodData food = ply.getFoodData();
 		if (food.getFoodLevel() > 19) {
 			return;
@@ -53,8 +59,15 @@ public class AutoFeeder {
 			if (stack.isEmpty() || fp == null) {
 				continue;
 			}
+			// food with durability (some mods' lunch boxes and rations) loses one point per meal, as when eaten
+			// by hand; it's only gone, and gives back its container, once used up
 			ItemStack rest = stack.copy();
-			rest.shrink(1);
+			if (rest.isDamageableItem() && ply.level() instanceof ServerLevel level) {
+				rest.hurtAndBreak(1, level, ply, item -> {
+				});
+			} else {
+				rest.shrink(1);
+			}
 			slots.set(i, rest);
 
 			for (FoodProperties.PossibleEffect e : fp.effects()) {
@@ -62,7 +75,7 @@ public class AutoFeeder {
 					ply.addEffect(e.effect());
 				}
 			}
-			fp.usingConvertsTo().ifPresent(container -> {
+			fp.usingConvertsTo().filter(container -> rest.isEmpty() || !stack.isDamageableItem()).ifPresent(container -> {
 				if (!ply.getInventory().add(container.copy())) {
 					ply.drop(container.copy(), false);
 				}

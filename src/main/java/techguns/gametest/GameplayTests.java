@@ -754,6 +754,75 @@ public class GameplayTests {
 		helper.succeed();
 	}
 
+	/**
+	 * The auto feeder eats food with durability the way eating by hand would with such an item: one point per meal,
+	 * gone (with its container given back) only when used up. Plain food stacks still lose one item.
+	 */
+	@GameTest(template = "empty")
+	public static void autoFeederUsesDurability(GameTestHelper helper) {
+		List<String> problems = new java.util.ArrayList<>();
+		Player ply = fresh(helper, "tg_autofeeder");
+		var slots = techguns.curios.TGCurios.getStacks(ply, techguns.curios.TGCurios.SLOT_FOOD);
+		helper.assertTrue(slots.size() > 0, "no Curios food slot");
+
+		ItemStack ration = durable(Items.COOKED_BEEF, 3);
+		slots.set(0, ration);
+		hungry(ply);
+		techguns.events.AutoFeeder.feed(ply);
+		ItemStack after = slots.get(0);
+		if (!after.is(Items.COOKED_BEEF) || after.getDamageValue() != 1) {
+			problems.add("a 3-use ration after one meal is " + after + " with damage " + after.getDamageValue() + ", not beef with damage 1");
+		}
+		if (ply.getFoodData().getFoodLevel() != 8) {
+			problems.add("the ration gave food level " + ply.getFoodData().getFoodLevel() + ", not 8");
+		}
+		hungry(ply);
+		techguns.events.AutoFeeder.feed(ply);
+		hungry(ply);
+		techguns.events.AutoFeeder.feed(ply);
+		if (!slots.get(0).isEmpty()) {
+			problems.add("the ration is still there after its 3 uses: " + slots.get(0));
+		}
+
+		ItemStack stew = durable(Items.MUSHROOM_STEW, 2);
+		slots.set(0, stew);
+		ply.getInventory().clearContent();
+		hungry(ply);
+		techguns.events.AutoFeeder.feed(ply);
+		if (ply.getInventory().countItem(Items.BOWL) != 0) {
+			problems.add("a 2-use stew gave its bowl back after the first meal");
+		}
+		hungry(ply);
+		techguns.events.AutoFeeder.feed(ply);
+		if (!slots.get(0).isEmpty() || ply.getInventory().countItem(Items.BOWL) != 1) {
+			problems.add("a used up 2-use stew left " + slots.get(0) + " and " + ply.getInventory().countItem(Items.BOWL) + " bowls, not one bowl");
+		}
+
+		slots.set(0, new ItemStack(Items.BREAD, 2));
+		hungry(ply);
+		techguns.events.AutoFeeder.feed(ply);
+		if (!slots.get(0).is(Items.BREAD) || slots.get(0).getCount() != 1) {
+			problems.add("2 bread after one meal is " + slots.get(0) + ", not 1 bread");
+		}
+		helper.assertTrue(problems.isEmpty(), String.join("; ", problems));
+		helper.succeed();
+	}
+
+	/** food with durability, as mods make it: one per stack, with max damage */
+	private static ItemStack durable(net.minecraft.world.item.Item food, int uses) {
+		ItemStack stack = new ItemStack(food);
+		stack.set(net.minecraft.core.component.DataComponents.MAX_STACK_SIZE, 1);
+		stack.set(net.minecraft.core.component.DataComponents.MAX_DAMAGE, uses);
+		stack.set(net.minecraft.core.component.DataComponents.DAMAGE, 0);
+		return stack;
+	}
+
+	private static void hungry(Player ply) {
+		ply.getFoodData().setFoodLevel(0);
+		ply.getFoodData().setSaturation(0);
+		techguns.capabilities.TGExtendedPlayer.get(ply).foodleft = 0;
+	}
+
 	private static Player fresh(GameTestHelper helper, String name) {
 		return FakePlayerFactory.get(helper.getLevel(), new com.mojang.authlib.GameProfile(java.util.UUID.nameUUIDFromBytes(name.getBytes()), name));
 	}

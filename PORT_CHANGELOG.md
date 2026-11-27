@@ -830,6 +830,17 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   recipes are left out (Mekanism and IE handle those ores), so the furnace and washing tests run only in the
   Create-only setup; CI runs both.
 
+### 37. Fix: the auto feeder ate food with durability whole (all 61 tests pass)
+
+- `AutoFeeder` took one item off any food in the Curios food slots, so food with durability (one per stack, such as
+  some mods' rations and lunch boxes) was gone after one meal. Now it loses one point of durability per meal
+  (`hurtAndBreak`, so Unbreaking counts), and is gone, giving back its container (a bowl, for example), only once used
+  up. Plain food stacks still lose one item and give the container each time.
+- The feeding step is now `AutoFeeder.feed(Player)`, called by the player tick.
+- New test `GameplayTests.autoFeederUsesDurability`: a 3-use beef lasts three meals and gives 8 food each, a 2-use
+  stew gives its bowl only when used up, and 2 bread become 1. With the old code it failed with "a 3-use ration after
+  one meal is 0 minecraft:air" and "a 2-use stew gave its bowl back after the first meal".
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,
