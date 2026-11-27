@@ -1,5 +1,7 @@
 package techguns.blocks;
 
+import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -112,5 +114,19 @@ public class BlockSandbags extends Block implements SimpleWaterloggedBlock {
 		if (state.getValue(SOUTH)) shape = Shapes.or(shape, S_SOUTH);
 		if (state.getValue(WEST)) shape = Shapes.or(shape, S_WEST);
 		return shape;
+	}
+
+	/** corner booleans by the side each starts at going clockwise, for BlockRotation */
+	private static final java.util.Map<Direction, BooleanProperty> CORNERS = java.util.Map.of(Direction.NORTH, CORNER_NE, Direction.EAST, CORNER_ES,
+			Direction.SOUTH, CORNER_SW, Direction.WEST, CORNER_WN);
+
+	@Override
+	protected BlockState rotate(BlockState state, Rotation rot) {
+		return BlockRotation.rotateCorners(BlockRotation.rotateSides(state, rot), CORNERS, rot);
+	}
+
+	@Override
+	protected BlockState mirror(BlockState state, Mirror mirror) {
+		return BlockRotation.mirrorCorners(BlockRotation.mirrorSides(state, mirror), CORNERS, mirror);
 	}
 }

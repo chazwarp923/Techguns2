@@ -893,6 +893,22 @@ Compared all 86 options of 1.12's TGConfig with the port's 79. 13 were defined b
   now and then, depending on where the test landed. `GrapplingHookProjectile.onHit` now stops the hook. The test also
   checks that the hook sits on the wall face; without the fix it failed every run (hook at x 9.7, wall at 6).
 
+### 41. Fix: lamps (and 13 other blocks) didn't turn with rotated structures (all 66 tests pass in all three setups; not checked in game)
+
+- Scanned structures and dungeons turn each block with `BlockState.rotate` (`MBlock.rotatedState`,
+  `DungeonTemplate`), which does nothing unless the block overrides `rotate`. 1.12's BlockRotator turned any
+  facing. In the port, the lamps kept their unturned facing in rotated structures, so they pointed the wrong way
+  or hung off the wrong side.
+- New `blocks/BlockRotation` helpers. `rotate` and `mirror` overrides added to:
+  - the lamps, the bioblob and the multiblock controllers (fabricator, reaction chamber, ore drill): their facing;
+  - the lanterns and the six camo nets: their side connections;
+  - sandbags: their sides and corners.
+  Procedural camps set their lamp facings directly and weren't affected.
+- New test `WorldgenTests.blockStatesRotateWithStructures`. For every Techguns block state, each direction property
+  and each north/east/south/west connection must turn and mirror with the structure, and so must the sandbag
+  corners. Before the fix it found exactly these 15 blocks. With the sandbag corner turning left out, it caught
+  that too.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

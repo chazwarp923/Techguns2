@@ -1,5 +1,7 @@
 package techguns.blocks;
 
+import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.Rotation;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -154,5 +156,15 @@ public class BlockBioblob extends Block {
 		} else {
 			level.setBlock(blobPos, blob, 3);
 		}
+	}
+
+	@Override
+	protected BlockState rotate(BlockState state, Rotation rot) {
+		return BlockRotation.rotate(state, FACING, rot);
+	}
+
+	@Override
+	protected BlockState mirror(BlockState state, Mirror mirror) {
+		return BlockRotation.mirror(state, FACING, mirror);
 	}
 }

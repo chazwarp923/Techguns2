@@ -5,6 +5,8 @@ import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import java.util.List;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -231,5 +233,86 @@ public class WorldgenTests {
 				helper.assertTrue(ok, what + ": mismatched door at " + p.toShortString() + " " + s + " / " + up);
 			}
 		}
+	}
+
+	/**
+	 * Structures turn their blocks with BlockState.rotate / mirror (MBlock.rotatedState), which only works when the
+	 * block overrides them. For every Techguns block state: each Direction property turns and mirrors with the
+	 * structure, and so do the per-side booleans (north, east, south, west) of blocks like the lanterns. The lamps
+	 * had no override, so rotated structures kept their unrotated facing.
+	 */
+	@GameTest(template = "empty")
+	public static void blockStatesRotateWithStructures(GameTestHelper helper) {
+		var sides = net.minecraft.world.level.block.PipeBlock.PROPERTY_BY_DIRECTION;
+		var rotations = List.of(net.minecraft.world.level.block.Rotation.CLOCKWISE_90, net.minecraft.world.level.block.Rotation.CLOCKWISE_180,
+				net.minecraft.world.level.block.Rotation.COUNTERCLOCKWISE_90);
+		var mirrors = List.of(net.minecraft.world.level.block.Mirror.LEFT_RIGHT, net.minecraft.world.level.block.Mirror.FRONT_BACK);
+		java.util.Map<String, String> problems = new java.util.TreeMap<>();
+		int checked = 0;
+		for (var block : BuiltInRegistries.BLOCK) {
+			var id = BuiltInRegistries.BLOCK.getKey(block);
+			if (!id.getNamespace().equals(Techguns.MODID)) {
+				continue;
+			}
+			for (var state : block.getStateDefinition().getPossibleStates()) {
+				for (var prop : state.getProperties()) {
+					if (!(state.getValue(prop) instanceof net.minecraft.core.Direction d)) {
+						continue;
+					}
+					checked++;
+					for (var rot : rotations) {
+						var r = state.rotate(rot);
+						Object got = r.hasProperty(prop) ? r.getValue(prop) : null;
+						if (r.getBlock() != block || got != rot.rotate(d)) {
+							problems.putIfAbsent(id + " " + prop.getName(), prop.getName() + "=" + d + " turned " + rot + " gives " + got + ", not " + rot.rotate(d));
+						}
+					}
+					for (var mir : mirrors) {
+						var r = state.mirror(mir);
+						Object got = r.hasProperty(prop) ? r.getValue(prop) : null;
+						if (r.getBlock() != block || got != mir.mirror(d)) {
+							problems.putIfAbsent(id + " " + prop.getName() + " mirror", prop.getName() + "=" + d + " mirrored " + mir + " gives " + got + ", not " + mir.mirror(d));
+						}
+					}
+				}
+				for (var d : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+					var prop = sides.get(d);
+					if (!state.hasProperty(prop) || !state.getValue(prop)) {
+						continue;
+					}
+					checked++;
+					for (var rot : rotations) {
+						var r = state.rotate(rot);
+						var to = sides.get(rot.rotate(d));
+						if (r.getBlock() != block || !r.hasProperty(to) || !r.getValue(to)) {
+							problems.putIfAbsent(id + " sides", d + " turned " + rot + " isn't " + rot.rotate(d));
+						}
+					}
+					for (var mir : mirrors) {
+						var r = state.mirror(mir);
+						var to = sides.get(mir.mirror(d));
+						if (r.getBlock() != block || !r.hasProperty(to) || !r.getValue(to)) {
+							problems.putIfAbsent(id + " sides mirror", d + " mirrored " + mir + " isn't " + mir.mirror(d));
+						}
+					}
+				}
+				if (state.hasProperty(techguns.blocks.BlockSandbags.CORNER_NE) && state.getValue(techguns.blocks.BlockSandbags.CORNER_NE)) {
+					checked++;
+					// the north-east corner turns to south-east, and mirrors to south-east (north/south) or north-west
+					var turned = state.rotate(net.minecraft.world.level.block.Rotation.CLOCKWISE_90);
+					var lr = state.mirror(net.minecraft.world.level.block.Mirror.LEFT_RIGHT);
+					var fb = state.mirror(net.minecraft.world.level.block.Mirror.FRONT_BACK);
+					if (!turned.getValue(techguns.blocks.BlockSandbags.CORNER_ES) || !lr.getValue(techguns.blocks.BlockSandbags.CORNER_ES)
+							|| !fb.getValue(techguns.blocks.BlockSandbags.CORNER_WN)) {
+						problems.putIfAbsent(id + " corners", "the north-east corner turned/mirrored isn't south-east / south-east / north-west");
+					}
+				}
+			}
+		}
+		helper.assertTrue(checked > 0, "no Techguns block has a direction");
+		List<String> lines = new java.util.ArrayList<>();
+		problems.forEach((k, v) -> lines.add(k + ": " + v));
+		helper.assertTrue(lines.isEmpty(), lines.size() + " problems: " + String.join("; ", lines));
+		helper.succeed();
 	}
 }

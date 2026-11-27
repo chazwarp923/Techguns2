@@ -1,5 +1,7 @@
 package techguns.blocks;
 
+import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -135,5 +137,15 @@ public class BlockCamoNet extends Block implements SimpleWaterloggedBlock {
 	@Override
 	protected boolean isPathfindable(BlockState state, PathComputationType type) {
 		return false;
+	}
+
+	@Override
+	protected BlockState rotate(BlockState state, Rotation rot) {
+		return BlockRotation.rotateSides(state, rot);
+	}
+
+	@Override
+	protected BlockState mirror(BlockState state, Mirror mirror) {
+		return BlockRotation.mirrorSides(state, mirror);
 	}
 }

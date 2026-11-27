@@ -1,5 +1,8 @@
 package techguns.blocks.machines;
 
+import techguns.blocks.BlockRotation;
+import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.Rotation;
 import java.util.function.Supplier;
 
 import net.minecraft.core.BlockPos;
@@ -62,5 +65,15 @@ public class BlockMultiBlockController<T extends MultiBlockMachineTileEntMaster>
 	@Override
 	public PushReaction getPistonPushReaction(BlockState state) {
 		return PushReaction.BLOCK;
+	}
+
+	@Override
+	protected BlockState rotate(BlockState state, Rotation rot) {
+		return BlockRotation.rotate(state, FACING, rot);
+	}
+
+	@Override
+	protected BlockState mirror(BlockState state, Mirror mirror) {
+		return BlockRotation.mirror(state, FACING, mirror);
 	}
 }

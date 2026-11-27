@@ -1,5 +1,7 @@
 package techguns.blocks;
 
+import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.Rotation;
 import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
@@ -76,5 +78,15 @@ public class BlockTGLamp extends DirectionalBlock {
 			return net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
 		}
 		return super.updateShape(state, dir, neighbor, level, pos, neighborPos);
+	}
+
+	@Override
+	protected BlockState rotate(BlockState state, Rotation rot) {
+		return BlockRotation.rotate(state, FACING, rot);
+	}
+
+	@Override
+	protected BlockState mirror(BlockState state, Mirror mirror) {
+		return BlockRotation.mirror(state, FACING, mirror);
 	}
 }

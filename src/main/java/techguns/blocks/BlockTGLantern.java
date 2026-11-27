@@ -1,5 +1,7 @@
 package techguns.blocks;
 
+import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.Rotation;
 import java.util.Map;
 
 import net.minecraft.core.BlockPos;
@@ -59,5 +61,15 @@ public class BlockTGLantern extends Block {
 	@Override
 	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext ctx) {
 		return SHAPE;
+	}
+
+	@Override
+	protected BlockState rotate(BlockState state, Rotation rot) {
+		return BlockRotation.rotateSides(state, rot);
+	}
+
+	@Override
+	protected BlockState mirror(BlockState state, Mirror mirror) {
+		return BlockRotation.mirrorSides(state, mirror);
 	}
 }
