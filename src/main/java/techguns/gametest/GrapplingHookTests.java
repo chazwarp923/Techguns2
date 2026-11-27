@@ -74,6 +74,8 @@ public class GrapplingHookTests {
 		helper.startSequence().thenWaitUntil(() -> {
 			var h = hooks(helper, ply);
 			helper.assertTrue(h.size() == 1 && h.get(0).getStatus() == GrapplingHookProjectile.Status.GRAPPLING_BLOCK, "the hook didn't grab the wall");
+			Vec3 at = helper.relativeVec(h.get(0).position());
+			helper.assertTrue(Math.abs(at.x - 6.0) < 0.3, "the hook grabbed the wall but sits at " + at + ", not on its face at x 6");
 			helper.assertTrue(ply.getDeltaMovement().x > 0.1, "the player isn't pulled to the wall: " + ply.getDeltaMovement());
 		}).thenExecute(() -> {
 			ply.stopUsingItem();

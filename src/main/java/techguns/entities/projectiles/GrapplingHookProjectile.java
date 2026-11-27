@@ -215,6 +215,7 @@ public class GrapplingHookProjectile extends GenericProjectile {
 				return;
 			}
 			this.entityData.set(DATA_TARGET, target.getId());
+			this.setDeltaMovement(Vec3.ZERO);
 			setStatus(this.shooter.isShiftKeyDown() ? Status.PULL_ENTITY : Status.GRAPPLING_ENTITY);
 			playPullSound();
 		} else if (hit instanceof BlockHitResult bhr) {
@@ -229,6 +230,9 @@ public class GrapplingHookProjectile extends GenericProjectile {
 			}
 			this.entityData.set(DATA_ANCHOR, new Vector3f((float) a.x, (float) a.y, (float) a.z));
 			this.setPos(a);
+			// stop here: GenericProjectile.tick moves on by the motion after onHit, which put the hook a step behind
+			// the wall, sometimes in a chunk where entities don't tick, so it never pulled
+			this.setDeltaMovement(Vec3.ZERO);
 			setStatus(Status.GRAPPLING_BLOCK);
 			playPullSound();
 		}

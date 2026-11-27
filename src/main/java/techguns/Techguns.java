@@ -31,6 +31,7 @@ public class Techguns {
 		TGBlocks.BLOCKS.register(modBus);
 		techguns.recipes.TGRecipes.SERIALIZERS.register(modBus);
 		techguns.recipes.TGRecipes.TYPES.register(modBus);
+		techguns.recipes.KeepLavaRecipesCondition.register(modBus);
 		TGBlockEntities.BLOCK_ENTITIES.register(modBus);
 		techguns.gui.TGMenus.MENUS.register(modBus);
 		TGuns.init();

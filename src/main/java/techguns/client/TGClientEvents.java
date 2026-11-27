@@ -31,21 +31,28 @@ public class TGClientEvents {
 		TGItemRenderer.currentEntity = null;
 	}
 
-	/** Zoom: toggle zoom via TGClientState.playerZoom, hold-zoom guns while right mouse is held. */
-	@SubscribeEvent
+	/**
+	 * Zoom: toggle zoom via TGClientState.playerZoom, hold-zoom guns while right mouse is held.
+	 * Also the speed FOV lock (1.12 handleFovEvent, config client.LockSpeedDependantFov): cancels vanilla's
+	 * speed-dependent FOV change and uses a fixed multiplier while sprinting instead. Low priority, as in 1.12, so
+	 * other mods' changes are less likely to undo it.
+	 */
+	@SubscribeEvent(priority = EventPriority.LOW)
 	public static void onComputeFov(ComputeFovModifierEvent event) {
 		Player ply = event.getPlayer();
+		float f = SpeedFovLock.factor(ply);
 		ItemStack stack = ply.getItemInHand(InteractionHand.MAIN_HAND);
 		if (stack.getItem() instanceof GenericGun gun && gun.canZoom()) {
 			Minecraft mc = Minecraft.getInstance();
 			if (gun.isHoldZoom()) {
 				TGClientState.playerZoom = mc.options.keyUse.isDown() && !ShooterValues.getPlayerIsReloading(ply, false) ? gun.getZoomMult() : 1.0f;
 			}
-			if (TGClientState.playerZoom != 1.0f) {
-				event.setNewFovModifier(event.getNewFovModifier() * TGClientState.playerZoom);
-			}
+			f *= TGClientState.playerZoom;
 		} else {
 			TGClientState.playerZoom = 1.0f;
+		}
+		if (f != 1.0f) {
+			event.setNewFovModifier(event.getNewFovModifier() * f);
 		}
 	}
 

@@ -228,6 +228,54 @@ public class ModelTests {
 	}
 
 	/**
+	 * Blocks that face a way turn their model with it: in a "variants" blockstate, the y rotation of each facing,
+	 * minus the facing's own angle, is the same for all four (with the other properties the same). The charging
+	 * station had no rotations, so it looked north whichever way it was placed.
+	 */
+	@GameTest(template = "empty")
+	public static void facingBlockstatesRotate(GameTestHelper helper) throws IOException {
+		List<String> problems = new ArrayList<>();
+		for (var e : BuiltInRegistries.BLOCK.entrySet()) {
+			ResourceLocation id = e.getKey().location();
+			var state = e.getValue().defaultBlockState();
+			if (!id.getNamespace().equals(Techguns.MODID) || state.getRenderShape() == RenderShape.INVISIBLE
+					|| !state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING)) {
+				continue;
+			}
+			String file = "blockstates/" + id.getPath() + ".json";
+			if (!Files.exists(asset(file)) || !json(file).has("variants")) {
+				continue;
+			}
+			// other properties -> the rotation offset its facings agree on
+			java.util.Map<String, Integer> offsets = new java.util.HashMap<>();
+			for (var v : json(file).getAsJsonObject("variants").entrySet()) {
+				String facing = null;
+				List<String> rest = new ArrayList<>();
+				for (String kv : v.getKey().split(",")) {
+					if (kv.startsWith("facing=")) {
+						facing = kv.substring(7);
+					} else {
+						rest.add(kv);
+					}
+				}
+				if (facing == null || !v.getValue().isJsonObject()) {
+					continue;
+				}
+				var dir = net.minecraft.core.Direction.byName(facing);
+				int y = v.getValue().getAsJsonObject().has("y") ? v.getValue().getAsJsonObject().get("y").getAsInt() : 0;
+				// blockstate y turns clockwise from above, as Direction.toYRot does; north is 180
+				int offset = Math.floorMod(y - ((int) dir.toYRot() - 180), 360);
+				Integer before = offsets.putIfAbsent(String.join(",", rest), offset);
+				if (before != null && before != offset) {
+					problems.add(file + ": " + v.getKey() + " is turned " + y + ", which doesn't match the other facings");
+				}
+			}
+		}
+		helper.assertTrue(problems.isEmpty(), String.join("; ", problems));
+		helper.succeed();
+	}
+
+	/**
 	 * Every OBJ block / item model face's vertex normals point the way the face does. NeoForge's OBJ loader picks each
 	 * quad's direction, and so its shade, from these normals: smoothed (averaged) normals made the reaction chamber's
 	 * flat panels split into a light and a dark triangle.

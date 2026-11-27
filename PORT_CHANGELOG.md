@@ -859,6 +859,40 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   NeoForge's common tags include the vanilla ones, so modded biomes tagged only with the common tag get Techguns
   spawns too, as with 1.12's BiomeDictionary types. The test checks every biome in both tags.
 
+### 39. Fix: the charging station always faced north (all 63 tests pass; not checked in game)
+
+- The block's facing was set from the player as for the other machines, but `blockstates/charging_station.json`
+  used the same unturned model for all four facings, so it looked north whichever way it was placed. 1.12 turned it
+  (y 90 / 180 / 270, like the grinder and benches); the port's blockstate had lost that. The item shown inside
+  already turned with the facing.
+- New test `ModelTests.facingBlockstatesRotate`: for every Techguns block with a horizontal facing and a "variants"
+  blockstate, each facing's y rotation minus its own angle is the same for all four (with the other properties the
+  same). Without the fix it failed on the charging station's east, south and west variants; no other block failed.
+
+### 40. Config review: speed FOV lock and the lava recipe option work again; 10 dead options removed (all 65 tests pass in all three setups; FOV not checked in game)
+
+Compared all 86 options of 1.12's TGConfig with the port's 79. 13 were defined but nothing read them.
+- **Speed FOV lock** (`client.LockSpeedDependantFov`, on by default, and `client.FixedSprintFovMultiplier`): 1.12's FOV
+  handler cancelled vanilla's speed-dependent FOV change (power armor speed, potions) and used a fixed multiplier while
+  sprinting. The port's `TGClientEvents.onComputeFov` only did gun zoom. It now applies the lock too, from the new
+  `client/SpeedFovLock`, at low priority as in 1.12.
+- **`general.keepLavaRecipesWhenFuelIsPresent`**: in 1.12 the Chem Lab lava recipes for the fuel tank, TGX and the high
+  velocity rocket were left out once a mod added a fuel fluid, unless this option was on. The port always loaded
+  them. New recipe condition `techguns:keep_lava_recipes` (`recipes/KeepLavaRecipesCondition`): true while the
+  `techguns:fuel` fluid tag is empty or the option is on. The three recipes carry it; it applies on /reload.
+- **Removed** `fluid_recipes.FluidListFuel` / `FluidListOil`: the `techguns:fuel` and `techguns:oil` fluid tags took
+  their place and cover all of 1.12's default names. `FluidListOilWorldspawn` is still used by the desert oil.
+- **Removed** the 8 `enabling_items.add*` options (copper, tin, bronze, lead, steel ingots and nuggets): 1.12 used them
+  to skip registering an item that another mod also added. The port always registers them (copper ingot is vanilla's)
+  and tags them under `c:`. Leaving one out would break recipes and saved worlds.
+- New tests `GameplayTests.lavaRecipesFollowFuel` (the loaded recipes against the setup's fuel tag, and the condition
+  with and without fuel and with the option on and off) and `GameplayTests.speedFovLockCancelsSpeed`.
+- **Fix found on the way: the grappling hook sometimes didn't pull.** After grabbing a block or entity in `onHit`,
+  `GenericProjectile.tick` still moved the hook on by its motion, so on the server it sat a step behind the wall.
+  When that spot was in a chunk where entities don't tick, the hook froze and never pulled. `hookPullsToBlock` failed
+  now and then, depending on where the test landed. `GrapplingHookProjectile.onHit` now stops the hook. The test also
+  checks that the hook sits on the wall face; without the fix it failed every run (hook at x 9.7, wall at 6).
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

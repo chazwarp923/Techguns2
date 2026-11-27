@@ -958,4 +958,111 @@ public class GameplayTests {
 			problems.add(what + ": " + actual + " instead of " + expected);
 		}
 	}
+
+	/**
+	 * The Chem Lab lava recipes load only while no fuel fluid exists, or while keepLavaRecipesWhenFuelIsPresent is on
+	 * (1.12 TGMachineRecipes). Checks the loaded recipes against this setup's fuel tag, and the condition itself with
+	 * and without fuel and with the option on and off.
+	 */
+	@GameTest(template = "empty")
+	public static void lavaRecipesFollowFuel(GameTestHelper helper) {
+		List<String> problems = new java.util.ArrayList<>();
+		var fuelTag = techguns.recipes.KeepLavaRecipesCondition.FUEL;
+		boolean fuelPresent = BuiltInRegistries.FLUID.getTag(fuelTag).map(t -> t.size() > 0).orElse(false);
+		boolean expected = techguns.recipes.KeepLavaRecipesCondition.keepLava(fuelPresent);
+		var recipes = helper.getLevel().getServer().getRecipeManager();
+		for (String path : List.of("chem_lab/tgx", "chem_lab/fuel_tank", "chem_lab/rocket_high_velocity")) {
+			boolean loaded = recipes.byKey(Techguns.rl(path)).isPresent();
+			if (loaded != expected) {
+				problems.add(path + " is " + (loaded ? "loaded" : "missing") + " with fuel " + (fuelPresent ? "present" : "absent")
+						+ " and keepLavaRecipesWhenFuelIsPresent " + TGConfig.keepLavaRecipesWhenFuelIsPresent);
+			}
+		}
+
+		var cond = techguns.recipes.KeepLavaRecipesCondition.INSTANCE;
+		net.neoforged.neoforge.common.conditions.ICondition.IContext noFuel = new net.neoforged.neoforge.common.conditions.ICondition.IContext() {
+			@Override
+			public <T> java.util.Map<ResourceLocation, java.util.Collection<net.minecraft.core.Holder<T>>> getAllTags(
+					net.minecraft.resources.ResourceKey<? extends net.minecraft.core.Registry<T>> registry) {
+				return java.util.Map.of();
+			}
+		};
+		net.neoforged.neoforge.common.conditions.ICondition.IContext withFuel = new net.neoforged.neoforge.common.conditions.ICondition.IContext() {
+			@Override
+			@SuppressWarnings("unchecked")
+			public <T> java.util.Map<ResourceLocation, java.util.Collection<net.minecraft.core.Holder<T>>> getAllTags(
+					net.minecraft.resources.ResourceKey<? extends net.minecraft.core.Registry<T>> registry) {
+				if (!registry.equals(fuelTag.registry())) {
+					return java.util.Map.of();
+				}
+				net.minecraft.core.Holder<T> fluid = (net.minecraft.core.Holder<T>) (Object) net.minecraft.world.level.material.Fluids.WATER.builtInRegistryHolder();
+				return java.util.Map.of(fuelTag.location(), List.of(fluid));
+			}
+		};
+		boolean saved = TGConfig.keepLavaRecipesWhenFuelIsPresent;
+		try {
+			for (boolean keep : new boolean[] { false, true }) {
+				TGConfig.keepLavaRecipesWhenFuelIsPresent = keep;
+				if (!cond.test(noFuel)) {
+					problems.add("the condition fails without fuel (option " + keep + ")");
+				}
+				if (cond.test(withFuel) != keep) {
+					problems.add("with fuel present and the option " + keep + " the condition gives " + !keep);
+				}
+			}
+		} finally {
+			TGConfig.keepLavaRecipesWhenFuelIsPresent = saved;
+		}
+		if (!net.neoforged.neoforge.registries.NeoForgeRegistries.CONDITION_SERIALIZERS
+				.containsKey(Techguns.rl("keep_lava_recipes"))) {
+			problems.add("techguns:keep_lava_recipes isn't registered");
+		}
+		helper.assertTrue(problems.isEmpty(), String.join("; ", problems));
+		helper.succeed();
+	}
+
+	/**
+	 * The speed FOV lock (client.LockSpeedDependantFov) cancels vanilla's speed term in the FOV, and while sprinting
+	 * leaves only the fixed sprint multiplier. Off, it changes nothing.
+	 */
+	@GameTest(template = "empty")
+	public static void speedFovLockCancelsSpeed(GameTestHelper helper) {
+		List<String> problems = new java.util.ArrayList<>();
+		Player ply = player(helper);
+		var speed = ply.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED);
+		var boost = new net.minecraft.world.entity.ai.attributes.AttributeModifier(Techguns.rl("test_fov_speed"), 0.6,
+				net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+		boolean savedLock = TGConfig.cl_lockSpeedFov;
+		float savedSprint = TGConfig.cl_fixedSprintFov;
+		try {
+			TGConfig.cl_lockSpeedFov = true;
+			TGConfig.cl_fixedSprintFov = 1.15f;
+			speed.addOrReplacePermanentModifier(boost);
+			for (boolean sprint : new boolean[] { false, true }) {
+				ply.setSprinting(sprint);
+				// vanilla's speed term from AbstractClientPlayer.getFieldOfViewModifier
+				float vanilla = ((float) ply.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)
+						/ ply.getAbilities().getWalkingSpeed() + 1.0f) / 2.0f;
+				float fov = vanilla * techguns.client.SpeedFovLock.factor(ply);
+				float want = sprint ? 1.15f : 1.0f;
+				if (vanilla <= 1.2f) {
+					problems.add("the speed boost didn't change vanilla's FOV term (" + vanilla + ")");
+				}
+				if (Math.abs(fov - want) > 1e-4f) {
+					problems.add((sprint ? "sprinting" : "walking") + " with a speed boost gives FOV " + fov + ", not " + want);
+				}
+			}
+			TGConfig.cl_lockSpeedFov = false;
+			if (techguns.client.SpeedFovLock.factor(ply) != 1.0f) {
+				problems.add("with the lock off the factor is " + techguns.client.SpeedFovLock.factor(ply) + ", not 1");
+			}
+		} finally {
+			TGConfig.cl_lockSpeedFov = savedLock;
+			TGConfig.cl_fixedSprintFov = savedSprint;
+			speed.removeModifier(boost.id());
+			ply.setSprinting(false);
+		}
+		helper.assertTrue(problems.isEmpty(), String.join("; ", problems));
+		helper.succeed();
+	}
 }

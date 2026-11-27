@@ -1,4 +1,9 @@
 {
+  "neoforge:conditions": [
+    {
+      "type": "techguns:keep_lava_recipes"
+    }
+  ],
   "type": "techguns:chem_lab",
   "input1": {
     "tag": "c:gunpowders"
