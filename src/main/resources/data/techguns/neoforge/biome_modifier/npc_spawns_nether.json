@@ -1,5 +1,5 @@
 {
   "type": "techguns:npc_spawns",
-  "biomes": "#minecraft:is_nether",
+  "biomes": "#c:is_nether",
   "nether": true
 }

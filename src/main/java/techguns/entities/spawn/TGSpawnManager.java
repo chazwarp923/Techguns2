@@ -118,11 +118,29 @@ public final class TGSpawnManager {
 	}
 
 	public static void handleSpawn(ServerLevel level, TGDummySpawn dummy) {
-		boolean nether = level.dimension() == Level.NETHER;
-		List<NpcSpawn> table = nether ? NETHER : OVERWORLD;
 		BlockPos pos = dummy.blockPosition();
-		int danger = getDistanceDanger(level, pos, nether) + getBiomeDanger(level.getBiome(pos));
+		int danger = getDanger(level, pos);
+		NpcSpawn chosen = pick(level, danger);
+		if (chosen == null) {
+			return;
+		}
+		GenericNPC npc = chosen.type().get().create(level);
+		if (npc == null) {
+			return;
+		}
+		npc.moveTo(dummy.getX(), dummy.getY(), dummy.getZ(), dummy.getYRot(), 0f);
+		npc.onSpawnByManager(Math.min(danger, MAX_DANGER));
+		level.addFreshEntity(npc);
+	}
 
+	/** the danger level of a position: distance to world spawn (halved in the Nether) plus biome type */
+	public static int getDanger(ServerLevel level, BlockPos pos) {
+		return getDistanceDanger(level, pos, level.dimension() == Level.NETHER) + getBiomeDanger(level.getBiome(pos));
+	}
+
+	/** picks an NPC by weight from the level's table (Nether or overworld), among those up to {@code danger}; null if none */
+	public static NpcSpawn pick(ServerLevel level, int danger) {
+		List<NpcSpawn> table = level.dimension() == Level.NETHER ? NETHER : OVERWORLD;
 		int total = 0;
 		for (NpcSpawn s : table) {
 			if (s.danger() <= danger) {
@@ -130,7 +148,7 @@ public final class TGSpawnManager {
 			}
 		}
 		if (total <= 0) {
-			return;
+			return null;
 		}
 		int roll = level.random.nextInt(total);
 		NpcSpawn chosen = null;
@@ -144,16 +162,7 @@ public final class TGSpawnManager {
 				}
 			}
 		}
-		if (chosen == null) {
-			return;
-		}
-		GenericNPC npc = chosen.type().get().create(level);
-		if (npc == null) {
-			return;
-		}
-		npc.moveTo(dummy.getX(), dummy.getY(), dummy.getZ(), dummy.getYRot(), 0f);
-		npc.onSpawnByManager(Math.min(danger, MAX_DANGER));
-		level.addFreshEntity(npc);
+		return chosen;
 	}
 
 	private static int getBiomeDanger(Holder<Biome> b) {

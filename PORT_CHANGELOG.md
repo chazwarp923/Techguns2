@@ -841,6 +841,24 @@ with scripts (in the job's temp folder, not the repo) and checked on a before/af
   stew gives its bowl only when used up, and 2 bread become 1. With the old code it failed with "a 3-use ration after
   one meal is 0 minecraft:air" and "a 2-use stew gave its bowl back after the first meal".
 
+### 38. Test: cyber demons spawn in the Nether; NPC spawns use the c: biome tags (all 62 tests pass)
+
+- Checked that cyber demons spawn as in 1.12. Every Nether biome spawns the Techguns placeholder as a monster (weight
+  `Techguns_Spawnweight_NEther`, 300), and the spawn manager turns it into a cyber demon (30) or a zombie pigman
+  soldier (100), at any distance (both danger 0).
+- `TGSpawnManager.handleSpawn` is split into `getDanger` and `pick`, which the test calls. Behaviour unchanged.
+- New test `GameplayTests.cyberDemonsSpawnInNether`:
+  - all five Nether biomes carry the placeholder with the configured weight;
+  - 2000 Nether picks near and far from spawn give cyber demons at their weight share, within 5%;
+  - overworld picks never give one;
+  - 20 placeholders added to a forced Nether chunk all become cyber demons or pigman soldiers. The test world keeps
+    its Nether between runs, so it clears that spot first.
+- Planted bugs (cyber demon off the Nether list, the biome modifier on nether_wastes only) failed with "0 cyber
+  demons in 2000 Nether picks" and "minecraft:crimson_forest has no Techguns spawn".
+- The NPC spawn biome modifiers now use the common tags `#c:is_nether` and `#c:is_overworld` (were `#minecraft:`).
+  NeoForge's common tags include the vanilla ones, so modded biomes tagged only with the common tag get Techguns
+  spawns too, as with 1.12's BiomeDictionary types. The test checks every biome in both tags.
+
 ## Where things stand
 
 - Every structure 1.12 actually spawned is now ported: all scanned structures, the alien bug nest, the military base,

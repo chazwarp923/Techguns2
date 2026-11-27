@@ -35,6 +35,7 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.neoforged.neoforge.server.permission.PermissionAPI;
 import techguns.TGConfig;
+import techguns.TGEntities;
 import techguns.TGDataComponents;
 import techguns.TGItems;
 import techguns.TGPermissions;
@@ -752,6 +753,103 @@ public class GameplayTests {
 		creative.getAbilities().mayfly = false;
 		helper.assertTrue(problems.isEmpty(), String.join("; ", problems));
 		helper.succeed();
+	}
+
+	/**
+	 * Cyber demons spawn naturally in the Nether (1.12 rules): every biome in c:is_nether (and every one in
+	 * c:is_overworld, with the overworld weight) spawns the Techguns placeholder as a monster, and the spawn manager
+	 * turns a Nether placeholder into a cyber demon or a zombie pigman soldier by weight (30 to 100 by default), at any
+	 * distance. Overworld spawns never give one.
+	 */
+	@GameTest(template = "empty")
+	public static void cyberDemonsSpawnInNether(GameTestHelper helper) {
+		List<String> problems = new java.util.ArrayList<>();
+		var server = helper.getLevel().getServer();
+		var biomes = server.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.BIOME);
+		// every biome in the common tags, so modded biomes tagged only c:is_nether / c:is_overworld count too
+		int netherBiomes = 0;
+		for (var tagAndWeight : List.of(java.util.Map.entry(net.neoforged.neoforge.common.Tags.Biomes.IS_NETHER, TGConfig.spawnWeightTGNether),
+				java.util.Map.entry(net.neoforged.neoforge.common.Tags.Biomes.IS_OVERWORLD, TGConfig.spawnWeightTGOverworld))) {
+			var tagged = biomes.getTag(tagAndWeight.getKey());
+			helper.assertTrue(tagged.isPresent() && tagged.get().size() > 0, "no biomes in " + tagAndWeight.getKey().location());
+			for (var biome : tagged.get()) {
+				if (tagAndWeight.getKey() == net.neoforged.neoforge.common.Tags.Biomes.IS_NETHER) {
+					netherBiomes++;
+				}
+				var spawns = biome.value().getMobSettings().getMobs(net.minecraft.world.entity.MobCategory.MONSTER).unwrap();
+				boolean has = spawns.stream().anyMatch(d -> d.type == TGEntities.DUMMY_SPAWN.get() && d.getWeight().asInt() == tagAndWeight.getValue());
+				if (!has) {
+					problems.add(biome.getRegisteredName() + " (" + tagAndWeight.getKey().location() + ") has no Techguns spawn with weight " + tagAndWeight.getValue());
+				}
+			}
+		}
+		if (netherBiomes < 5) {
+			problems.add("only " + netherBiomes + " biomes in c:is_nether");
+		}
+
+		var nether = server.getLevel(net.minecraft.world.level.Level.NETHER);
+		helper.assertTrue(nether != null, "no Nether level");
+		int far = TGConfig.distanceSpawnLevel2 * 2;
+		for (BlockPos pos : List.of(BlockPos.ZERO, new BlockPos(far, 64, far))) {
+			int danger = techguns.entities.spawn.TGSpawnManager.getDanger(nether, pos);
+			int demons = 0, n = 2000;
+			for (int i = 0; i < n; i++) {
+				var pick = techguns.entities.spawn.TGSpawnManager.pick(nether, danger);
+				if (pick != null && pick.type().get() == TGEntities.CYBER_DEMON.get()) {
+					demons++;
+				}
+			}
+			double expected = (double) TGConfig.spawnWeightCyberDemon / (TGConfig.spawnWeightCyberDemon + TGConfig.spawnWeightZombiePigmanSoldier);
+			// 2000 picks: the share is within 0.05 of expected far beyond any chance of failing
+			if (Math.abs((double) demons / n - expected) > 0.05) {
+				problems.add(demons + " cyber demons in " + n + " Nether picks at danger " + danger + ", expected about " + Math.round(expected * n));
+			}
+		}
+		for (int i = 0; i < 200; i++) {
+			var pick = techguns.entities.spawn.TGSpawnManager.pick(helper.getLevel(), techguns.entities.spawn.TGSpawnManager.MAX_DANGER);
+			if (pick != null && pick.type().get() == TGEntities.CYBER_DEMON.get()) {
+				problems.add("an overworld spawn picked a cyber demon");
+				break;
+			}
+		}
+
+		helper.assertTrue(problems.isEmpty(), String.join("; ", problems));
+
+		// the real path: a placeholder joining the Nether is replaced by a Nether NPC. The chunk is forced so its
+		// entities are loaded and can be found, and given a few ticks to get there.
+		BlockPos at = new BlockPos(8, 140, 8);
+		nether.setChunkForced(0, 0, true);
+		helper.runAfterDelay(20, () -> {
+			try {
+				var box = new net.minecraft.world.phys.AABB(at).inflate(3);
+				// the test world's Nether is kept between runs: start from nothing
+				nether.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box).forEach(net.minecraft.world.entity.Entity::discard);
+				for (int i = 0; i < 20; i++) {
+					var dummy = TGEntities.DUMMY_SPAWN.get().create(nether);
+					dummy.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 0, 0);
+					nether.addFreshEntity(dummy);
+				}
+				var npcs = nether.getEntitiesOfClass(techguns.entities.npcs.GenericNPC.class, box);
+				int dummies = nether.getEntitiesOfClass(techguns.entities.npcs.TGDummySpawn.class, box).size();
+				List<String> joined = new java.util.ArrayList<>();
+				if (dummies > 0) {
+					joined.add(dummies + " placeholders stayed in the Nether");
+				}
+				if (npcs.size() != 20) {
+					joined.add(npcs.size() + " NPCs from 20 Nether placeholders");
+				}
+				for (var npc : npcs) {
+					if (npc.getType() != TGEntities.CYBER_DEMON.get() && npc.getType() != TGEntities.ZOMBIE_PIGMAN_SOLDIER.get()) {
+						joined.add("a Nether placeholder became " + npc.getType().getDescriptionId());
+					}
+					npc.discard();
+				}
+				helper.assertTrue(joined.isEmpty(), String.join("; ", joined));
+			} finally {
+				nether.setChunkForced(0, 0, false);
+			}
+			helper.succeed();
+		});
 	}
 
 	/**
